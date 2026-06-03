@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: ems
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ems-db?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
+    username: "root"
+    password: "0000"
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 5000
+
+  jpa:
+    show-sql: true        # 실행되는 SQL문 콘솔에 출력
+    hibernate:
+      ddl-auto: update    # 테이블 자동 생성 방식 (create, update, validate 등)
+    properties:
+      hibernate:
+        format_sql: true  # SQL문 보기 좋게 정렬
+
+jwt:
+  secret: ${JWT_SECRET:my-secret-key-my-secret-key-my-secret-key-123456}
+  access-token-validity: ${AT_VALID:3600000}
+  refresh-token-validity: ${RT_VALID:25200000}
