@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(head *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(findstr /i \"env gitignore\")",
+      "PowerShell($jarPath = \"C:\\\\dev\\\\projects\\\\new\\\\ems\\\\gradle\\\\wrapper\\\\gradle-wrapper.jar\"; \\(Get-FileHash -Path $jarPath -Algorithm SHA256\\).Hash)",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "Bash(xargs -I {} cat {})"
+    ]
+  }
+}

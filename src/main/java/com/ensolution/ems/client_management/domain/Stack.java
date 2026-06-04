@@ -4,53 +4,51 @@ import com.ensolution.ems.global.common.enums.Grade;
 import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.common.enums.Orientation;
 import com.ensolution.ems.global.common.enums.Shape;
-import jakarta.persistence.*;
-import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Builder(toBuilder = true)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Entity
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
-@Table(name = "stack")
 public class Stack {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "workplace_id")
-    @ToString.Exclude
-    private Workplace workplace;
-    @Column(nullable = false)
+    private Long workplaceId;
     private MeasurementField field;
-    @Column(nullable = false)
     private String name;
-    @Column(name = "sems_number")
     private String semsNumber;
     private Grade grade;
-    @Column(name = "business_category")
     private String businessCategory;
-    @Column(name = "main_product")
     private String mainProduct;
-
     private String height;
-    @Column(name = "horizontal_length")
     private String horizontalLength;
-    @Column(name = "vertical_length")
     private String verticalLength;
     private Shape shape;
     private Orientation orientation;
-
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
+
+    public static Stack register(
+        Long workplaceId,
+        MeasurementField field,
+        String name,
+        String semsNumber,
+        Grade grade,
+        String businessCategory,
+        String mainProduct
+    ) {
+        return Stack.builder()
+            .workplaceId(workplaceId)
+            .field(field)
+            .name(name)
+            .semsNumber(semsNumber)
+            .grade(grade)
+            .businessCategory(businessCategory)
+            .mainProduct(mainProduct)
+            .build();
+    }
 }

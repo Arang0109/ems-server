@@ -6,7 +6,9 @@ import com.ensolution.ems.client_management.presentation.mapper.CompanyPresentat
 import com.ensolution.ems.client_management.presentation.request.CreateCompanyRequest;
 import com.ensolution.ems.client_management.presentation.response.CompanyResponse;
 import com.ensolution.ems.global.web.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @Tag(name = "Company", description = "측정대행 의뢰기관 API")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/companies")
 @RequiredArgsConstructor
@@ -24,8 +27,9 @@ public class CompanyController {
 	
 	@PostMapping()
 	public ResponseEntity<ApiResponse<CompanyResponse>> createCompany(
-		@RequestBody CreateCompanyRequest request
+		@Valid @RequestBody CreateCompanyRequest request
 	) {
+		System.out.println(request.toString());
 		Company company = companyService.createCompany(mapper.toCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(company)));
 	}

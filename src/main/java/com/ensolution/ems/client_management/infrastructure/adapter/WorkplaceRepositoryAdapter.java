@@ -1,0 +1,52 @@
+package com.ensolution.ems.client_management.infrastructure.adapter;
+
+import com.ensolution.ems.client_management.application.command.WorkplaceListItem;
+import com.ensolution.ems.client_management.domain.Workplace;
+import com.ensolution.ems.client_management.domain.port.WorkplaceRepository;
+import com.ensolution.ems.client_management.infrastructure.repository.JpaCompanyRepository;
+import com.ensolution.ems.client_management.infrastructure.entity.JpaWorkplaceEntity;
+import com.ensolution.ems.client_management.infrastructure.repository.JpaWorkplaceRepository;
+import com.ensolution.ems.client_management.infrastructure.mapper.WorkplaceDomainEntityMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+@RequiredArgsConstructor
+@Transactional
+public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
+
+    private final JpaWorkplaceRepository jpaWorkplaceRepository;
+    private final JpaCompanyRepository jpaCompanyRepository;
+    private final WorkplaceDomainEntityMapper mapper;
+
+    @Override
+    public Workplace save(Workplace workplace) {
+        JpaWorkplaceEntity entity = mapper.toEntity(workplace)
+            .toBuilder()
+            .company(jpaCompanyRepository.getReferenceById(workplace.getCompanyId()))
+            .build();
+        return mapper.toDomain(jpaWorkplaceRepository.save(entity));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Workplace> findById(Long id) {
+        return jpaWorkplaceRepository.findById(id)
+            .map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkplaceListItem> findByCompanyId(Long companyId) {
+        return mapper.toWorkplaceListItems(jpaWorkplaceRepository.findByCompanyId(companyId));
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        jpaWorkplaceRepository.deleteById(id);
+    }
+}

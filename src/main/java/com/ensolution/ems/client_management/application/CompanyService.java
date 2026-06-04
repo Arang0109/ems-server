@@ -26,7 +26,6 @@ public class CompanyService {
 			command.email(),
 			command.tel()
 		);
-		System.out.println("name:: 	" + newCompany.getName());
 		return companyRepository.save(newCompany);
 	}
 	

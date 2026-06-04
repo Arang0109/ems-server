@@ -1,7 +1,7 @@
 package com.ensolution.ems.client_management.infrastructure.mapper;
 
 import com.ensolution.ems.client_management.domain.Company;
-import com.ensolution.ems.client_management.infrastructure.JpaCompanyEntity;
+import com.ensolution.ems.client_management.infrastructure.entity.JpaCompanyEntity;
 import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

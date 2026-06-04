@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"\\\\\\\\wsl.localhost\\\\Ubuntu-22.04\\\\home\\\\kmsq321\\\\dev_wsl\\\\projects\\\\ems\\\\src\\\\main\\\\java\\\\com\\\\ensolution\\\\ems\\\\client_management\" -type f -name \"*.java\")",
+      "Bash(wslpath -u \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\Ubuntu-22.04\\\\\\\\home\\\\\\\\kmsq321\\\\\\\\dev_wsl\\\\\\\\projects\\\\\\\\ems\\\\\\\\src\\\\\\\\main\\\\\\\\java\\\\\\\\com\\\\\\\\ensolution\\\\\\\\ems\\\\\\\\client_management\")"
+    ]
+  }
+}
