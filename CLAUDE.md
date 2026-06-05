@@ -86,26 +86,47 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 > 예) `WorkplaceTableListResponse` (X) → `WorkplaceListResponse` (O)
 
 #### 매퍼 메서드 명
-- `toCommand()` — Request → Command
+- `toCreateCommand()` — 생성 Request → Create Command
+- `toUpdateCommand()` — 수정 Request → Update Command
 - `toResponse()` / `toResponses()` — Domain → Response DTO
 - `toListResponse()` / `toListResponses()` — VO(목록 아이템) → List Response DTO
 - `toEntity()` — Domain → JPA 엔티티
 - `toDomain()` / `toDomainList()` — JPA 엔티티 → Domain
 
+> **Command 매퍼 규칙**: 동일 도메인에 생성/수정 Command가 공존할 경우 `toCommand()` 대신 동작을 명시합니다.
+> 단일 Command만 존재하는 도메인은 `toCreateCommand()` 형태로 작성합니다.
+
 #### Repository Port 메서드 명
 | 동작 | 메서드 패턴 | 반환 타입 | 예시 |
 |------|------------|---------|------|
 | 저장 | `save(T entity)` | `T` | `save(Company company)` |
-| PK 단건 조회 | `findById(Long id)` | `Optional<T>` | `findById(Long id)` |
-| 필드 조건 단건 조회 | `findBy{Field}(value)` | `Optional<T>` | `findByUsername(String username)` |
+| PK 단건 조회 | `findById(Long id)` | `T` | `findById(Long id)` |
+| 필드 조건 단건 조회 | `findBy{Field}(value)` | `T` | `findByUsername(String username)` |
 | 부모 ID 기준 목록 조회 | `findBy{ParentId}(Long id)` | `List<VO>` | `findByCompanyId(Long companyId)` |
 | 전체 목록 조회 | `findAll()` | `List<T>` | `findAll()` |
 | 존재 확인 | `existsBy{Field}(value)` | `boolean` | `existsByUsername(String username)` |
 | 삭제 | `deleteById(Long id)` | `void` | `deleteById(Long id)` |
 
+> **단건 조회 반환 타입 규칙**: Domain Port의 `findById` / `findBy{Field}` 는 `Optional` 을 반환하지 않습니다.
+> Adapter 구현체에서 `.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND))` 로 처리하고, Port 인터페이스는 `T` 를 직접 반환합니다.
+
 ### 8. 도메인 모델 패턴
 - **Lombok 조합**: `@Builder(toBuilder = true)` + `@Getter` + `@AllArgsConstructor` + `@NoArgsConstructor`
 - **생성 로직**: 생성자 직접 사용 금지. 정적 팩토리 메서드로 비즈니스 의미를 부여합니다.
+- **수정 로직**: 도메인 모델에 `update()` 메서드를 추가하고 `toBuilder()`로 새 인스턴스를 반환합니다.
+  - null 또는 blank 값은 기존 값을 유지하는 `keep()` 정적 헬퍼를 도메인 내부에 정의합니다.
+  - PUT 엔드포인트에서도 전달되지 않은 필드는 기존 값이 유지됩니다.
+  ```java
+  // 예시 패턴
+  public Domain update(String field, ...) {
+      return this.toBuilder()
+          .field(keep(field, this.field))
+          .build();
+  }
+  private static String keep(String value, String original) {
+      return value == null || value.isBlank() ? original : value;
+  }
+  ```
 - **Command / VO**: 불변 값 객체는 Java **Record**로 작성합니다.
   - Command: `application/command/` 패키지
   - VO (결과값): `application/command/` 패키지
