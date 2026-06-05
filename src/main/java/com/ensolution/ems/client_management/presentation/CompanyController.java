@@ -7,6 +7,7 @@ import com.ensolution.ems.client_management.presentation.request.CreateCompanyRe
 import com.ensolution.ems.client_management.presentation.request.UpdateCompanyRequest;
 import com.ensolution.ems.client_management.presentation.response.CompanyResponse;
 import com.ensolution.ems.global.web.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,6 +27,7 @@ public class CompanyController {
 	private final CompanyService companyService;
 	private final CompanyPresentationMapper mapper;
 	
+	@Operation(summary = "의뢰기관 등록")
 	@PostMapping()
 	public ResponseEntity<ApiResponse<CompanyResponse>> createCompany(
 		@Valid @RequestBody CreateCompanyRequest request
@@ -35,12 +37,14 @@ public class CompanyController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(savedCompany)));
 	}
 	
+	@Operation(summary = "의뢰기관 목록 조회")
 	@GetMapping()
 	public ResponseEntity<ApiResponse<List<CompanyResponse>>> getCompanyList() {
 		List<Company> companies = companyService.getCompanyList();
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponses(companies)));
 	}
 	
+	@Operation(summary = "의뢰기관 상세 조회")
 	@GetMapping("/{companyId}")
 	public ResponseEntity<ApiResponse<CompanyResponse>> getCompanyDetail(
 		@PathVariable Long companyId
@@ -49,7 +53,8 @@ public class CompanyController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(company)));
 	}
 	
-	@PutMapping("{companyId}")
+	@Operation(summary = "의뢰기관 수정", description = "전달하지 않은 필드는 기존 값을 유지합니다.")
+	@PutMapping("/{companyId}")
 	public ResponseEntity<ApiResponse<CompanyResponse>> updateCompany(
 		@PathVariable Long companyId,
 		@RequestBody UpdateCompanyRequest request
@@ -58,6 +63,7 @@ public class CompanyController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(modifiedCompany)));
 	}
 	
+	@Operation(summary = "의뢰기관 삭제")
 	@DeleteMapping("/{companyId}")
 	public ResponseEntity<ApiResponse<Void>> deleteCompany(@PathVariable Long companyId) {
 		companyService.deleteCompany(companyId);

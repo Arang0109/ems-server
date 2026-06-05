@@ -10,6 +10,7 @@ import com.ensolution.ems.auth.presentation.request.SignUpRequest;
 import com.ensolution.ems.auth.presentation.response.SignInResponse;
 import com.ensolution.ems.global.security.user.CustomUserDetails;
 import com.ensolution.ems.global.web.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -34,11 +35,13 @@ public class AuthController {
 	private final SignUpRequestMapper signUpMapper;
 	private final SignInRequestMapper signInMapper;
 	
+	@Operation(summary = "회원가입")
 	@PostMapping("/sign-up")
 	public void signup(
 			@Valid @RequestBody SignUpRequest request
 	) { authService.signUp(signUpMapper.toCommand(request)); }
 	
+	@Operation(summary = "로그인", description = "Refresh Token을 HttpOnly 쿠키로 설정합니다.")
 	@PostMapping("/sign-in")
 	public ResponseEntity<ApiResponse<SignInResponse>> signIn(
 			@RequestBody SignInRequest request,
@@ -62,6 +65,7 @@ public class AuthController {
 		return ResponseEntity.ok().body(ApiResponse.success(signInMapper.toResponse(signInResult)));
 	}
 	
+	@Operation(summary = "로그아웃", description = "Refresh Token 쿠키를 삭제하고 만료 처리합니다.")
 	@PostMapping("/sign-out")
 	public ResponseEntity<ApiResponse<Void>> signOut(
 		@AuthenticationPrincipal CustomUserDetails userDetails,

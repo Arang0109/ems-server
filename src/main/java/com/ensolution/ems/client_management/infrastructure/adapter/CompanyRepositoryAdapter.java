@@ -22,8 +22,15 @@ public class CompanyRepositoryAdapter implements CompanyRepository {
 	
 	@Override
 	public Company save(Company company) {
-		JpaCompanyEntity savedCompany = jpaCompanyRepository.save(mapper.toEntity(company));
-		return mapper.toDomain(savedCompany);
+		if (company.getId() != null) {
+			JpaCompanyEntity existing = jpaCompanyRepository.findById(company.getId())
+				.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 ID로 등록된 회사를 찾을 수 없습니다."));
+			JpaCompanyEntity updated = mapper.toEntity(company).toBuilder()
+				.workplaces(existing.getWorkplaces())
+				.build();
+			return mapper.toDomain(jpaCompanyRepository.save(updated));
+		}
+		return mapper.toDomain(jpaCompanyRepository.save(mapper.toEntity(company)));
 	}
 	
 	@Override

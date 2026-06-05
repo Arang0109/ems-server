@@ -8,6 +8,7 @@ import com.ensolution.ems.client_management.presentation.request.UpdateStackRequ
 import com.ensolution.ems.client_management.presentation.response.StackListResponse;
 import com.ensolution.ems.client_management.presentation.response.StackResponse;
 import com.ensolution.ems.global.web.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ public class StackController {
 	private final StackService stackService;
 	private final StackPresentationMapper mapper;
 	
+	@Operation(summary = "측정시설 등록")
 	@PostMapping()
 	public ResponseEntity<ApiResponse<StackResponse>> createStack(
 		@Valid @RequestBody CreateStackRequest request
@@ -35,6 +37,7 @@ public class StackController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(stack)));
 	}
 	
+	@Operation(summary = "측정시설 목록 조회", description = "workplaceId 쿼리 파라미터로 사업장을 지정합니다.")
 	@GetMapping()
 	public ResponseEntity<ApiResponse<List<StackListResponse>>> getStackList(
 		@RequestParam Long workplaceId
@@ -44,12 +47,14 @@ public class StackController {
 		)));
 	}
 
+	@Operation(summary = "측정시설 상세 조회")
 	@GetMapping("/{stackId}")
 	public ResponseEntity<ApiResponse<StackResponse>> getStackDetail(@PathVariable Long stackId) {
 		Stack stack = stackService.getStack(stackId);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(stack)));
 	}
 
+	@Operation(summary = "측정시설 수정", description = "전달하지 않은 필드는 기존 값을 유지합니다.")
 	@PutMapping("/{stackId}")
 	public ResponseEntity<ApiResponse<StackResponse>> updateStack(
 		@PathVariable Long stackId,
@@ -59,6 +64,7 @@ public class StackController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(stack)));
 	}
 
+	@Operation(summary = "측정시설 삭제")
 	@DeleteMapping("/{stackId}")
 	public ResponseEntity<ApiResponse<Void>> deleteStack(@PathVariable Long stackId) {
 		stackService.deleteStack(stackId);

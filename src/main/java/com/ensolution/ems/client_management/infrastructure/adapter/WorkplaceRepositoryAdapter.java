@@ -27,6 +27,15 @@ public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 
     @Override
     public Workplace save(Workplace workplace) {
+        if (workplace.getId() != null) {
+            JpaWorkplaceEntity existing = jpaWorkplaceRepository.findById(workplace.getId())
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+            JpaWorkplaceEntity updated = mapper.toEntity(workplace).toBuilder()
+                .company(existing.getCompany())
+                .stacks(existing.getStacks())
+                .build();
+            return mapper.toDomain(jpaWorkplaceRepository.save(updated));
+        }
         JpaWorkplaceEntity entity = mapper.toEntity(workplace)
             .toBuilder()
             .company(jpaCompanyRepository.getReferenceById(workplace.getCompanyId()))
