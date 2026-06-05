@@ -8,4 +8,5 @@ public interface CompanyRepository {
 	Company save(Company company);
 	Company findById(Long companyId);
 	List<Company> findAll();
+	void deleteById(Long companyId);
 }

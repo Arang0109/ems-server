@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.application.CompanyService;
 import com.ensolution.ems.client_management.domain.Company;
 import com.ensolution.ems.client_management.presentation.mapper.CompanyPresentationMapper;
 import com.ensolution.ems.client_management.presentation.request.CreateCompanyRequest;
+import com.ensolution.ems.client_management.presentation.request.UpdateCompanyRequest;
 import com.ensolution.ems.client_management.presentation.response.CompanyResponse;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,8 +31,8 @@ public class CompanyController {
 		@Valid @RequestBody CreateCompanyRequest request
 	) {
 		System.out.println(request.toString());
-		Company company = companyService.createCompany(mapper.toCommand(request));
-		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(company)));
+		Company savedCompany = companyService.createCompany(mapper.toCreateCommand(request));
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(savedCompany)));
 	}
 	
 	@GetMapping()
@@ -46,5 +47,20 @@ public class CompanyController {
 	) {
 		Company company = companyService.getCompany(companyId);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(company)));
+	}
+	
+	@PutMapping("{companyId}")
+	public ResponseEntity<ApiResponse<CompanyResponse>> updateCompany(
+		@PathVariable Long companyId,
+		@RequestBody UpdateCompanyRequest request
+		) {
+		Company modifiedCompany = companyService.updateCompany(companyId, mapper.toUpdateCommand(request));
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(modifiedCompany)));
+	}
+	
+	@DeleteMapping("/{companyId}")
+	public ResponseEntity<ApiResponse<Void>> deleteCompany(@PathVariable Long companyId) {
+		companyService.deleteCompany(companyId);
+		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 }

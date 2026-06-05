@@ -30,4 +30,10 @@ public class WorkplaceService {
 	public List<WorkplaceListItem> getWorkplaceList(Long companyId) {
 		return workplaceRepository.findByCompanyId(companyId);
 	}
+	
+	public Workplace getWorkplace(Long workplaceId) {
+		return workplaceRepository.findById(workplaceId);
+	}
+	
+	public void deleteWorkplace(Long workplaceId) { workplaceRepository.deleteById(workplaceId);}
 }

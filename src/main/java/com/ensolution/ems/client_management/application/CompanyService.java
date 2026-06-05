@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.application;
 
 import com.ensolution.ems.client_management.application.command.CreateCompanyCommand;
+import com.ensolution.ems.client_management.application.command.UpdateCompanyCommand;
 import com.ensolution.ems.client_management.domain.Company;
 import com.ensolution.ems.client_management.domain.port.CompanyRepository;
 import jakarta.transaction.Transactional;
@@ -29,9 +30,27 @@ public class CompanyService {
 		return companyRepository.save(newCompany);
 	}
 	
+	public Company updateCompany(Long companyId, UpdateCompanyCommand command) {
+		Company company = companyRepository.findById(companyId);
+		
+		Company savedCompany = company.update(
+			command.name(),
+			command.bizNumber(),
+			command.representative(),
+			command.address(),
+			command.manager(),
+			command.email(),
+			command.tel()
+		);
+		
+		return companyRepository.save(savedCompany);
+	}
+
 	public Company getCompany(Long companyId) { return companyRepository.findById(companyId); }
 	
 	public List<Company> getCompanyList() {
 		return companyRepository.findAll();
 	}
+	
+	public void deleteCompany(Long companyId) { companyRepository.deleteById(companyId); }
 }

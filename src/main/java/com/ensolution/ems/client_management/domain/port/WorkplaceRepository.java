@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface WorkplaceRepository {
     Workplace save(Workplace workplace);
-    Optional<Workplace> findById(Long id);
+		Workplace findById(Long id);
     List<WorkplaceListItem> findByCompanyId(Long companyId);
     void deleteById(Long id);
 }

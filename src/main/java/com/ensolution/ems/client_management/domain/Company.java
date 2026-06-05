@@ -39,6 +39,30 @@ public class Company {
 				.tel(tel)
 				.build();
 		}
-		
-		
+	
+		public Company update(
+			String name,
+			String bizNumber,
+			String representative,
+			String address,
+			String manager,
+			String email,
+			String tel
+		) {
+			return this.toBuilder()
+				.name(keep(name, this.name))
+				.bizNumber(keep(bizNumber, this.bizNumber))
+				.representative(keep(representative, this.representative))
+				.address(keep(address, this.address))
+				.manager(keep(manager, this.manager))
+				.email(keep(email, this.email))
+				.tel(keep(tel, this.tel))
+				.build();
+		}
+	
+	private static String keep(String value, String original) {
+		return value == null || value.isBlank()
+			? original
+			: value;
+	}
 }

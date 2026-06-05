@@ -38,4 +38,7 @@ public class CompanyRepositoryAdapter implements CompanyRepository {
 		List<JpaCompanyEntity> companies = jpaCompanyRepository.findAll();
 		return mapper.toDomainList(companies);
 	}
+	
+	@Override
+	public void deleteById(Long companyId) { jpaCompanyRepository.deleteById(companyId); }
 }

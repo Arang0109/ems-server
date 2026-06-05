@@ -7,6 +7,8 @@ import com.ensolution.ems.client_management.infrastructure.repository.JpaCompany
 import com.ensolution.ems.client_management.infrastructure.entity.JpaWorkplaceEntity;
 import com.ensolution.ems.client_management.infrastructure.repository.JpaWorkplaceRepository;
 import com.ensolution.ems.client_management.infrastructure.mapper.WorkplaceDomainEntityMapper;
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,9 +36,11 @@ public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Workplace> findById(Long id) {
+    public Workplace findById(Long id) {
         return jpaWorkplaceRepository.findById(id)
-            .map(mapper::toDomain);
+            .map(mapper::toDomain).orElseThrow(
+						() -> new CustomException(ErrorCode.NOT_FOUND)
+					);
     }
 
     @Override

@@ -42,4 +42,16 @@ public class WorkplaceController {
 			workplaceService.getWorkplaceList(companyId)
 		)));
 	}
+	
+	@GetMapping("/{workplaceId}")
+	public ResponseEntity<ApiResponse<WorkplaceResponse>> getWorkplaceDetail(@PathVariable Long workplaceId) {
+		Workplace workplace = workplaceService.getWorkplace(workplaceId);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
+	}
+	
+	@DeleteMapping("/{workplaceId}")
+	public ResponseEntity<ApiResponse<Void>> deleteWorkplace(@PathVariable Long workplaceId) {
+		workplaceService.deleteWorkplace(workplaceId);
+		return ResponseEntity.ok().body(ApiResponse.success());
+	}
 }
