@@ -7,12 +7,13 @@ import com.ensolution.ems.client_management.infrastructure.entity.JpaStackEntity
 import com.ensolution.ems.client_management.infrastructure.repository.JpaStackRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.JpaWorkplaceRepository;
 import com.ensolution.ems.client_management.infrastructure.mapper.StackDomainEntityMapper;
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -34,9 +35,10 @@ public class StackRepositoryAdapter implements StackRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Stack> findById(Long id) {
+    public Stack findById(Long id) {
         return jpaStackRepository.findById(id)
-            .map(mapper::toDomain);
+            .map(mapper::toDomain)
+            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
     }
 
     @Override

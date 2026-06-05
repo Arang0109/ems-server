@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.application;
 
 import com.ensolution.ems.client_management.application.command.CreateWorkplaceCommand;
+import com.ensolution.ems.client_management.application.command.UpdateWorkplaceCommand;
 import com.ensolution.ems.client_management.application.command.WorkplaceListItem;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.domain.port.WorkplaceRepository;
@@ -34,6 +35,12 @@ public class WorkplaceService {
 	public Workplace getWorkplace(Long workplaceId) {
 		return workplaceRepository.findById(workplaceId);
 	}
-	
-	public void deleteWorkplace(Long workplaceId) { workplaceRepository.deleteById(workplaceId);}
+
+	public Workplace updateWorkplace(Long workplaceId, UpdateWorkplaceCommand command) {
+		Workplace workplace = workplaceRepository.findById(workplaceId);
+		Workplace updated = workplace.update(command.name(), command.address(), command.bizNumber());
+		return workplaceRepository.save(updated);
+	}
+
+	public void deleteWorkplace(Long workplaceId) { workplaceRepository.deleteById(workplaceId); }
 }

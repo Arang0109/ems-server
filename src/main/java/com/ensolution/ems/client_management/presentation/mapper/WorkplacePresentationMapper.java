@@ -1,9 +1,11 @@
 package com.ensolution.ems.client_management.presentation.mapper;
 
 import com.ensolution.ems.client_management.application.command.CreateWorkplaceCommand;
+import com.ensolution.ems.client_management.application.command.UpdateWorkplaceCommand;
 import com.ensolution.ems.client_management.application.command.WorkplaceListItem;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.presentation.request.CreateWorkplaceRequest;
+import com.ensolution.ems.client_management.presentation.request.UpdateWorkplaceRequest;
 import com.ensolution.ems.client_management.presentation.response.WorkplaceResponse;
 import com.ensolution.ems.client_management.presentation.response.WorkplaceListResponse;
 import org.mapstruct.Builder;
@@ -17,7 +19,8 @@ import java.util.List;
 		builder = @Builder
 )
 public interface WorkplacePresentationMapper {
-	CreateWorkplaceCommand toCommand(CreateWorkplaceRequest request);
+	CreateWorkplaceCommand toCreateCommand(CreateWorkplaceRequest request);
+	UpdateWorkplaceCommand toUpdateCommand(UpdateWorkplaceRequest request);
 	WorkplaceResponse toResponse(Workplace workplace);
 	
 	@Mapping(target = "workplaceName", source = "name")

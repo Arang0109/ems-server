@@ -51,4 +51,36 @@ public class Stack {
             .mainProduct(mainProduct)
             .build();
     }
+
+    public Stack update(
+        MeasurementField field,
+        String name,
+        String semsNumber,
+        Grade grade,
+        String businessCategory,
+        String mainProduct,
+        String height,
+        String horizontalLength,
+        String verticalLength,
+        Shape shape,
+        Orientation orientation
+    ) {
+        return this.toBuilder()
+            .field(field != null ? field : this.field)
+            .name(keep(name, this.name))
+            .semsNumber(keep(semsNumber, this.semsNumber))
+            .grade(grade != null ? grade : this.grade)
+            .businessCategory(keep(businessCategory, this.businessCategory))
+            .mainProduct(keep(mainProduct, this.mainProduct))
+            .height(keep(height, this.height))
+            .horizontalLength(keep(horizontalLength, this.horizontalLength))
+            .verticalLength(keep(verticalLength, this.verticalLength))
+            .shape(shape != null ? shape : this.shape)
+            .orientation(orientation != null ? orientation : this.orientation)
+            .build();
+    }
+
+    private static String keep(String value, String original) {
+        return value == null || value.isBlank() ? original : value;
+    }
 }

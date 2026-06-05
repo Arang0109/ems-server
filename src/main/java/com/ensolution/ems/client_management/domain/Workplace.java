@@ -29,4 +29,16 @@ public class Workplace {
             .bizNumber(bizNumber)
             .build();
     }
+
+    public Workplace update(String name, String address, String bizNumber) {
+        return this.toBuilder()
+            .name(keep(name, this.name))
+            .address(keep(address, this.address))
+            .bizNumber(keep(bizNumber, this.bizNumber))
+            .build();
+    }
+
+    private static String keep(String value, String original) {
+        return value == null || value.isBlank() ? original : value;
+    }
 }

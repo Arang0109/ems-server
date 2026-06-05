@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.application.WorkplaceService;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.presentation.mapper.WorkplacePresentationMapper;
 import com.ensolution.ems.client_management.presentation.request.CreateWorkplaceRequest;
+import com.ensolution.ems.client_management.presentation.request.UpdateWorkplaceRequest;
 import com.ensolution.ems.client_management.presentation.response.WorkplaceResponse;
 import com.ensolution.ems.client_management.presentation.response.WorkplaceListResponse;
 import com.ensolution.ems.global.web.ApiResponse;
@@ -30,7 +31,7 @@ public class WorkplaceController {
 	public ResponseEntity<ApiResponse<WorkplaceResponse>> createWorkplace(
 		@Valid @RequestBody CreateWorkplaceRequest request
 	) {
-		Workplace workplace = workplaceService.createWorkplace(mapper.toCommand(request));
+		Workplace workplace = workplaceService.createWorkplace(mapper.toCreateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
 	}
 	
@@ -49,6 +50,15 @@ public class WorkplaceController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
 	}
 	
+	@PutMapping("/{workplaceId}")
+	public ResponseEntity<ApiResponse<WorkplaceResponse>> updateWorkplace(
+		@PathVariable Long workplaceId,
+		@RequestBody UpdateWorkplaceRequest request
+	) {
+		Workplace workplace = workplaceService.updateWorkplace(workplaceId, mapper.toUpdateCommand(request));
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
+	}
+
 	@DeleteMapping("/{workplaceId}")
 	public ResponseEntity<ApiResponse<Void>> deleteWorkplace(@PathVariable Long workplaceId) {
 		workplaceService.deleteWorkplace(workplaceId);
