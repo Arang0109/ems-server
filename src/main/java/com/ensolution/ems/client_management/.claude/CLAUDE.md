@@ -34,17 +34,19 @@ Stack의 속성에서 사용하는 Enum(`Grade`, `MeasurementField`, `Shape`, `O
 | `WorkplaceService` | `createWorkplace` | 사업장 신규 등록 |
 | `WorkplaceService` | `getWorkplace(workplaceId)` | 사업장 단건 조회 |
 | `WorkplaceService` | `getWorkplaceList(companyId)` | Company ID 기준 사업장 목록 조회 |
+| `WorkplaceService` | `updateWorkplace(workplaceId, command)` | 사업장 수정 |
 | `WorkplaceService` | `deleteWorkplace(workplaceId)` | 사업장 삭제 |
 | `StackService` | `createStack` | 측정시설(굴뚝) 신규 등록 |
+| `StackService` | `getStack(stackId)` | 측정시설 단건 조회 |
 | `StackService` | `getStackList(workplaceId)` | Workplace ID 기준 측정시설 목록 조회 |
+| `StackService` | `updateStack(stackId, command)` | 측정시설 수정 |
+| `StackService` | `deleteStack(stackId)` | 측정시설 삭제 |
 
 ---
 
 ## 향후 구현 예정
 
 ### 공통
-- Workplace / Stack 수정
-- Stack 단건 조회 및 삭제
 - 페이징 (`Pageable`) 적용
 
 ---
