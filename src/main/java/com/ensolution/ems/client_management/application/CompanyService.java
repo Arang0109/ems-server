@@ -29,6 +29,8 @@ public class CompanyService {
 		return companyRepository.save(newCompany);
 	}
 	
+	public Company getCompany(Long companyId) { return companyRepository.findById(companyId); }
+	
 	public List<Company> getCompanyList() {
 		return companyRepository.findAll();
 	}

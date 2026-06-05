@@ -28,26 +28,18 @@ Stack의 속성에서 사용하는 Enum(`Grade`, `MeasurementField`, `Shape`, `O
 |--------|--------|------|
 | `CompanyService` | `createCompany` | 의뢰기관 신규 등록 |
 | `CompanyService` | `getCompanyList` | 전체 의뢰기관 목록 조회 |
+| `WorkplaceService` | `createWorkplace` | 사업장 신규 등록 |
+| `WorkplaceService` | `getWorkplaceList(companyId)` | Company ID 기준 사업장 목록 조회 |
+| `StackService` | `createStack` | 측정시설(굴뚝) 신규 등록 |
+| `StackService` | `getStackList(workplaceId)` | Workplace ID 기준 측정시설 목록 조회 |
 
 ---
 
 ## 향후 구현 예정
 
-### Workplace
-- `WorkplaceService`, `WorkplaceController`
-- 생성 / 조회 / 수정 / 삭제
-- Company ID 기준 사업장 목록 조회
-
-### Stack
-- `StackService`, `StackController`
-- 생성 / 조회 / 수정 / 삭제
-- Workplace ID 기준 굴뚝 목록 조회
-
 ### 공통
-- Company / Workplace 수정 및 삭제
-- 사업자번호 중복 검증 (`CompanyRepository.existsByBizNumber`)
+- Company / Workplace / Stack 수정 및 삭제
 - 페이징 (`Pageable`) 적용
-- 입력값 검증 (`@Valid`)
 
 ---
 
@@ -59,9 +51,18 @@ Stack의 속성에서 사용하는 Enum(`Grade`, `MeasurementField`, `Shape`, `O
 ## 모듈 규칙
 
 ### Repository Port
-- `domain/port/CompanyRepository` — 현재 `save()`, `findAll()` 구현
-- Workplace, Stack 추가 시 각각 `domain/port/WorkplaceRepository`, `domain/port/StackRepository`를 추가합니다.
+- `domain/port/CompanyRepository` — `save()`, `findById()`, `findAll()`
+- `domain/port/WorkplaceRepository` — `save()`, `findById()`, `findByCompanyId()`, `deleteById()`
+- `domain/port/StackRepository` — `save()`, `findById()`, `findByWorkplaceId()`, `deleteById()`
 - 부모-자식 조회는 반드시 Port 메서드로 추상화합니다. (예: `findByCompanyId(Long companyId)`)
+
+### 목록 조회 VO 패턴
+- 목록 조회 시 연관 도메인 정보(부모명 등)를 포함하는 VO는 `application/command/`에 Record로 정의합니다.
+  - `WorkplaceListItem` — `companyName` 포함 사업장 목록 아이템
+  - `StackListItem` — `companyName`, `workplaceName` 포함 측정시설 목록 아이템
+- Infrastructure 매퍼(`{도메인}DomainEntityMapper`)가 JPA 엔티티 → VO 변환을 담당합니다.
+- Presentation 매퍼(`{도메인}PresentationMapper`)가 VO → Response DTO 변환을 담당합니다.
+  - 메서드명: `toListResponse()` / `toListResponses()`
 
 ### 연관 관계 조회
 - Company 조회 시 Workplace, Stack을 즉시 로드하지 않습니다.

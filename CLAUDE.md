@@ -73,7 +73,7 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | Command | `{동작}{대상}Command` (Record) | `CreateCompanyCommand` |
 | VO (결과값) | 의미 있는 명사 (Record) | `TokenResult`, `AuthenticatedUser` |
 | Request DTO | `{동작}{대상}Request` | `CreateCompanyRequest` |
-| Response DTO | `{대상}Response` | `CompanyResponse` |
+| Response DTO | `{대상}Response` | `CompanyResponse`, `WorkplaceListResponse` |
 | JPA 엔티티 | `Jpa{도메인}Entity` | `JpaCompanyEntity` |
 | JPA Repository | `Jpa{도메인}Repository` | `JpaCompanyRepository` |
 | Repository Adapter | `{도메인}RepositoryAdapter` | `CompanyRepositoryAdapter` |
@@ -81,18 +81,37 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | Presentation 매퍼 | `{도메인}PresentationMapper` | `CompanyPresentationMapper` |
 | Infrastructure 매퍼 | `{도메인}DomainEntityMapper` | `CompanyDomainEntityMapper` |
 
+> **Response DTO 주의**: 이름에 UI 컴포넌트(`Table`, `Grid`, `Card` 등)를 포함하지 않습니다.
+> 동일한 응답이 다양한 UI로 렌더링될 수 있으므로 용도가 아닌 도메인 개념으로 명명합니다.
+> 예) `WorkplaceTableListResponse` (X) → `WorkplaceListResponse` (O)
+
 #### 매퍼 메서드 명
 - `toCommand()` — Request → Command
 - `toResponse()` / `toResponses()` — Domain → Response DTO
+- `toListResponse()` / `toListResponses()` — VO(목록 아이템) → List Response DTO
 - `toEntity()` — Domain → JPA 엔티티
 - `toDomain()` / `toDomainList()` — JPA 엔티티 → Domain
+
+#### Repository Port 메서드 명
+| 동작 | 메서드 패턴 | 반환 타입 | 예시 |
+|------|------------|---------|------|
+| 저장 | `save(T entity)` | `T` | `save(Company company)` |
+| PK 단건 조회 | `findById(Long id)` | `Optional<T>` | `findById(Long id)` |
+| 필드 조건 단건 조회 | `findBy{Field}(value)` | `Optional<T>` | `findByUsername(String username)` |
+| 부모 ID 기준 목록 조회 | `findBy{ParentId}(Long id)` | `List<VO>` | `findByCompanyId(Long companyId)` |
+| 전체 목록 조회 | `findAll()` | `List<T>` | `findAll()` |
+| 존재 확인 | `existsBy{Field}(value)` | `boolean` | `existsByUsername(String username)` |
+| 삭제 | `deleteById(Long id)` | `void` | `deleteById(Long id)` |
 
 ### 8. 도메인 모델 패턴
 - **Lombok 조합**: `@Builder(toBuilder = true)` + `@Getter` + `@AllArgsConstructor` + `@NoArgsConstructor`
 - **생성 로직**: 생성자 직접 사용 금지. 정적 팩토리 메서드로 비즈니스 의미를 부여합니다.
 - **Command / VO**: 불변 값 객체는 Java **Record**로 작성합니다.
   - Command: `application/command/` 패키지
-  - VO (결과값): `domain/` 또는 `application/command/` 패키지
+  - VO (결과값): `application/command/` 패키지
+    - 순수 도메인 개념의 값 객체만 `domain/` 패키지 사용
+    - Application 서비스가 반환하는 쿼리 결과 VO는 반드시 `application/command/`에 위치
+    - `application/result/` 등 별도 패키지를 생성하지 않습니다
 
 ### 9. Swagger 어노테이션 규칙
 - 모든 Controller 클래스에 `@Tag(name = "...", description = "...")` 어노테이션을 추가합니다.

@@ -39,4 +39,12 @@ public class CompanyController {
 		List<Company> companies = companyService.getCompanyList();
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponses(companies)));
 	}
+	
+	@GetMapping("/{companyId}")
+	public ResponseEntity<ApiResponse<CompanyResponse>> getCompanyDetail(
+		@PathVariable Long companyId
+	) {
+		Company company = companyService.getCompany(companyId);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(company)));
+	}
 }
