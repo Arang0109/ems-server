@@ -15,6 +15,8 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -53,6 +55,19 @@ public class StackRepositoryAdapter implements StackRepository {
         jpaStackRepository.deleteById(id);
     }
 	
+	@Override
+	@Transactional(readOnly = true)
+	public Map<Long, List<MeasurementField>> findFieldsByWorkplaceIds(List<Long> workplaceIds) {
+		if (workplaceIds.isEmpty()) return Map.of();
+		return jpaStackRepository.findByWorkplaceIds(workplaceIds).stream()
+			.collect(Collectors.groupingBy(
+				e -> e.getWorkplace().getId(),
+				Collectors.mapping(JpaStackEntity::getField,
+					Collectors.collectingAndThen(Collectors.toList(),
+						list -> list.stream().distinct().toList()))
+			));
+	}
+
 	@Override
 	public boolean existsByNameAndWorkplaceIdAndField(String name, Long workplaceId, MeasurementField field) {
 		return jpaStackRepository.existsByNameAndWorkplaceIdAndField(name, workplaceId, field);

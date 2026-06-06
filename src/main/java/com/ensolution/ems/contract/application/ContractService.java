@@ -1,16 +1,22 @@
 package com.ensolution.ems.contract.application;
 
-import com.ensolution.ems.client_management.domain.port.WorkplaceRepository;
+import com.ensolution.ems.client_management.application.port.ContractSummary;
+import com.ensolution.ems.client_management.application.port.WorkplaceQueryUseCase;
+import com.ensolution.ems.contract.application.command.ContractDetail;
 import com.ensolution.ems.contract.application.command.ContractListItem;
 import com.ensolution.ems.contract.application.command.CreateContractCommand;
 import com.ensolution.ems.contract.application.command.UpdateContractCommand;
 import com.ensolution.ems.contract.domain.Contract;
 import com.ensolution.ems.contract.domain.port.ContractRepository;
+import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -18,11 +24,14 @@ import java.util.List;
 public class ContractService {
 
 	private final ContractRepository contractRepository;
-	private final WorkplaceRepository workplaceRepository;
+	private final WorkplaceQueryUseCase workplaceQueryUseCase;
 
-	public Contract createContract(CreateContractCommand command) {
-		workplaceRepository.findById(command.workplaceId());
-		Contract contract = Contract.register(
+	public ContractDetail createContract(CreateContractCommand command) {
+		if (!workplaceQueryUseCase.existsById(command.workplaceId())) {
+			throw new CustomException(ErrorCode.NOT_FOUND);
+		}
+
+		Contract saved = contractRepository.save(Contract.register(
 			command.workplaceId(),
 			command.contractName(),
 			command.contractDate(),
@@ -36,21 +45,39 @@ public class ContractService {
 			command.advancePaymentDueDate(),
 			command.delayPenaltyRate(),
 			command.remark()
-		);
-		return contractRepository.save(contract);
+		));
+		ContractSummary summary = workplaceQueryUseCase.getSummaryById(saved.getWorkplaceId());
+		return new ContractDetail(saved, summary.companyName(), summary.workplaceName());
 	}
 
-	public Contract getContract(Long contractId) {
-		return contractRepository.findById(contractId);
+	public ContractDetail getContract(Long contractId) {
+		Contract contract = contractRepository.findById(contractId);
+		ContractSummary summary = workplaceQueryUseCase.getSummaryById(contract.getWorkplaceId());
+		return new ContractDetail(contract, summary.companyName(), summary.workplaceName());
 	}
 
 	public List<ContractListItem> getContractList(Long workplaceId) {
-		return contractRepository.findByWorkplaceId(workplaceId);
+		List<ContractListItem> contracts = workplaceId == null
+			? contractRepository.findAll()
+			: contractRepository.findByWorkplaceId(workplaceId);
+
+		List<Long> workplaceIds = contracts.stream()
+			.map(ContractListItem::workplaceId)
+			.distinct()
+			.toList();
+
+		Map<Long, List<MeasurementField>> fieldsMap =
+			workplaceQueryUseCase.getFieldsByWorkplaceIds(workplaceIds);
+
+		return contracts.stream()
+			.map(c -> c.withFieldList(fieldsMap.getOrDefault(c.workplaceId(), List.of())))
+			.toList();
 	}
 
-	public Contract updateContract(Long contractId, UpdateContractCommand command) {
+	public ContractDetail updateContract(Long contractId, UpdateContractCommand command) {
 		Contract contract = contractRepository.findById(contractId);
-		Contract updated = contract.update(
+		Contract saved = contractRepository.save(contract.update(
+			contractId,
 			command.contractName(),
 			command.contractDate(),
 			command.startDate(),
@@ -63,8 +90,9 @@ public class ContractService {
 			command.advancePaymentDueDate(),
 			command.delayPenaltyRate(),
 			command.remark()
-		);
-		return contractRepository.save(updated);
+		));
+		ContractSummary summary = workplaceQueryUseCase.getSummaryById(saved.getWorkplaceId());
+		return new ContractDetail(saved, summary.companyName(), summary.workplaceName());
 	}
 
 	public void deleteContract(Long contractId) {

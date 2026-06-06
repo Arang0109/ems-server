@@ -3,6 +3,7 @@ package com.ensolution.ems.contract.infrastructure.adapter;
 import com.ensolution.ems.contract.application.command.ContractListItem;
 import com.ensolution.ems.contract.domain.Contract;
 import com.ensolution.ems.contract.domain.port.ContractRepository;
+import com.ensolution.ems.contract.infrastructure.ContractQueryRow;
 import com.ensolution.ems.contract.infrastructure.mapper.ContractDomainEntityMapper;
 import com.ensolution.ems.contract.infrastructure.repository.JpaContractRepository;
 import com.ensolution.ems.global.exception.CustomException;
@@ -27,7 +28,6 @@ public class ContractRepositoryAdapter implements ContractRepository {
 	}
 
 	@Override
-	@Transactional(readOnly = true)
 	public Contract findById(Long id) {
 		return jpaContractRepository.findById(id)
 			.map(mapper::toDomain)
@@ -35,9 +35,13 @@ public class ContractRepositoryAdapter implements ContractRepository {
 	}
 
 	@Override
-	@Transactional(readOnly = true)
 	public List<ContractListItem> findByWorkplaceId(Long workplaceId) {
 		return mapper.toContractListItems(jpaContractRepository.findByWorkplaceId(workplaceId));
+	}
+
+	@Override
+	public List<ContractListItem> findAll() {
+		return mapper.toContractListItems(jpaContractRepository.findAllWithWorkplace());
 	}
 
 	@Override

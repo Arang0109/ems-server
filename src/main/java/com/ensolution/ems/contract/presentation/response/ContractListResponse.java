@@ -1,17 +1,15 @@
 package com.ensolution.ems.contract.presentation.response;
 
-import com.ensolution.ems.contract.domain.ContractAmountUnit;
+import com.ensolution.ems.global.common.enums.MeasurementField;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public record ContractListResponse(
 	Long id,
-	Long workplaceId,
 	String contractName,
 	LocalDate contractDate,
-	LocalDate startDate,
-	LocalDate completionDate,
-	BigDecimal contractAccount,
-	ContractAmountUnit contractAmountUnit
+	String companyName,
+	String workplaceName,
+	List<MeasurementField> fieldList
 ) {}

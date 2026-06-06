@@ -1,7 +1,7 @@
 package com.ensolution.ems.contract.presentation;
 
 import com.ensolution.ems.contract.application.ContractService;
-import com.ensolution.ems.contract.domain.Contract;
+import com.ensolution.ems.contract.application.command.ContractDetail;
 import com.ensolution.ems.contract.presentation.mapper.ContractPresentationMapper;
 import com.ensolution.ems.contract.presentation.request.CreateContractRequest;
 import com.ensolution.ems.contract.presentation.request.UpdateContractRequest;
@@ -29,18 +29,18 @@ public class ContractController {
 	private final ContractPresentationMapper mapper;
 
 	@Operation(summary = "계약 등록")
-	@PostMapping
+	@PostMapping()
 	public ResponseEntity<ApiResponse<ContractResponse>> createContract(
 		@Valid @RequestBody CreateContractRequest request
 	) {
-		Contract contract = contractService.createContract(mapper.toCreateCommand(request));
-		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(contract)));
+		ContractDetail detail = contractService.createContract(mapper.toCreateCommand(request));
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
 	@Operation(summary = "계약 목록 조회", description = "workplaceId 쿼리 파라미터로 사업장을 지정합니다.")
-	@GetMapping
+	@GetMapping()
 	public ResponseEntity<ApiResponse<List<ContractListResponse>>> getContractList(
-		@RequestParam Long workplaceId
+		@RequestParam(required = false) Long workplaceId
 	) {
 		return ResponseEntity.ok(ApiResponse.success(mapper.toListResponses(
 			contractService.getContractList(workplaceId)
@@ -50,8 +50,8 @@ public class ContractController {
 	@Operation(summary = "계약 상세 조회")
 	@GetMapping("/{contractId}")
 	public ResponseEntity<ApiResponse<ContractResponse>> getContract(@PathVariable Long contractId) {
-		Contract contract = contractService.getContract(contractId);
-		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(contract)));
+		ContractDetail detail = contractService.getContract(contractId);
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
 	@Operation(summary = "계약 수정", description = "전달하지 않은 필드는 기존 값을 유지합니다.")
@@ -60,8 +60,8 @@ public class ContractController {
 		@PathVariable Long contractId,
 		@RequestBody UpdateContractRequest request
 	) {
-		Contract contract = contractService.updateContract(contractId, mapper.toUpdateCommand(request));
-		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(contract)));
+		ContractDetail detail = contractService.updateContract(contractId, mapper.toUpdateCommand(request));
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
 	@Operation(summary = "계약 삭제")
