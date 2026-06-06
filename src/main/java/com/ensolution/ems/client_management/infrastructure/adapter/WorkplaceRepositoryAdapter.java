@@ -49,7 +49,12 @@ public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 		return jpaWorkplaceRepository.findById(id)
 			.map(mapper::toDomain).orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 	}
-
+	
+	@Override
+	public List<WorkplaceListItem> findAll() {
+		return mapper.toWorkplaceListItems(jpaWorkplaceRepository.findAll());
+	}
+	
 	@Override
 	@Transactional(readOnly = true)
 	public List<WorkplaceListItem> findByCompanyId(Long companyId) {

@@ -9,6 +9,7 @@ public interface WorkplaceRepository {
 	Workplace save(Workplace workplace);
 	Workplace findById(Long id);
 	List<WorkplaceListItem> findByCompanyId(Long companyId);
+	List<WorkplaceListItem> findAll();
 	void deleteById(Long id);
 	boolean existsByNameAndCompanyId(String name, Long companyId);
 }

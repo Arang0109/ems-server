@@ -40,7 +40,7 @@ public class WorkplaceController {
 	@Operation(summary = "사업장 목록 조회", description = "companyId 쿼리 파라미터로 의뢰기관을 지정합니다.")
 	@GetMapping()
 	public ResponseEntity<ApiResponse<List<WorkplaceListResponse>>> getWorkplaceList(
-		@RequestParam Long companyId
+		@RequestParam(required = false) Long companyId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toListResponses(
 			workplaceService.getWorkplaceList(companyId)
@@ -60,6 +60,7 @@ public class WorkplaceController {
 		@PathVariable Long workplaceId,
 		@RequestBody UpdateWorkplaceRequest request
 	) {
+		System.out.println("[DEBUG]: " + workplaceId);
 		Workplace workplace = workplaceService.updateWorkplace(workplaceId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
 	}
