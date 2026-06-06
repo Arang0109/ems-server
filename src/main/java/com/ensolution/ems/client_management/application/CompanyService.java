@@ -4,6 +4,8 @@ import com.ensolution.ems.client_management.application.command.CreateCompanyCom
 import com.ensolution.ems.client_management.application.command.UpdateCompanyCommand;
 import com.ensolution.ems.client_management.domain.Company;
 import com.ensolution.ems.client_management.domain.port.CompanyRepository;
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,8 @@ public class CompanyService {
 	private final CompanyRepository companyRepository;
 	
 	public Company createCompany(CreateCompanyCommand command) {
+		if (companyRepository.existsByName(command.name())) { throw new CustomException(ErrorCode.CONFLICT); }
+		
 		Company newCompany = Company.register(
 			command.name(),
 			command.bizNumber(),
@@ -34,6 +38,7 @@ public class CompanyService {
 		Company company = companyRepository.findById(companyId);
 		
 		Company savedCompany = company.update(
+			companyId,
 			command.name(),
 			command.bizNumber(),
 			command.representative(),
@@ -47,10 +52,6 @@ public class CompanyService {
 	}
 
 	public Company getCompany(Long companyId) { return companyRepository.findById(companyId); }
-	
-	public List<Company> getCompanyList() {
-		return companyRepository.findAll();
-	}
-	
+	public List<Company> getCompanyList() { return companyRepository.findAll(); }
 	public void deleteCompany(Long companyId) { companyRepository.deleteById(companyId); }
 }

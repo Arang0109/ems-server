@@ -1,9 +1,6 @@
 package com.ensolution.ems.client_management.domain;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -41,6 +38,7 @@ public class Company {
 		}
 	
 		public Company update(
+			Long id,
 			String name,
 			String bizNumber,
 			String representative,
@@ -49,7 +47,10 @@ public class Company {
 			String email,
 			String tel
 		) {
+			if (id == null) return null;
+			
 			return this.toBuilder()
+				.id(id)
 				.name(keep(name, this.name))
 				.bizNumber(keep(bizNumber, this.bizNumber))
 				.representative(keep(representative, this.representative))

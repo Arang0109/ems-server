@@ -21,45 +21,48 @@ import java.util.Optional;
 @Transactional
 public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 
-    private final JpaWorkplaceRepository jpaWorkplaceRepository;
-    private final JpaCompanyRepository jpaCompanyRepository;
-    private final WorkplaceDomainEntityMapper mapper;
+	private final JpaWorkplaceRepository jpaWorkplaceRepository;
+	private final JpaCompanyRepository jpaCompanyRepository;
+	private final WorkplaceDomainEntityMapper mapper;
 
-    @Override
-    public Workplace save(Workplace workplace) {
-        if (workplace.getId() != null) {
-            JpaWorkplaceEntity existing = jpaWorkplaceRepository.findById(workplace.getId())
-                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
-            JpaWorkplaceEntity updated = mapper.toEntity(workplace).toBuilder()
-                .company(existing.getCompany())
-                .stacks(existing.getStacks())
-                .build();
-            return mapper.toDomain(jpaWorkplaceRepository.save(updated));
-        }
-        JpaWorkplaceEntity entity = mapper.toEntity(workplace)
-            .toBuilder()
-            .company(jpaCompanyRepository.getReferenceById(workplace.getCompanyId()))
-            .build();
-        return mapper.toDomain(jpaWorkplaceRepository.save(entity));
-    }
+	@Override
+	public Workplace save(Workplace workplace) {
+		if (workplace.getId() != null) {
+			JpaWorkplaceEntity existing = jpaWorkplaceRepository.findById(workplace.getId())
+				.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+			JpaWorkplaceEntity updated = mapper.toEntity(workplace).toBuilder()
+				.company(existing.getCompany())
+				.stacks(existing.getStacks())
+				.build();
+			return mapper.toDomain(jpaWorkplaceRepository.save(updated));
+		}
+		JpaWorkplaceEntity entity = mapper.toEntity(workplace)
+			.toBuilder()
+			.company(jpaCompanyRepository.getReferenceById(workplace.getCompanyId()))
+			.build();
+		return mapper.toDomain(jpaWorkplaceRepository.save(entity));
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public Workplace findById(Long id) {
-        return jpaWorkplaceRepository.findById(id)
-            .map(mapper::toDomain).orElseThrow(
-						() -> new CustomException(ErrorCode.NOT_FOUND)
-					);
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public Workplace findById(Long id) {
+		return jpaWorkplaceRepository.findById(id)
+			.map(mapper::toDomain).orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<WorkplaceListItem> findByCompanyId(Long companyId) {
-        return mapper.toWorkplaceListItems(jpaWorkplaceRepository.findByCompanyId(companyId));
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public List<WorkplaceListItem> findByCompanyId(Long companyId) {
+		return mapper.toWorkplaceListItems(jpaWorkplaceRepository.findByCompanyId(companyId));
+	}
 
-    @Override
-    public void deleteById(Long id) {
-        jpaWorkplaceRepository.deleteById(id);
-    }
+	@Override
+	public void deleteById(Long id) {
+			jpaWorkplaceRepository.deleteById(id);
+	}
+	
+	@Override
+	public boolean existsByNameAndCompanyId(String name, Long companyId) {
+		return jpaWorkplaceRepository.existsByNameAndCompanyId(name, companyId);
+	}
 }

@@ -83,11 +83,15 @@ public class GlobalExceptionHandler {
   // 커스텀 예외 처리
   @ExceptionHandler(CustomException.class)
   public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
-    log.error("[CustomException] code: {}, userMessage: {}, cause={}",
-        e.getErrorCode(),
-        e.getMessage(),
-        e.getCause() != null ? e.getCause().getMessage() : "N/A");
     ErrorCode errorCode = e.getErrorCode();
+    if (errorCode.getStatus().is4xxClientError()) {
+      log.warn("[CustomException] code: {}, userMessage: {}", errorCode, e.getMessage());
+    } else {
+      log.error("[CustomException] code: {}, userMessage: {}, cause={}",
+          errorCode,
+          e.getMessage(),
+          e.getCause() != null ? e.getCause().getMessage() : "N/A");
+    }
     return ResponseEntity
         .status(errorCode.getStatus())
         .body(ApiResponse.error(e.getMessage()));

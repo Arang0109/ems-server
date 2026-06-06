@@ -5,6 +5,8 @@ import com.ensolution.ems.client_management.application.command.UpdateWorkplaceC
 import com.ensolution.ems.client_management.application.command.WorkplaceListItem;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.domain.port.WorkplaceRepository;
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,12 +21,15 @@ public class WorkplaceService {
 	private final WorkplaceRepository workplaceRepository;
 	
 	public Workplace createWorkplace(CreateWorkplaceCommand command) {
-		Workplace newWorkplace = Workplace.register(
-			command.companyId(),
-			command.name(),
-			command.address(),
-			command.bizNumber()
-		);
+		
+		Long companyId = command.companyId();
+		String name = command.name();
+		
+		if (workplaceRepository.existsByNameAndCompanyId(name, companyId)) {
+			throw new CustomException(ErrorCode.CONFLICT);
+		}
+		
+		Workplace newWorkplace = Workplace.register(companyId, name, command.address(), command.bizNumber());
 		return workplaceRepository.save(newWorkplace);
 	}
 	
@@ -38,7 +43,7 @@ public class WorkplaceService {
 
 	public Workplace updateWorkplace(Long workplaceId, UpdateWorkplaceCommand command) {
 		Workplace workplace = workplaceRepository.findById(workplaceId);
-		Workplace updated = workplace.update(command.name(), command.address(), command.bizNumber());
+		Workplace updated = workplace.update(workplaceId, command.name(), command.address(), command.bizNumber());
 		return workplaceRepository.save(updated);
 	}
 

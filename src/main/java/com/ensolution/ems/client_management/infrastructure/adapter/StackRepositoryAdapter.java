@@ -7,6 +7,7 @@ import com.ensolution.ems.client_management.infrastructure.entity.JpaStackEntity
 import com.ensolution.ems.client_management.infrastructure.repository.JpaStackRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.JpaWorkplaceRepository;
 import com.ensolution.ems.client_management.infrastructure.mapper.StackDomainEntityMapper;
+import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -51,4 +52,9 @@ public class StackRepositoryAdapter implements StackRepository {
     public void deleteById(Long id) {
         jpaStackRepository.deleteById(id);
     }
+	
+	@Override
+	public boolean existsByNameAndWorkplaceIdAndField(String name, Long workplaceId, MeasurementField field) {
+		return jpaStackRepository.existsByNameAndWorkplaceIdAndField(name, workplaceId, field);
+	}
 }

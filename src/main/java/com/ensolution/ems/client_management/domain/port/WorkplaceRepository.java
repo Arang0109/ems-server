@@ -4,11 +4,11 @@ import com.ensolution.ems.client_management.application.command.WorkplaceListIte
 import com.ensolution.ems.client_management.domain.Workplace;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface WorkplaceRepository {
-    Workplace save(Workplace workplace);
-		Workplace findById(Long id);
-    List<WorkplaceListItem> findByCompanyId(Long companyId);
-    void deleteById(Long id);
+	Workplace save(Workplace workplace);
+	Workplace findById(Long id);
+	List<WorkplaceListItem> findByCompanyId(Long companyId);
+	void deleteById(Long id);
+	boolean existsByNameAndCompanyId(String name, Long companyId);
 }

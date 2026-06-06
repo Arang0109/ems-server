@@ -24,7 +24,7 @@ public class CompanyRepositoryAdapter implements CompanyRepository {
 	public Company save(Company company) {
 		if (company.getId() != null) {
 			JpaCompanyEntity existing = jpaCompanyRepository.findById(company.getId())
-				.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 ID로 등록된 회사를 찾을 수 없습니다."));
+				.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 			JpaCompanyEntity updated = mapper.toEntity(company).toBuilder()
 				.workplaces(existing.getWorkplaces())
 				.build();
@@ -36,7 +36,7 @@ public class CompanyRepositoryAdapter implements CompanyRepository {
 	@Override
 	public Company findById(Long companyId) {
 		JpaCompanyEntity company = jpaCompanyRepository.findById(companyId)
-			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 ID로 등록된 회사를 찾을 수 업습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 		return mapper.toDomain(company);
 	}
 	
@@ -48,4 +48,7 @@ public class CompanyRepositoryAdapter implements CompanyRepository {
 	
 	@Override
 	public void deleteById(Long companyId) { jpaCompanyRepository.deleteById(companyId); }
+	
+	@Override
+	public boolean existsByName(String name) { return jpaCompanyRepository.existsByName(name); }
 }

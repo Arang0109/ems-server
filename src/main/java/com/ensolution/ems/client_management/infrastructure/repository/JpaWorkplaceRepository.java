@@ -8,5 +8,6 @@ import java.util.List;
 
 @Repository
 public interface JpaWorkplaceRepository extends JpaRepository<JpaWorkplaceEntity, Long> {
-    List<JpaWorkplaceEntity> findByCompanyId(Long companyId);
+	List<JpaWorkplaceEntity> findByCompanyId(Long companyId);
+	boolean existsByNameAndCompanyId (String name, Long companyId);
 }

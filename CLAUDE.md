@@ -140,3 +140,27 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 
 ### 10. 패키지별 규칙
 패키지별 세부 규칙은 각 모듈의 `CLAUDE.md`를 참고합니다.
+
+### 11. ErrorCode 컨벤션
+
+#### 분류
+| 분류 | 네이밍 패턴 | 예시 |
+|------|------------|------|
+| 범용 HTTP 상태 | `{CONDITION}` | `NOT_FOUND`, `CONFLICT`, `BAD_REQUEST` |
+| 도메인 특화 비즈니스 규칙 | `{DOMAIN}_{CONDITION}` | `SCHEDULE_ALREADY_EXISTS` |
+
+- 두 분류 모두 `global/exception/ErrorCode.java` 단일 enum에서 관리합니다.
+- 도메인 특화 코드는 반드시 도메인 prefix를 붙입니다.
+- 인라인 메시지 override가 필요한 경우 → 먼저 도메인 특화 ErrorCode(`{DOMAIN}_{CONDITION}`) 추가 여부를 검토합니다.
+- `GlobalExceptionHandler`는 `e.getMessage()`를 클라이언트에 응답하므로, ErrorCode.message는 항상 사용자에게 노출될 문장으로 작성합니다.
+
+#### CustomException 로깅 규칙
+- `GlobalExceptionHandler`는 `errorCode.getStatus().is4xxClientError()` 기준으로 로그 레벨을 분기합니다.
+  - **4xx** → `log.warn` (클라이언트 실수, 정상 비즈니스 거부)
+  - **5xx** → `log.error` (서버 오류, 모니터링 알람 대상)
+
+#### UNAUTHORIZED / FORBIDDEN 사용 주의
+- `UNAUTHORIZED`는 토큰 만료·미인증 등 인증 자체가 없는 경우에만 사용합니다.
+- 로그인 실패(`BadCredentialsException`)와 혼용하지 않습니다. 두 경로는 의미가 다릅니다.
+  - 로그인 실패: `BadCredentialsException` → "아이디 또는 비밀번호가 일치하지 않습니다."
+  - 미인증 접근: `CustomException(ErrorCode.UNAUTHORIZED)` → "인증이 필요합니다."

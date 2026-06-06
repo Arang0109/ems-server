@@ -32,7 +32,6 @@ public class CompanyController {
 	public ResponseEntity<ApiResponse<CompanyResponse>> createCompany(
 		@Valid @RequestBody CreateCompanyRequest request
 	) {
-		System.out.println(request.toString());
 		Company savedCompany = companyService.createCompany(mapper.toCreateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(savedCompany)));
 	}
@@ -46,7 +45,7 @@ public class CompanyController {
 	
 	@Operation(summary = "의뢰기관 상세 조회")
 	@GetMapping("/{companyId}")
-	public ResponseEntity<ApiResponse<CompanyResponse>> getCompanyDetail(
+	public ResponseEntity<ApiResponse<CompanyResponse>> getCompany(
 		@PathVariable Long companyId
 	) {
 		Company company = companyService.getCompany(companyId);

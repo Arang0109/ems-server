@@ -9,4 +9,6 @@ public interface CompanyRepository {
 	Company findById(Long companyId);
 	List<Company> findAll();
 	void deleteById(Long companyId);
+	
+	boolean existsByName(String name);
 }
