@@ -55,23 +55,34 @@ src/main/java/com/ensolution/ems/
 
 ## Port 유형
 
-### Domain Port (`domain/port/`)
-도메인 계층이 인프라에 요구하는 계약입니다.
+헥사고날 아키텍처에서 포트는 **방향**에 따라 두 종류로 구분됩니다.
+
+### Inbound Port (Primary Port) — 모듈이 외부에 공개하는 계약
+
+외부 모듈이나 Presentation 계층이 이 모듈에 "무엇을 해달라"고 요청하는 인터페이스입니다.
+
+| 위치 | 구현체 | 호출자 |
+|------|--------|--------|
+| `application/port/` | Application Service | 외부 모듈의 Service, Controller |
 
 ```
-UserRepository       — 사용자 영속성 조회/저장
-CompanyRepository    — 업체 영속성 조회/저장
-PasswordEncryptor    — 비밀번호 암호화/검증
-TokenIssuer          — JWT 액세스·리프레시 토큰 발급
-Authenticator        — 자격증명 기반 사용자 인증
+WorkplaceQueryUseCase  — 사업장 존재 확인 (외부 모듈 전용)
 ```
 
-### Application Port (`application/port/`)
-애플리케이션 서비스가 인프라에 요구하는 계약입니다.
+> Inbound Port는 호출자가 실제로 필요한 메서드만 노출합니다 (ISP).
+> Repository 전체를 노출하지 않고, 외부 모듈이 필요한 기능만 정의합니다.
 
-```
-RefreshTokenStore    — 리프레시 토큰 임시 저장 (Redis)
-```
+### Outbound Port (Secondary Port) — 모듈이 외부에 요구하는 계약
+
+이 모듈이 외부 기술(DB, Redis 등)에 "무엇을 해달라"고 요청하는 인터페이스입니다.
+구현체는 항상 Infrastructure Adapter입니다.
+
+**위치는 의존하는 계층 기준으로 결정됩니다:**
+
+| 위치 | 의존 계층 | 예시 |
+|------|----------|------|
+| `domain/port/` | Domain → Infrastructure | `UserRepository`, `CompanyRepository`, `PasswordEncryptor`, `TokenIssuer`, `Authenticator` |
+| `application/port/` | Application → Infrastructure | `RefreshTokenStore` |
 
 ---
 
@@ -157,3 +168,50 @@ Presentation ──→ Application ──→ Domain
 
 Infrastructure는 Domain Port를 구현함으로써 Domain을 향해 의존합니다.  
 Domain은 어떤 계층도 참조하지 않습니다.
+
+---
+
+## 모듈 간 통신 (Cross-Module Communication)
+
+### 핵심 규칙
+
+다른 모듈의 기능이 필요할 때, 반드시 해당 모듈의 **Inbound Port (application/port/)** 를 통해 접근합니다.
+Domain Port (domain/port/) 를 외부 모듈에서 직접 참조하는 것은 금지입니다.
+
+**이유:**
+- `domain/port/Repository`는 해당 모듈이 인프라에 요구하는 **Outbound 계약**입니다.
+  외부에 공개하는 인터페이스가 아니며, 참조 시 모듈 내부 구현 세부사항이 노출됩니다.
+- `application/port/UseCase`는 해당 모듈이 외부에 공개한 **Inbound 계약**입니다.
+  내부 구현이 바뀌어도 이 계약이 유지되는 한 호출자는 영향을 받지 않습니다.
+
+### 올바른 방향 (O)
+
+```
+[contract 모듈]
+  ContractService
+      │
+      ▼ (application/port/ — Inbound Port)
+  WorkplaceQueryUseCase         ← client_management 모듈이 외부에 공개한 계약
+      │
+      ▼ (구현체)
+  WorkplaceQueryService
+      │
+      ▼ (domain/port/ — Outbound Port, 모듈 내부)
+  WorkplaceRepository
+```
+
+### 잘못된 방향 (X)
+
+```
+[contract 모듈]
+  ContractService
+      │
+      ▼ (domain/port/ — Outbound Port를 외부에서 직접 참조)
+  WorkplaceRepository           ← 캡슐화 위반: 모듈 내부 계약 노출
+```
+
+### Inbound Port 설계 지침
+
+- **좁은 인터페이스**: 호출자가 필요한 기능만 메서드로 정의합니다. Repository 전체를 노출하지 않습니다.
+- **의미 있는 이름**: `WorkplaceQueryUseCase`, `WorkplaceCommandUseCase`처럼 역할을 명시합니다.
+- **구현체는 Application Service**: `WorkplaceQueryService implements WorkplaceQueryUseCase`

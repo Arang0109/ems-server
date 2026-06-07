@@ -23,37 +23,37 @@ import java.util.stream.Collectors;
 @Transactional
 public class StackRepositoryAdapter implements StackRepository {
 
-    private final JpaStackRepository jpaStackRepository;
-    private final JpaWorkplaceRepository jpaWorkplaceRepository;
-    private final StackDomainEntityMapper mapper;
+	private final JpaStackRepository jpaStackRepository;
+	private final JpaWorkplaceRepository jpaWorkplaceRepository;
+	private final StackDomainEntityMapper mapper;
 
-    @Override
-    public Stack save(Stack stack) {
-        JpaStackEntity entity = mapper.toEntity(stack)
-            .toBuilder()
-            .workplace(jpaWorkplaceRepository.getReferenceById(stack.getWorkplaceId()))
-            .build();
-        return mapper.toDomain(jpaStackRepository.save(entity));
-    }
+	@Override
+	public Stack save(Stack stack) {
+			JpaStackEntity entity = mapper.toEntity(stack)
+					.toBuilder()
+					.workplace(jpaWorkplaceRepository.getReferenceById(stack.getWorkplaceId()))
+					.build();
+			return mapper.toDomain(jpaStackRepository.save(entity));
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public Stack findById(Long id) {
-        return jpaStackRepository.findById(id)
-            .map(mapper::toDomain)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public Stack findById(Long id) {
+			return jpaStackRepository.findById(id)
+					.map(mapper::toDomain)
+					.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<StackListItem> findByWorkplaceId(Long workplaceId) {
-        return mapper.toStackListItems(jpaStackRepository.findByWorkplaceId(workplaceId));
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public List<StackListItem> findByWorkplaceId(Long workplaceId) {
+			return mapper.toStackListItems(jpaStackRepository.findByWorkplaceId(workplaceId));
+	}
 
-    @Override
-    public void deleteById(Long id) {
-        jpaStackRepository.deleteById(id);
-    }
+	@Override
+	public void deleteById(Long id) {
+			jpaStackRepository.deleteById(id);
+	}
 	
 	@Override
 	@Transactional(readOnly = true)

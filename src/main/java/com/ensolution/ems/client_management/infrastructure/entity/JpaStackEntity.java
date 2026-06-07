@@ -33,7 +33,8 @@ public class JpaStackEntity {
 	@JoinColumn(name = "workplace_id")
 	@ToString.Exclude
 	private JpaWorkplaceEntity workplace;
-
+	
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private MeasurementField field;
 
@@ -42,7 +43,8 @@ public class JpaStackEntity {
 
 	@Column(name = "sems_number")
 	private String semsNumber;
-
+	
+	@Enumerated(EnumType.STRING)
 	private Grade grade;
 
 	@Column(name = "business_category")
@@ -58,9 +60,11 @@ public class JpaStackEntity {
 
 	@Column(name = "vertical_length")
 	private String verticalLength;
-
+	
+	@Enumerated(EnumType.STRING)
 	private Shape shape;
-
+	
+	@Enumerated(EnumType.STRING)
 	private Orientation orientation;
 
 	@CreatedDate

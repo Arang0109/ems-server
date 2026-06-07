@@ -61,6 +61,7 @@ public class Contract {
 	}
 
 	public Contract update(
+		Long contractId,
 		String contractName,
 		LocalDate contractDate,
 		LocalDate startDate,
@@ -75,6 +76,7 @@ public class Contract {
 		String remark
 	) {
 		return this.toBuilder()
+			.id(contractId)
 			.contractName(keep(contractName, this.contractName))
 			.contractDate(contractDate != null ? contractDate : this.contractDate)
 			.startDate(startDate != null ? startDate : this.startDate)

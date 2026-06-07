@@ -5,5 +5,6 @@ import com.ensolution.ems.contract.domain.Contract;
 public record ContractDetail(
 	Contract contract,
 	String companyName,
-	String workplaceName
+	String workplaceName,
+	String workplaceAddress
 ) {}

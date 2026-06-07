@@ -2,13 +2,9 @@ package com.ensolution.ems.contract.application;
 
 import com.ensolution.ems.client_management.application.port.ContractSummary;
 import com.ensolution.ems.client_management.application.port.WorkplaceQueryUseCase;
-import com.ensolution.ems.contract.application.command.ContractDetail;
-import com.ensolution.ems.contract.application.command.ContractListItem;
-import com.ensolution.ems.contract.application.command.CreateContractCommand;
-import com.ensolution.ems.contract.application.command.UpdateContractCommand;
+import com.ensolution.ems.contract.application.command.*;
 import com.ensolution.ems.contract.domain.Contract;
 import com.ensolution.ems.contract.domain.port.ContractRepository;
-import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
@@ -16,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -47,31 +42,19 @@ public class ContractService {
 			command.remark()
 		));
 		ContractSummary summary = workplaceQueryUseCase.getSummaryById(saved.getWorkplaceId());
-		return new ContractDetail(saved, summary.companyName(), summary.workplaceName());
+		return new ContractDetail(saved, summary.companyName(), summary.workplaceName(), summary.address());
 	}
 
 	public ContractDetail getContract(Long contractId) {
 		Contract contract = contractRepository.findById(contractId);
 		ContractSummary summary = workplaceQueryUseCase.getSummaryById(contract.getWorkplaceId());
-		return new ContractDetail(contract, summary.companyName(), summary.workplaceName());
+		return new ContractDetail(contract, summary.companyName(), summary.workplaceName(), summary.address());
 	}
 
 	public List<ContractListItem> getContractList(Long workplaceId) {
-		List<ContractListItem> contracts = workplaceId == null
+		return workplaceId == null
 			? contractRepository.findAll()
 			: contractRepository.findByWorkplaceId(workplaceId);
-
-		List<Long> workplaceIds = contracts.stream()
-			.map(ContractListItem::workplaceId)
-			.distinct()
-			.toList();
-
-		Map<Long, List<MeasurementField>> fieldsMap =
-			workplaceQueryUseCase.getFieldsByWorkplaceIds(workplaceIds);
-
-		return contracts.stream()
-			.map(c -> c.withFieldList(fieldsMap.getOrDefault(c.workplaceId(), List.of())))
-			.toList();
 	}
 
 	public ContractDetail updateContract(Long contractId, UpdateContractCommand command) {
@@ -92,7 +75,7 @@ public class ContractService {
 			command.remark()
 		));
 		ContractSummary summary = workplaceQueryUseCase.getSummaryById(saved.getWorkplaceId());
-		return new ContractDetail(saved, summary.companyName(), summary.workplaceName());
+		return new ContractDetail(saved, summary.companyName(), summary.workplaceName(), summary.address());
 	}
 
 	public void deleteContract(Long contractId) {

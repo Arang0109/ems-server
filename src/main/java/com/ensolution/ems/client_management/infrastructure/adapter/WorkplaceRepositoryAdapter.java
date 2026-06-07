@@ -67,6 +67,9 @@ public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 	}
 	
 	@Override
+	public boolean existsById(Long workplaceId) { return jpaWorkplaceRepository.existsById(workplaceId); }
+	
+	@Override
 	public boolean existsByNameAndCompanyId(String name, Long companyId) {
 		return jpaWorkplaceRepository.existsByNameAndCompanyId(name, companyId);
 	}

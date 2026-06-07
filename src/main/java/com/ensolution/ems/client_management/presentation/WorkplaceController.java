@@ -60,7 +60,6 @@ public class WorkplaceController {
 		@PathVariable Long workplaceId,
 		@RequestBody UpdateWorkplaceRequest request
 	) {
-		System.out.println("[DEBUG]: " + workplaceId);
 		Workplace workplace = workplaceService.updateWorkplace(workplaceId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
 	}

@@ -11,5 +11,7 @@ public interface WorkplaceRepository {
 	List<WorkplaceListItem> findByCompanyId(Long companyId);
 	List<WorkplaceListItem> findAll();
 	void deleteById(Long id);
+	
+	boolean existsById(Long workplaceId);
 	boolean existsByNameAndCompanyId(String name, Long companyId);
 }

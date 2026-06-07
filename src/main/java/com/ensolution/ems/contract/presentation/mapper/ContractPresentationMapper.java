@@ -1,9 +1,6 @@
 package com.ensolution.ems.contract.presentation.mapper;
 
-import com.ensolution.ems.contract.application.command.ContractDetail;
-import com.ensolution.ems.contract.application.command.ContractListItem;
-import com.ensolution.ems.contract.application.command.CreateContractCommand;
-import com.ensolution.ems.contract.application.command.UpdateContractCommand;
+import com.ensolution.ems.contract.application.command.*;
 import com.ensolution.ems.contract.presentation.request.CreateContractRequest;
 import com.ensolution.ems.contract.presentation.request.UpdateContractRequest;
 import com.ensolution.ems.contract.presentation.response.ContractListResponse;
@@ -37,7 +34,11 @@ public interface ContractPresentationMapper {
 	@Mapping(source = "contract.delayPenaltyRate", target = "delayPenaltyRate")
 	@Mapping(source = "contract.remark", target = "remark")
 	ContractResponse toResponse(ContractDetail detail);
-
+	
+	@Mapping(
+		target = "taskPeriod",
+		expression = "java(item.startDate().until(item.completionDate(), java.time.temporal.ChronoUnit.DAYS))"
+	)
 	ContractListResponse toListResponse(ContractListItem item);
 	List<ContractListResponse> toListResponses(List<ContractListItem> items);
 }

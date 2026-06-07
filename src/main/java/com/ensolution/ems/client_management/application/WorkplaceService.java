@@ -34,10 +34,7 @@ public class WorkplaceService {
 	}
 	
 	public List<WorkplaceListItem> getWorkplaceList(Long companyId) {
-		if (companyId == null) {
-			System.out.println("here ㄱㄱㄱ!");
-			return workplaceRepository.findAll();
-		}
+		if (companyId == null) return workplaceRepository.findAll();
 		return workplaceRepository.findByCompanyId(companyId);
 	}
 	

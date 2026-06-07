@@ -3,9 +3,10 @@ package com.ensolution.ems.contract.infrastructure.adapter;
 import com.ensolution.ems.contract.application.command.ContractListItem;
 import com.ensolution.ems.contract.domain.Contract;
 import com.ensolution.ems.contract.domain.port.ContractRepository;
-import com.ensolution.ems.contract.infrastructure.ContractQueryRow;
 import com.ensolution.ems.contract.infrastructure.mapper.ContractDomainEntityMapper;
+import com.ensolution.ems.contract.infrastructure.mapper.ContractListItemMapper;
 import com.ensolution.ems.contract.infrastructure.repository.JpaContractRepository;
+import com.ensolution.ems.contract.infrastructure.repository.JpaContractTableViewRepository;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,9 @@ import java.util.List;
 public class ContractRepositoryAdapter implements ContractRepository {
 
 	private final JpaContractRepository jpaContractRepository;
+	private final JpaContractTableViewRepository jpaContractTableViewRepository;
 	private final ContractDomainEntityMapper mapper;
+	private final ContractListItemMapper contractListItemMapper;
 
 	@Override
 	public Contract save(Contract contract) {
@@ -36,12 +39,12 @@ public class ContractRepositoryAdapter implements ContractRepository {
 
 	@Override
 	public List<ContractListItem> findByWorkplaceId(Long workplaceId) {
-		return mapper.toContractListItems(jpaContractRepository.findByWorkplaceId(workplaceId));
+		return contractListItemMapper.toListItems(jpaContractTableViewRepository.findByWorkplaceId(workplaceId));
 	}
 
 	@Override
 	public List<ContractListItem> findAll() {
-		return mapper.toContractListItems(jpaContractRepository.findAllWithWorkplace());
+		return contractListItemMapper.toListItems(jpaContractTableViewRepository.findAll());
 	}
 
 	@Override

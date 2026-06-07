@@ -21,5 +21,6 @@ public record ContractResponse(
 	int delayPenaltyRate,
 	String remark,
 	String companyName,
-	String workplaceName
+	String workplaceName,
+	String workplaceAddress
 ) {}
