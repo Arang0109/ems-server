@@ -33,8 +33,8 @@ public class JpaContractEntity {
 	@Column(name = "completion_date")
 	private LocalDate completionDate;
 	
-	@Column(name = "contract_account")
-	private BigDecimal contractAccount;
+	@Column(name = "contract_amount")
+	private BigDecimal contractAmount;
 	
 	@Column(name = "contract_amount_unit")
 	private ContractAmountUnit contractAmountUnit;

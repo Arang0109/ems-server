@@ -10,7 +10,7 @@ public record UpdateContractCommand(
 	LocalDate contractDate,
 	LocalDate startDate,
 	LocalDate completionDate,
-	BigDecimal contractAccount,
+	BigDecimal contractAmount,
 	ContractAmountUnit contractAmountUnit,
 	Boolean vatIncluded,
 	BigDecimal contractGuaranteeAmount,

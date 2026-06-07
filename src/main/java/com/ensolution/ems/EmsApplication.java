@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @EnableConfigurationProperties(JwtProperties.class)
-@SpringBootApplication
 @EnableJpaAuditing
+@SpringBootApplication
 public class EmsApplication {
 
     public static void main(String[] args) {

@@ -12,7 +12,7 @@ public record ContractResponse(
 	LocalDate contractDate,
 	LocalDate startDate,
 	LocalDate completionDate,
-	BigDecimal contractAccount,
+	BigDecimal contractAmount,
 	ContractAmountUnit contractAmountUnit,
 	boolean vatIncluded,
 	BigDecimal contractGuaranteeAmount,

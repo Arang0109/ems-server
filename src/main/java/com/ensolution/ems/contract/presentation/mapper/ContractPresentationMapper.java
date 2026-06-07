@@ -25,7 +25,7 @@ public interface ContractPresentationMapper {
 	@Mapping(source = "contract.contractDate", target = "contractDate")
 	@Mapping(source = "contract.startDate", target = "startDate")
 	@Mapping(source = "contract.completionDate", target = "completionDate")
-	@Mapping(source = "contract.contractAccount", target = "contractAccount")
+	@Mapping(source = "contract.contractAmount", target = "contractAmount")
 	@Mapping(source = "contract.contractAmountUnit", target = "contractAmountUnit")
 	@Mapping(source = "contract.vatIncluded", target = "vatIncluded")
 	@Mapping(source = "contract.contractGuaranteeAmount", target = "contractGuaranteeAmount")

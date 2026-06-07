@@ -19,7 +19,7 @@ public class Contract {
 	private LocalDate contractDate;
 	private LocalDate startDate;
 	private LocalDate completionDate;
-	private BigDecimal contractAccount;
+	private BigDecimal contractAmount;
 	private ContractAmountUnit contractAmountUnit;
 	private boolean vatIncluded;
 	private BigDecimal contractGuaranteeAmount;
@@ -34,7 +34,7 @@ public class Contract {
 		LocalDate contractDate,
 		LocalDate startDate,
 		LocalDate completionDate,
-		BigDecimal contractAccount,
+		BigDecimal contractAmount,
 		ContractAmountUnit contractAmountUnit,
 		boolean vatIncluded,
 		BigDecimal contractGuaranteeAmount,
@@ -49,7 +49,7 @@ public class Contract {
 			.contractDate(contractDate)
 			.startDate(startDate)
 			.completionDate(completionDate)
-			.contractAccount(contractAccount)
+			.contractAmount(contractAmount)
 			.contractAmountUnit(contractAmountUnit)
 			.vatIncluded(vatIncluded)
 			.contractGuaranteeAmount(contractGuaranteeAmount)
@@ -66,7 +66,7 @@ public class Contract {
 		LocalDate contractDate,
 		LocalDate startDate,
 		LocalDate completionDate,
-		BigDecimal contractAccount,
+		BigDecimal contractAmount,
 		ContractAmountUnit contractAmountUnit,
 		Boolean vatIncluded,
 		BigDecimal contractGuaranteeAmount,
@@ -81,7 +81,7 @@ public class Contract {
 			.contractDate(contractDate != null ? contractDate : this.contractDate)
 			.startDate(startDate != null ? startDate : this.startDate)
 			.completionDate(completionDate != null ? completionDate : this.completionDate)
-			.contractAccount(contractAccount != null ? contractAccount : this.contractAccount)
+			.contractAmount(contractAmount != null ? contractAmount : this.contractAmount)
 			.contractAmountUnit(contractAmountUnit != null ? contractAmountUnit : this.contractAmountUnit)
 			.vatIncluded(vatIncluded != null ? vatIncluded : this.vatIncluded)
 			.contractGuaranteeAmount(contractGuaranteeAmount != null ? contractGuaranteeAmount : this.contractGuaranteeAmount)

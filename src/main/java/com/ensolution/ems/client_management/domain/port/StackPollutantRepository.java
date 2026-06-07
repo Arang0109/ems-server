@@ -1,0 +1,13 @@
+package com.ensolution.ems.client_management.domain.port;
+
+import com.ensolution.ems.client_management.application.command.StackPollutantListItem;
+import com.ensolution.ems.client_management.domain.StackPollutant;
+
+import java.util.List;
+
+public interface StackPollutantRepository {
+	StackPollutant save(StackPollutant stackPollutant);
+	List<StackPollutantListItem> findByStackId(Long stackId);
+	void deleteById(Long id);
+	boolean existsByStackIdAndPollutantId(Long stackId, Long pollutantId);
+}
