@@ -1,5 +1,6 @@
 package com.ensolution.ems.client_management.domain;
 
+import com.ensolution.ems.global.common.enums.Grade;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,27 +16,31 @@ public class Workplace {
 	private String name;
 	private String address;
 	private String bizNumber;
+	private Grade grade;
 
 	public static Workplace register(
 		Long companyId,
 		String name,
 		String address,
-		String bizNumber
+		String bizNumber,
+		Grade grade
 	) {
 		return Workplace.builder()
 			.companyId(companyId)
 			.name(name)
 			.address(address)
 			.bizNumber(bizNumber)
+			.grade(grade)
 			.build();
 	}
 
-	public Workplace update(Long id, String name, String address, String bizNumber) {
+	public Workplace update(Long id, String name, String address, String bizNumber, Grade grade) {
 		return this.toBuilder()
 			.id(id)
 			.name(keep(name, this.name))
 			.address(keep(address, this.address))
 			.bizNumber(keep(bizNumber, this.bizNumber))
+			.grade(grade != null ? grade : this.grade)
 			.build();
 	}
 

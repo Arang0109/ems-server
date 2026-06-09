@@ -2,8 +2,8 @@ package com.ensolution.ems.client_management.infrastructure.adapter;
 
 import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.domain.port.PollutantRepository;
-import com.ensolution.ems.client_management.infrastructure.mapper.PollutantDomainEntityMapper;
-import com.ensolution.ems.client_management.infrastructure.repository.JpaPollutantRepository;
+import com.ensolution.ems.client_management.infrastructure.mapper.PollutantEntityMapper;
+import com.ensolution.ems.client_management.infrastructure.repository.PollutantJpaRepository;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +17,8 @@ import java.util.List;
 @Transactional
 public class PollutantRepositoryAdapter implements PollutantRepository {
 
-	private final JpaPollutantRepository jpaPollutantRepository;
-	private final PollutantDomainEntityMapper mapper;
+	private final PollutantJpaRepository jpaPollutantRepository;
+	private final PollutantEntityMapper mapper;
 
 	@Override
 	public Pollutant save(Pollutant pollutant) {

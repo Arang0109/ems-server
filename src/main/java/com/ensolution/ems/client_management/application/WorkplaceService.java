@@ -1,10 +1,11 @@
 package com.ensolution.ems.client_management.application;
 
-import com.ensolution.ems.client_management.application.command.CreateWorkplaceCommand;
-import com.ensolution.ems.client_management.application.command.UpdateWorkplaceCommand;
-import com.ensolution.ems.client_management.application.command.WorkplaceListItem;
+import com.ensolution.ems.client_management.application.command.create.CreateWorkplaceCommand;
+import com.ensolution.ems.client_management.application.command.update.UpdateWorkplaceCommand;
+import com.ensolution.ems.client_management.application.command.list_item.WorkplaceListItem;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.domain.port.WorkplaceRepository;
+import com.ensolution.ems.contract.application.port.ContractQueryUseCase;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
@@ -19,6 +20,7 @@ import java.util.List;
 public class WorkplaceService {
 	
 	private final WorkplaceRepository workplaceRepository;
+	private final ContractQueryUseCase contractQueryUseCase;
 	
 	public Workplace createWorkplace(CreateWorkplaceCommand command) {
 		
@@ -29,7 +31,9 @@ public class WorkplaceService {
 			throw new CustomException(ErrorCode.CONFLICT);
 		}
 		
-		Workplace newWorkplace = Workplace.register(companyId, name, command.address(), command.bizNumber());
+		Workplace newWorkplace = Workplace.register(
+			companyId, name, command.address(), command.bizNumber(), command.grade()
+		);
 		return workplaceRepository.save(newWorkplace);
 	}
 	
@@ -44,9 +48,14 @@ public class WorkplaceService {
 
 	public Workplace updateWorkplace(Long workplaceId, UpdateWorkplaceCommand command) {
 		Workplace workplace = workplaceRepository.findById(workplaceId);
-		Workplace updated = workplace.update(workplaceId, command.name(), command.address(), command.bizNumber());
+		Workplace updated = workplace.update(
+			workplaceId, command.name(), command.address(), command.bizNumber(), command.grade()
+		);
 		return workplaceRepository.save(updated);
 	}
 
-	public void deleteWorkplace(Long workplaceId) { workplaceRepository.deleteById(workplaceId); }
+	public void deleteWorkplace(Long workplaceId) {
+		workplaceRepository.deleteById(workplaceId);
+		contractQueryUseCase.deleteContracts(workplaceId);
+	}
 }

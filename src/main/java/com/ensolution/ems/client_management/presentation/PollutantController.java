@@ -2,9 +2,9 @@ package com.ensolution.ems.client_management.presentation;
 
 import com.ensolution.ems.client_management.application.PollutantService;
 import com.ensolution.ems.client_management.domain.Pollutant;
-import com.ensolution.ems.client_management.presentation.mapper.PollutantPresentationMapper;
-import com.ensolution.ems.client_management.presentation.request.CreatePollutantRequest;
-import com.ensolution.ems.client_management.presentation.request.UpdatePollutantRequest;
+import com.ensolution.ems.client_management.presentation.mapper.PollutantMapper;
+import com.ensolution.ems.client_management.presentation.request.create.CreatePollutantRequest;
+import com.ensolution.ems.client_management.presentation.request.update.UpdatePollutantRequest;
 import com.ensolution.ems.client_management.presentation.response.PollutantResponse;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +25,7 @@ import java.util.List;
 public class PollutantController {
 
 	private final PollutantService pollutantService;
-	private final PollutantPresentationMapper mapper;
+	private final PollutantMapper mapper;
 
 	@Operation(summary = "측정물질 등록")
 	@PostMapping

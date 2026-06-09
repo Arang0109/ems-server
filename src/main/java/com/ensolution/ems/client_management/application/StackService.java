@@ -1,8 +1,8 @@
 package com.ensolution.ems.client_management.application;
 
-import com.ensolution.ems.client_management.application.command.CreateStackCommand;
-import com.ensolution.ems.client_management.application.command.StackListItem;
-import com.ensolution.ems.client_management.application.command.UpdateStackCommand;
+import com.ensolution.ems.client_management.application.command.create.CreateStackCommand;
+import com.ensolution.ems.client_management.application.command.list_item.StackListItem;
+import com.ensolution.ems.client_management.application.command.update.UpdateStackCommand;
 import com.ensolution.ems.client_management.domain.Stack;
 import com.ensolution.ems.client_management.domain.port.StackRepository;
 import com.ensolution.ems.global.common.enums.MeasurementField;
@@ -43,6 +43,7 @@ public class StackService {
 	}
 	
 	public List<StackListItem> getStackList(Long workplaceId) {
+		if (workplaceId==null) return stackRepository.findAll();
 		return stackRepository.findByWorkplaceId(workplaceId);
 	}
 
@@ -53,7 +54,6 @@ public class StackService {
 	public Stack updateStack(Long stackId, UpdateStackCommand command) {
 		Stack stack = stackRepository.findById(stackId);
 		Stack updated = stack.update(
-			stackId,
 			command.field(),
 			command.name(),
 			command.semsNumber(),

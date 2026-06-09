@@ -1,7 +1,7 @@
 package com.ensolution.ems.client_management.application;
 
-import com.ensolution.ems.client_management.application.command.CreatePollutantCommand;
-import com.ensolution.ems.client_management.application.command.UpdatePollutantCommand;
+import com.ensolution.ems.client_management.application.command.create.CreatePollutantCommand;
+import com.ensolution.ems.client_management.application.command.update.UpdatePollutantCommand;
 import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.domain.port.PollutantRepository;
 import com.ensolution.ems.global.exception.CustomException;
@@ -23,7 +23,10 @@ public class PollutantService {
 		if (pollutantRepository.existsByNameKr(command.nameKr())) {
 			throw new CustomException(ErrorCode.CONFLICT);
 		}
-		return pollutantRepository.save(Pollutant.register(command.nameKr(), command.nameEn()));
+		return pollutantRepository.save(Pollutant.register(
+			command.field(), command.nameKr(), command.nameEn(), command.method(),
+			command.phase(), command.equipment(), command.testMethod()
+		));
 	}
 
 	public List<Pollutant> getPollutantList() {
@@ -36,7 +39,10 @@ public class PollutantService {
 
 	public Pollutant updatePollutant(Long id, UpdatePollutantCommand command) {
 		Pollutant pollutant = pollutantRepository.findById(id);
-		return pollutantRepository.save(pollutant.update(command.nameKr(), command.nameEn()));
+		return pollutantRepository.save(pollutant.update(
+			id, command.field(), command.nameKr(), command.nameEn(),
+			command.method(), command.phase(), command.equipment(), command.testMethod()
+		));
 	}
 
 	public void deletePollutant(Long id) {

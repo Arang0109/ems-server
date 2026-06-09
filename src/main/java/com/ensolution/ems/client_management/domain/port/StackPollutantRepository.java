@@ -1,6 +1,6 @@
 package com.ensolution.ems.client_management.domain.port;
 
-import com.ensolution.ems.client_management.application.command.StackPollutantListItem;
+import com.ensolution.ems.client_management.application.command.list_item.StackPollutantListItem;
 import com.ensolution.ems.client_management.domain.StackPollutant;
 
 import java.util.List;

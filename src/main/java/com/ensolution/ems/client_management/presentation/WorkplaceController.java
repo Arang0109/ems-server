@@ -2,11 +2,11 @@ package com.ensolution.ems.client_management.presentation;
 
 import com.ensolution.ems.client_management.application.WorkplaceService;
 import com.ensolution.ems.client_management.domain.Workplace;
-import com.ensolution.ems.client_management.presentation.mapper.WorkplacePresentationMapper;
-import com.ensolution.ems.client_management.presentation.request.CreateWorkplaceRequest;
-import com.ensolution.ems.client_management.presentation.request.UpdateWorkplaceRequest;
+import com.ensolution.ems.client_management.presentation.mapper.WorkplaceMapper;
+import com.ensolution.ems.client_management.presentation.request.create.CreateWorkplaceRequest;
+import com.ensolution.ems.client_management.presentation.request.update.UpdateWorkplaceRequest;
 import com.ensolution.ems.client_management.presentation.response.WorkplaceResponse;
-import com.ensolution.ems.client_management.presentation.response.WorkplaceListResponse;
+import com.ensolution.ems.client_management.presentation.response.table.WorkplaceTableResponse;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -26,7 +26,7 @@ import java.util.List;
 public class WorkplaceController {
 	
 	private final WorkplaceService workplaceService;
-	private final WorkplacePresentationMapper mapper;
+	private final WorkplaceMapper mapper;
 	
 	@Operation(summary = "사업장 등록")
 	@PostMapping()
@@ -39,7 +39,7 @@ public class WorkplaceController {
 	
 	@Operation(summary = "사업장 목록 조회", description = "companyId 쿼리 파라미터로 의뢰기관을 지정합니다.")
 	@GetMapping()
-	public ResponseEntity<ApiResponse<List<WorkplaceListResponse>>> getWorkplaceList(
+	public ResponseEntity<ApiResponse<List<WorkplaceTableResponse>>> getWorkplaceList(
 		@RequestParam(required = false) Long companyId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toListResponses(

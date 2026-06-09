@@ -11,4 +11,5 @@ public interface ContractRepository {
 	List<ContractListItem> findByWorkplaceId(Long workplaceId);
 	List<ContractListItem> findAll();
 	void deleteById(Long id);
+	void deleteByWorkplaceId(Long workplaceId);
 }

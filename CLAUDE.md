@@ -52,7 +52,7 @@ Application Service는 Spring Data Repository를 직접 사용하지 않습니�
 반드시 `domain/port`를 통해 접근합니다.
 
     Ex)
-    CompanyRepository (domain/port) → JpaCompanyRepositoryAdapter → JpaCompanyRepository
+    CompanyRepository (domain/port) → CompanyRepositoryAdapter → CompanyJpaRepository
 
 ### 5. 생성자 주입
 Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다. 필드 주입은 사용하지 않습니다.
@@ -74,12 +74,12 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | VO (결과값) | 의미 있는 명사 (Record) | `TokenResult`, `AuthenticatedUser` |
 | Request DTO | `{동작}{대상}Request` | `CreateCompanyRequest` |
 | Response DTO | `{대상}Response` | `CompanyResponse`, `WorkplaceListResponse` |
-| JPA 엔티티 | `Jpa{도메인}Entity` | `JpaCompanyEntity` |
-| JPA Repository | `Jpa{도메인}Repository` | `JpaCompanyRepository` |
+| JPA 엔티티 | `{도메인}Entity` | `CompanyEntity` |
+| JPA Repository | `{도메인}JpaRepository` | `CompanyJpaRepository` |
 | Repository Adapter | `{도메인}RepositoryAdapter` | `CompanyRepositoryAdapter` |
 | 기타 Adapter | 기술+역할 | `BCryptPasswordEncryptor`, `JwtTokenIssuer` |
-| Presentation 매퍼 | `{도메인}PresentationMapper` | `CompanyPresentationMapper` |
-| Infrastructure 매퍼 | `{도메인}DomainEntityMapper` | `CompanyDomainEntityMapper` |
+| Presentation 매퍼 | `{도메인}Mapper` | `CompanyMapper` |
+| Infrastructure 매퍼 | `{도메인}EntityMapper` | `CompanyEntityMapper` |
 
 > **Response DTO 주의**: 이름에 UI 컴포넌트(`Table`, `Grid`, `Card` 등)를 포함하지 않습니다.
 > 동일한 응답이 다양한 UI로 렌더링될 수 있으므로 용도가 아닌 도메인 개념으로 명명합니다.

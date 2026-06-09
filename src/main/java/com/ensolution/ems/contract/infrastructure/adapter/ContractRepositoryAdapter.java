@@ -3,10 +3,10 @@ package com.ensolution.ems.contract.infrastructure.adapter;
 import com.ensolution.ems.contract.application.command.ContractListItem;
 import com.ensolution.ems.contract.domain.Contract;
 import com.ensolution.ems.contract.domain.port.ContractRepository;
-import com.ensolution.ems.contract.infrastructure.mapper.ContractDomainEntityMapper;
+import com.ensolution.ems.contract.infrastructure.mapper.ContractEntityMapper;
 import com.ensolution.ems.contract.infrastructure.mapper.ContractListItemMapper;
-import com.ensolution.ems.contract.infrastructure.repository.JpaContractRepository;
-import com.ensolution.ems.contract.infrastructure.repository.JpaContractTableViewRepository;
+import com.ensolution.ems.contract.infrastructure.repository.ContractJpaRepository;
+import com.ensolution.ems.contract.infrastructure.repository.ContractTableViewJpaRepository;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +20,9 @@ import java.util.List;
 @Transactional
 public class ContractRepositoryAdapter implements ContractRepository {
 
-	private final JpaContractRepository jpaContractRepository;
-	private final JpaContractTableViewRepository jpaContractTableViewRepository;
-	private final ContractDomainEntityMapper mapper;
+	private final ContractJpaRepository jpaContractRepository;
+	private final ContractTableViewJpaRepository jpaContractTableViewRepository;
+	private final ContractEntityMapper mapper;
 	private final ContractListItemMapper contractListItemMapper;
 
 	@Override
@@ -50,5 +50,10 @@ public class ContractRepositoryAdapter implements ContractRepository {
 	@Override
 	public void deleteById(Long id) {
 		jpaContractRepository.deleteById(id);
+	}
+	
+	@Override
+	public void deleteByWorkplaceId(Long workplaceId) {
+		jpaContractRepository.deleteByWorkplaceId(workplaceId);
 	}
 }

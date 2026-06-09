@@ -2,10 +2,10 @@ package com.ensolution.ems.client_management.presentation;
 
 import com.ensolution.ems.client_management.application.StackService;
 import com.ensolution.ems.client_management.domain.Stack;
-import com.ensolution.ems.client_management.presentation.mapper.StackPresentationMapper;
-import com.ensolution.ems.client_management.presentation.request.CreateStackRequest;
-import com.ensolution.ems.client_management.presentation.request.UpdateStackRequest;
-import com.ensolution.ems.client_management.presentation.response.StackListResponse;
+import com.ensolution.ems.client_management.presentation.mapper.StackMapper;
+import com.ensolution.ems.client_management.presentation.request.create.CreateStackRequest;
+import com.ensolution.ems.client_management.presentation.request.update.UpdateStackRequest;
+import com.ensolution.ems.client_management.presentation.response.table.StackTableResponse;
 import com.ensolution.ems.client_management.presentation.response.StackResponse;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +26,7 @@ import java.util.List;
 public class StackController {
 	
 	private final StackService stackService;
-	private final StackPresentationMapper mapper;
+	private final StackMapper mapper;
 	
 	@Operation(summary = "측정시설 등록")
 	@PostMapping()
@@ -39,8 +39,8 @@ public class StackController {
 	
 	@Operation(summary = "측정시설 목록 조회", description = "workplaceId 쿼리 파라미터로 사업장을 지정합니다.")
 	@GetMapping()
-	public ResponseEntity<ApiResponse<List<StackListResponse>>> getStackList(
-		@RequestParam Long workplaceId
+	public ResponseEntity<ApiResponse<List<StackTableResponse>>> getStackList(
+		@RequestParam(required = false) Long workplaceId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toListResponses(
 				stackService.getStackList(workplaceId)

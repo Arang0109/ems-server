@@ -2,9 +2,9 @@ package com.ensolution.ems.auth.infrastructure.adapter;
 
 import com.ensolution.ems.auth.domain.User;
 import com.ensolution.ems.auth.domain.port.UserRepository;
-import com.ensolution.ems.auth.infrastructure.JpaUserEntity;
-import com.ensolution.ems.auth.infrastructure.JpaUserRepository;
-import com.ensolution.ems.auth.infrastructure.mapper.UserDomainEntityMapper;
+import com.ensolution.ems.auth.infrastructure.UserEntity;
+import com.ensolution.ems.auth.infrastructure.UserJpaRepository;
+import com.ensolution.ems.auth.infrastructure.mapper.UserEntityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -14,12 +14,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserRepositoryAdapter implements UserRepository {
 	
-	private final JpaUserRepository repository;
-	private final UserDomainEntityMapper mapper;
+	private final UserJpaRepository repository;
+	private final UserEntityMapper mapper;
 	
 	@Override
 	public User save(User user) {
-		JpaUserEntity savedEntity = repository.save(mapper.toEntity(user));
+		UserEntity savedEntity = repository.save(mapper.toEntity(user));
 		return mapper.toDomain(savedEntity);
 	}
 	

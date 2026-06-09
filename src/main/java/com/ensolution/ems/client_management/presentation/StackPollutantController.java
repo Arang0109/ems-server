@@ -1,10 +1,11 @@
 package com.ensolution.ems.client_management.presentation;
 
 import com.ensolution.ems.client_management.application.StackPollutantService;
-import com.ensolution.ems.client_management.application.command.StackPollutantListItem;
-import com.ensolution.ems.client_management.presentation.mapper.StackPollutantPresentationMapper;
-import com.ensolution.ems.client_management.presentation.request.AssignStackPollutantRequest;
+import com.ensolution.ems.client_management.domain.StackPollutant;
+import com.ensolution.ems.client_management.presentation.mapper.StackPollutantMapper;
+import com.ensolution.ems.client_management.presentation.request.create.CreateStackPollutantRequest;
 import com.ensolution.ems.client_management.presentation.response.StackPollutantResponse;
+import com.ensolution.ems.client_management.presentation.response.table.StackPollutantTableResponse;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -24,24 +25,24 @@ import java.util.List;
 public class StackPollutantController {
 
 	private final StackPollutantService stackPollutantService;
-	private final StackPollutantPresentationMapper mapper;
+	private final StackPollutantMapper mapper;
 
 	@Operation(summary = "시설별 측정물질 등록")
 	@PostMapping
-	public ResponseEntity<ApiResponse<StackPollutantResponse>> assignPollutant(
-		@Valid @RequestBody AssignStackPollutantRequest request
+	public ResponseEntity<ApiResponse<StackPollutantResponse>> registerPollutant(
+		@Valid @RequestBody CreateStackPollutantRequest request
 	) {
-		StackPollutantListItem item = stackPollutantService.assignPollutant(mapper.toAssignCommand(request));
-		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(item)));
+		StackPollutant stackPollutant = stackPollutantService.createStackPollutant(mapper.toCreateCommand(request));
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(stackPollutant)));
 	}
 
 	@Operation(summary = "시설별 측정물질 목록 조회", description = "stackId 쿼리 파라미터로 시설을 지정합니다.")
 	@GetMapping
-	public ResponseEntity<ApiResponse<List<StackPollutantResponse>>> getStackPollutantList(
+	public ResponseEntity<ApiResponse<List<StackPollutantTableResponse>>> getStackPollutantList(
 		@RequestParam Long stackId
 	) {
 		return ResponseEntity.ok(ApiResponse.success(
-			mapper.toResponses(stackPollutantService.getStackPollutantList(stackId))
+			mapper.toListResponses(stackPollutantService.getStackPollutantList(stackId))
 		));
 	}
 

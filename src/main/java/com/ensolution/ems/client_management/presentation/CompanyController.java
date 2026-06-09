@@ -2,9 +2,9 @@ package com.ensolution.ems.client_management.presentation;
 
 import com.ensolution.ems.client_management.application.CompanyService;
 import com.ensolution.ems.client_management.domain.Company;
-import com.ensolution.ems.client_management.presentation.mapper.CompanyPresentationMapper;
-import com.ensolution.ems.client_management.presentation.request.CreateCompanyRequest;
-import com.ensolution.ems.client_management.presentation.request.UpdateCompanyRequest;
+import com.ensolution.ems.client_management.presentation.mapper.CompanyMapper;
+import com.ensolution.ems.client_management.presentation.request.create.CreateCompanyRequest;
+import com.ensolution.ems.client_management.presentation.request.update.UpdateCompanyRequest;
 import com.ensolution.ems.client_management.presentation.response.CompanyResponse;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +25,7 @@ import java.util.List;
 public class CompanyController {
 	
 	private final CompanyService companyService;
-	private final CompanyPresentationMapper mapper;
+	private final CompanyMapper mapper;
 	
 	@Operation(summary = "의뢰기관 등록")
 	@PostMapping()

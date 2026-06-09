@@ -1,12 +1,12 @@
 package com.ensolution.ems.client_management.infrastructure.adapter;
 
-import com.ensolution.ems.client_management.application.command.StackListItem;
+import com.ensolution.ems.client_management.application.command.list_item.StackListItem;
 import com.ensolution.ems.client_management.domain.Stack;
 import com.ensolution.ems.client_management.domain.port.StackRepository;
-import com.ensolution.ems.client_management.infrastructure.entity.JpaStackEntity;
-import com.ensolution.ems.client_management.infrastructure.repository.JpaStackRepository;
-import com.ensolution.ems.client_management.infrastructure.repository.JpaWorkplaceRepository;
-import com.ensolution.ems.client_management.infrastructure.mapper.StackDomainEntityMapper;
+import com.ensolution.ems.client_management.infrastructure.entity.StackEntity;
+import com.ensolution.ems.client_management.infrastructure.repository.StackJpaRepository;
+import com.ensolution.ems.client_management.infrastructure.repository.WorkplaceJpaRepository;
+import com.ensolution.ems.client_management.infrastructure.mapper.StackEntityMapper;
 import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
@@ -23,13 +23,13 @@ import java.util.stream.Collectors;
 @Transactional
 public class StackRepositoryAdapter implements StackRepository {
 
-	private final JpaStackRepository jpaStackRepository;
-	private final JpaWorkplaceRepository jpaWorkplaceRepository;
-	private final StackDomainEntityMapper mapper;
+	private final StackJpaRepository jpaStackRepository;
+	private final WorkplaceJpaRepository jpaWorkplaceRepository;
+	private final StackEntityMapper mapper;
 
 	@Override
 	public Stack save(Stack stack) {
-			JpaStackEntity entity = mapper.toEntity(stack)
+			StackEntity entity = mapper.toEntity(stack)
 					.toBuilder()
 					.workplace(jpaWorkplaceRepository.getReferenceById(stack.getWorkplaceId()))
 					.build();
@@ -43,7 +43,12 @@ public class StackRepositoryAdapter implements StackRepository {
 					.map(mapper::toDomain)
 					.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 	}
-
+	
+	@Override
+	public List<StackListItem> findAll() {
+		return mapper.toStackListItems(jpaStackRepository.findAll());
+	}
+	
 	@Override
 	@Transactional(readOnly = true)
 	public List<StackListItem> findByWorkplaceId(Long workplaceId) {
@@ -62,7 +67,7 @@ public class StackRepositoryAdapter implements StackRepository {
 		return jpaStackRepository.findByWorkplaceIds(workplaceIds).stream()
 			.collect(Collectors.groupingBy(
 				e -> e.getWorkplace().getId(),
-				Collectors.mapping(JpaStackEntity::getField,
+				Collectors.mapping(StackEntity::getField,
 					Collectors.collectingAndThen(Collectors.toList(),
 						list -> list.stream().distinct().toList()))
 			));

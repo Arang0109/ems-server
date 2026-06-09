@@ -1,12 +1,12 @@
 package com.ensolution.ems.client_management.infrastructure.adapter;
 
-import com.ensolution.ems.client_management.application.command.WorkplaceListItem;
+import com.ensolution.ems.client_management.application.command.list_item.WorkplaceListItem;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.domain.port.WorkplaceRepository;
-import com.ensolution.ems.client_management.infrastructure.repository.JpaCompanyRepository;
-import com.ensolution.ems.client_management.infrastructure.entity.JpaWorkplaceEntity;
-import com.ensolution.ems.client_management.infrastructure.repository.JpaWorkplaceRepository;
-import com.ensolution.ems.client_management.infrastructure.mapper.WorkplaceDomainEntityMapper;
+import com.ensolution.ems.client_management.infrastructure.repository.CompanyJpaRepository;
+import com.ensolution.ems.client_management.infrastructure.entity.WorkplaceEntity;
+import com.ensolution.ems.client_management.infrastructure.repository.WorkplaceJpaRepository;
+import com.ensolution.ems.client_management.infrastructure.mapper.WorkplaceEntityMapper;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -14,29 +14,28 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
 @Transactional
 public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 
-	private final JpaWorkplaceRepository jpaWorkplaceRepository;
-	private final JpaCompanyRepository jpaCompanyRepository;
-	private final WorkplaceDomainEntityMapper mapper;
+	private final WorkplaceJpaRepository jpaWorkplaceRepository;
+	private final CompanyJpaRepository jpaCompanyRepository;
+	private final WorkplaceEntityMapper mapper;
 
 	@Override
 	public Workplace save(Workplace workplace) {
 		if (workplace.getId() != null) {
-			JpaWorkplaceEntity existing = jpaWorkplaceRepository.findById(workplace.getId())
+			WorkplaceEntity existing = jpaWorkplaceRepository.findById(workplace.getId())
 				.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
-			JpaWorkplaceEntity updated = mapper.toEntity(workplace).toBuilder()
+			WorkplaceEntity updated = mapper.toEntity(workplace).toBuilder()
 				.company(existing.getCompany())
 				.stacks(existing.getStacks())
 				.build();
 			return mapper.toDomain(jpaWorkplaceRepository.save(updated));
 		}
-		JpaWorkplaceEntity entity = mapper.toEntity(workplace)
+		WorkplaceEntity entity = mapper.toEntity(workplace)
 			.toBuilder()
 			.company(jpaCompanyRepository.getReferenceById(workplace.getCompanyId()))
 			.build();

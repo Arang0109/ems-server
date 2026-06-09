@@ -1,7 +1,7 @@
 package com.ensolution.ems.client_management.application;
 
-import com.ensolution.ems.client_management.application.command.CreateCompanyCommand;
-import com.ensolution.ems.client_management.application.command.UpdateCompanyCommand;
+import com.ensolution.ems.client_management.application.command.create.CreateCompanyCommand;
+import com.ensolution.ems.client_management.application.command.update.UpdateCompanyCommand;
 import com.ensolution.ems.client_management.domain.Company;
 import com.ensolution.ems.client_management.domain.port.CompanyRepository;
 import com.ensolution.ems.global.exception.CustomException;

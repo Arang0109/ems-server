@@ -2,7 +2,7 @@ package com.ensolution.ems.contract.presentation;
 
 import com.ensolution.ems.contract.application.ContractService;
 import com.ensolution.ems.contract.application.command.ContractDetail;
-import com.ensolution.ems.contract.presentation.mapper.ContractPresentationMapper;
+import com.ensolution.ems.contract.presentation.mapper.ContractMapper;
 import com.ensolution.ems.contract.presentation.request.CreateContractRequest;
 import com.ensolution.ems.contract.presentation.request.UpdateContractRequest;
 import com.ensolution.ems.contract.presentation.response.ContractListResponse;
@@ -26,7 +26,7 @@ import java.util.List;
 public class ContractController {
 
 	private final ContractService contractService;
-	private final ContractPresentationMapper mapper;
+	private final ContractMapper mapper;
 
 	@Operation(summary = "계약 등록")
 	@PostMapping()

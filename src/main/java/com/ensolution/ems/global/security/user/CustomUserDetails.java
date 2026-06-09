@@ -1,6 +1,5 @@
 package com.ensolution.ems.global.security.user;
 
-import com.ensolution.ems.auth.infrastructure.JpaUserEntity;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

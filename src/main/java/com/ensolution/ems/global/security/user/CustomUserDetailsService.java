@@ -1,7 +1,7 @@
 package com.ensolution.ems.global.security.user;
 
-import com.ensolution.ems.auth.infrastructure.JpaUserEntity;
-import com.ensolution.ems.auth.infrastructure.JpaUserRepository;
+import com.ensolution.ems.auth.infrastructure.UserEntity;
+import com.ensolution.ems.auth.infrastructure.UserJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,12 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
   
-  private final JpaUserRepository userRepository;
+  private final UserJpaRepository userRepository;
   
   @Override
   @Transactional(readOnly = true)
   public UserDetails loadUserByUsername(String username) {
-    JpaUserEntity user = userRepository.findByUsername(username)
+    UserEntity user = userRepository.findByUsername(username)
         .orElseThrow(() -> new UsernameNotFoundException("User not found : " + username));
 		
 		return new CustomUserDetails(

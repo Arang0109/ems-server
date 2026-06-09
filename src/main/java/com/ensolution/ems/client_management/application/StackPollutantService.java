@@ -1,7 +1,7 @@
 package com.ensolution.ems.client_management.application;
 
-import com.ensolution.ems.client_management.application.command.AssignStackPollutantCommand;
-import com.ensolution.ems.client_management.application.command.StackPollutantListItem;
+import com.ensolution.ems.client_management.application.command.create.CreateStackPollutantCommand;
+import com.ensolution.ems.client_management.application.command.list_item.StackPollutantListItem;
 import com.ensolution.ems.client_management.domain.StackPollutant;
 import com.ensolution.ems.client_management.domain.port.StackPollutantRepository;
 import com.ensolution.ems.global.exception.CustomException;
@@ -19,16 +19,12 @@ public class StackPollutantService {
 
 	private final StackPollutantRepository stackPollutantRepository;
 
-	public StackPollutantListItem assignPollutant(AssignStackPollutantCommand command) {
+	public StackPollutant createStackPollutant(CreateStackPollutantCommand command) {
 		if (stackPollutantRepository.existsByStackIdAndPollutantId(command.stackId(), command.pollutantId())) {
 			throw new CustomException(ErrorCode.CONFLICT);
 		}
-		StackPollutant saved = stackPollutantRepository.save(StackPollutant.assign(command.stackId(), command.pollutantId()));
-		return stackPollutantRepository.findByStackId(command.stackId())
-			.stream()
-			.filter(item -> item.id().equals(saved.getId()))
-			.findFirst()
-			.orElseThrow();
+		return stackPollutantRepository.save(
+			StackPollutant.register(command.stackId(), command.pollutantId(), command.cycle(), command.allowance()));
 	}
 
 	public List<StackPollutantListItem> getStackPollutantList(Long stackId) {
