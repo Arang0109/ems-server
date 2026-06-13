@@ -1,7 +1,7 @@
 package com.ensolution.ems.client_management.infrastructure.adapter;
 
 import com.ensolution.ems.client_management.domain.Company;
-import com.ensolution.ems.client_management.domain.port.CompanyRepository;
+import com.ensolution.ems.client_management.application.port.out.CompanyRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.CompanyEntity;
 import com.ensolution.ems.client_management.infrastructure.repository.CompanyJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.mapper.CompanyEntityMapper;
@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor

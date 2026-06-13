@@ -2,7 +2,7 @@ package com.ensolution.ems.client_management.infrastructure.adapter;
 
 import com.ensolution.ems.client_management.application.command.list_item.StackListItem;
 import com.ensolution.ems.client_management.domain.Stack;
-import com.ensolution.ems.client_management.domain.port.StackRepository;
+import com.ensolution.ems.client_management.application.port.out.StackRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.StackEntity;
 import com.ensolution.ems.client_management.infrastructure.repository.StackJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.WorkplaceJpaRepository;
@@ -29,37 +29,47 @@ public class StackRepositoryAdapter implements StackRepository {
 
 	@Override
 	public Stack save(Stack stack) {
-			StackEntity entity = mapper.toEntity(stack)
-					.toBuilder()
-					.workplace(jpaWorkplaceRepository.getReferenceById(stack.getWorkplaceId()))
-					.build();
-			return mapper.toDomain(jpaStackRepository.save(entity));
+		if (stack.getId() != null) {
+			StackEntity existing = jpaStackRepository.findById(stack.getId())
+				.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+			StackEntity update = mapper.toEntity(stack).toBuilder()
+				.workplace(existing.getWorkplace())
+				.facilities(existing.getFacilities())
+				.preventions(existing.getPreventions())
+				.build();
+			return mapper.toDomain(jpaStackRepository.save(update));
+		}
+		StackEntity entity = mapper.toEntity(stack)
+			.toBuilder()
+			.workplace(jpaWorkplaceRepository.getReferenceById(stack.getWorkplaceId()))
+			.build();
+		return mapper.toDomain(jpaStackRepository.save(entity));
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public Stack findById(Long id) {
-			return jpaStackRepository.findById(id)
-					.map(mapper::toDomain)
-					.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+		return jpaStackRepository.findById(id)
+			.map(mapper::toDomain)
+			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 	}
-	
+
 	@Override
 	public List<StackListItem> findAll() {
 		return mapper.toStackListItems(jpaStackRepository.findAll());
 	}
-	
+
 	@Override
 	@Transactional(readOnly = true)
 	public List<StackListItem> findByWorkplaceId(Long workplaceId) {
-			return mapper.toStackListItems(jpaStackRepository.findByWorkplaceId(workplaceId));
+		return mapper.toStackListItems(jpaStackRepository.findByWorkplaceId(workplaceId));
 	}
 
 	@Override
 	public void deleteById(Long id) {
-			jpaStackRepository.deleteById(id);
+		jpaStackRepository.deleteById(id);
 	}
-	
+
 	@Override
 	@Transactional(readOnly = true)
 	public Map<Long, List<MeasurementField>> findFieldsByWorkplaceIds(List<Long> workplaceIds) {

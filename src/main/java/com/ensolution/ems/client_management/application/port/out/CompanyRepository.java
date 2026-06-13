@@ -1,0 +1,14 @@
+package com.ensolution.ems.client_management.application.port.out;
+
+import com.ensolution.ems.client_management.domain.Company;
+
+import java.util.List;
+
+public interface CompanyRepository {
+	Company save(Company company);
+	Company findById(Long companyId);
+	List<Company> findAll();
+	void deleteById(Long companyId);
+	
+	boolean existsByName(String name);
+}

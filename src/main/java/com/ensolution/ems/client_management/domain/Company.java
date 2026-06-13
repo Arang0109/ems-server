@@ -11,6 +11,8 @@ public class Company {
     private String name;
     private String bizNumber;
     private String representative;
+		private String zipcode;
+		private String roadAddress;
     private String address;
     private String manager;
     private String email;
@@ -21,6 +23,8 @@ public class Company {
 			String name,
 			String bizNumber,
 			String representative,
+			String zipcode,
+			String roadAddress,
 			String address,
 			String manager,
 			String email,
@@ -30,6 +34,8 @@ public class Company {
 				.name(name)
 				.bizNumber(bizNumber)
 				.representative(representative)
+				.zipcode(zipcode)
+				.roadAddress(roadAddress)
 				.address(address)
 				.manager(manager)
 				.email(email)
@@ -38,22 +44,22 @@ public class Company {
 		}
 	
 		public Company update(
-			Long id,
 			String name,
 			String bizNumber,
 			String representative,
+			String zipcode,
+			String roadAddress,
 			String address,
 			String manager,
 			String email,
 			String tel
 		) {
-			if (id == null) return null;
-			
 			return this.toBuilder()
-				.id(id)
 				.name(keep(name, this.name))
 				.bizNumber(keep(bizNumber, this.bizNumber))
 				.representative(keep(representative, this.representative))
+				.zipcode(keep(zipcode, this.zipcode))
+				.roadAddress(keep(roadAddress, this.roadAddress))
 				.address(keep(address, this.address))
 				.manager(keep(manager, this.manager))
 				.email(keep(email, this.email))

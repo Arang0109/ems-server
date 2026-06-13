@@ -2,7 +2,7 @@ package com.ensolution.ems.client_management.infrastructure.adapter;
 
 import com.ensolution.ems.client_management.application.command.list_item.StackPollutantListItem;
 import com.ensolution.ems.client_management.domain.StackPollutant;
-import com.ensolution.ems.client_management.domain.port.StackPollutantRepository;
+import com.ensolution.ems.client_management.application.port.out.StackPollutantRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.StackPollutantEntity;
 import com.ensolution.ems.client_management.infrastructure.mapper.StackPollutantEntityMapper;
 import com.ensolution.ems.client_management.infrastructure.repository.PollutantJpaRepository;

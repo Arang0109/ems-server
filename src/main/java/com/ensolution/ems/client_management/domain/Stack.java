@@ -4,15 +4,12 @@ import com.ensolution.ems.global.common.enums.Grade;
 import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.common.enums.Orientation;
 import com.ensolution.ems.global.common.enums.Shape;
-import com.ensolution.ems.global.exception.CustomException;
-import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Builder(toBuilder = true)
@@ -36,8 +33,8 @@ public class Stack {
 	private LocalDateTime createdAt;
 	private LocalDateTime modifiedAt;
 	
-	@Builder.Default private List<Prevention> preventions = new ArrayList<>();
-	@Builder.Default private List<Facility> facilities = new ArrayList<>();
+	private List<Prevention> preventions;
+	private List<Facility> facilities;
 
 	public static Stack register(
 		Long workplaceId, MeasurementField field, String name, String semsNumber, Grade grade, String businessCategory, String mainProduct
@@ -71,50 +68,8 @@ public class Stack {
 			.orientation(orientation != null ? orientation : this.orientation)
 			.build();
 	}
-	
-	public void addPrevention(Prevention prevention) {
-		this.preventions.add(prevention);
-	}
-	
-	public void removePrevention(Long preventionId) {
-		Prevention prevention = findPrevention(preventionId);
-		this.preventions.remove(prevention);
-	}
-	
-	public void addPreventionTarget(Long preventionId, TargetSubstance target) {
-		Prevention prevention = findPrevention(preventionId);
-		prevention.addTarget(target);
-	}
-	
-	public void removePreventionTarget(Long preventionId, Long targetId) {
-		Prevention prevention = findPrevention(preventionId);
-		prevention.removeTarget(targetId);
-	}
-	
-	public void addFacility(Facility facility) {
-		this.facilities.add(facility);
-	}
-	
-	public void removeFacility(Long facilityId) {
-		Facility facility = findFacility(facilityId);
-		this.facilities.remove(facility);
-	}
-	
-	private Prevention findPrevention(Long preventionId) {
-		return this.preventions.stream()
-			.filter((p) -> p.getId().equals(preventionId))
-			.findFirst()
-			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
-	}
-	
-	private Facility findFacility(Long facilityId) {
-		return this.facilities.stream()
-			.filter((f) -> f.getId().equals(facilityId))
-			.findFirst()
-			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
-	}
 
 	private static String keep(String value, String original) {
-			return value == null || value.isBlank() ? original : value;
+		return value == null || value.isBlank() ? original : value;
 	}
 }

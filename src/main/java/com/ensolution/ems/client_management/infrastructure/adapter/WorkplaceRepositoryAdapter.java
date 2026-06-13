@@ -2,7 +2,7 @@ package com.ensolution.ems.client_management.infrastructure.adapter;
 
 import com.ensolution.ems.client_management.application.command.list_item.WorkplaceListItem;
 import com.ensolution.ems.client_management.domain.Workplace;
-import com.ensolution.ems.client_management.domain.port.WorkplaceRepository;
+import com.ensolution.ems.client_management.application.port.out.WorkplaceRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.CompanyJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.WorkplaceEntity;
 import com.ensolution.ems.client_management.infrastructure.repository.WorkplaceJpaRepository;

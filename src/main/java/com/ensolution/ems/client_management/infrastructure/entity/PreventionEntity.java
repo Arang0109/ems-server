@@ -1,10 +1,7 @@
 package com.ensolution.ems.client_management.infrastructure.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -21,20 +18,17 @@ public class PreventionEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "stack_id", nullable = false)
 	@OnDelete(action = OnDeleteAction.CASCADE)
 	private StackEntity stack;
-	
+
 	@Column(nullable = false)
 	private String name;
 	
-	@OneToMany(
-		mappedBy = "prevention",
-		cascade = CascadeType.ALL,
-		orphanRemoval = true
-	)
 	@Builder.Default
-	private List<TargetSubstanceEntity> targetSubstances = new ArrayList<>();
+	@OneToMany(mappedBy = "prevention", cascade = CascadeType.ALL, orphanRemoval = true)
+	@ToString.Exclude
+	private List<TargetSubstanceEntity> targets = new ArrayList<>();
 }

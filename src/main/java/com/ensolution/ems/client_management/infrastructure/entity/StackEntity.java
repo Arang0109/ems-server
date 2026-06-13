@@ -35,7 +35,7 @@ public class StackEntity {
 	@JoinColumn(name = "workplace_id")
 	@ToString.Exclude
 	private WorkplaceEntity workplace;
-	
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private MeasurementField field;
@@ -45,7 +45,7 @@ public class StackEntity {
 
 	@Column(name = "sems_number")
 	private String semsNumber;
-	
+
 	@Enumerated(EnumType.STRING)
 	private Grade grade;
 
@@ -62,10 +62,10 @@ public class StackEntity {
 
 	@Column(name = "vertical_length")
 	private String verticalLength;
-	
+
 	@Enumerated(EnumType.STRING)
 	private Shape shape;
-	
+
 	@Enumerated(EnumType.STRING)
 	private Orientation orientation;
 
@@ -77,19 +77,13 @@ public class StackEntity {
 	@Column(name = "modified_at")
 	private LocalDateTime modifiedAt;
 	
-	@OneToMany(
-		mappedBy = "stack",
-		cascade = CascadeType.ALL,
-		orphanRemoval = true
-	)
 	@Builder.Default
+	@OneToMany(mappedBy = "stack", cascade = CascadeType.ALL, orphanRemoval = true)
+	@ToString.Exclude
 	private List<PreventionEntity> preventions = new ArrayList<>();
 	
-	@OneToMany(
-		mappedBy = "stack",
-		cascade = CascadeType.ALL,
-		orphanRemoval = true
-	)
 	@Builder.Default
+	@OneToMany(mappedBy = "stack", cascade = CascadeType.ALL, orphanRemoval = true)
+	@ToString.Exclude
 	private List<FacilityEntity> facilities = new ArrayList<>();
 }

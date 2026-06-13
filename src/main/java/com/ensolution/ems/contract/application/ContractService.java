@@ -1,7 +1,7 @@
 package com.ensolution.ems.contract.application;
 
-import com.ensolution.ems.client_management.application.port.ContractSummary;
-import com.ensolution.ems.client_management.application.port.WorkplaceQueryUseCase;
+import com.ensolution.ems.client_management.application.port.in.ContractSummary;
+import com.ensolution.ems.client_management.application.port.in.WorkplaceQueryUseCase;
 import com.ensolution.ems.contract.application.command.*;
 import com.ensolution.ems.contract.domain.Contract;
 import com.ensolution.ems.contract.domain.port.ContractRepository;

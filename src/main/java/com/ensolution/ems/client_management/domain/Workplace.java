@@ -14,6 +14,8 @@ public class Workplace {
 	private Long id;
 	private Long companyId;
 	private String name;
+	private String zipcode;
+	private String roadAddress;
 	private String address;
 	private String bizNumber;
 	private Grade grade;
@@ -21,6 +23,8 @@ public class Workplace {
 	public static Workplace register(
 		Long companyId,
 		String name,
+		String zipcode,
+		String roadAddress,
 		String address,
 		String bizNumber,
 		Grade grade
@@ -28,16 +32,25 @@ public class Workplace {
 		return Workplace.builder()
 			.companyId(companyId)
 			.name(name)
+			.zipcode(zipcode)
+			.roadAddress(roadAddress)
 			.address(address)
 			.bizNumber(bizNumber)
 			.grade(grade)
 			.build();
 	}
 
-	public Workplace update(Long id, String name, String address, String bizNumber, Grade grade) {
+	public Workplace update(
+		String name,
+		String zipcode,
+		String roadAddress,
+		String address,
+		String bizNumber,
+		Grade grade) {
 		return this.toBuilder()
-			.id(id)
 			.name(keep(name, this.name))
+			.zipcode(keep(zipcode, this.zipcode))
+			.roadAddress(keep(roadAddress, this.roadAddress))
 			.address(keep(address, this.address))
 			.bizNumber(keep(bizNumber, this.bizNumber))
 			.grade(grade != null ? grade : this.grade)

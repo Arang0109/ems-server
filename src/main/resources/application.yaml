@@ -25,6 +25,10 @@ spring:
         format_sql: true  # SQL문 보기 좋게 정렬
 
 jwt:
-  secret: ${JWT_SECRET:my-secret-key-my-secret-key-my-secret-key-123456}
+  secret: ${JWT_SECRET}
   access-token-validity: ${AT_VALID:3600000}
   refresh-token-validity: ${RT_VALID:25200000}
+
+logging:
+  level:
+    root: DEBUG

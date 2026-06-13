@@ -32,6 +32,12 @@ public class WorkplaceEntity {
 	private String name;
 	
 	@Column
+	private String zipcode;
+	
+	@Column(name = "road_address")
+	private String roadAddress;
+	
+	@Column
 	private String address;
 	
 	@Column(name = "biz_number", length = 10)

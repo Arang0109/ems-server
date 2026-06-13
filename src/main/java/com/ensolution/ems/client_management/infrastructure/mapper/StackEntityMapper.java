@@ -15,19 +15,20 @@ import java.util.List;
 	builder = @Builder(),
 	unmappedTargetPolicy = ReportingPolicy.ERROR,
 	uses = {
-		PreventionMapper.class, FacilityMapper.class
+		PreventionEntityMapper.class,
+		FacilityEntityMapper.class
 	}
 )
 public interface StackEntityMapper {
-	
+
 	@Mapping(target = "workplace", ignore = true)
+	@Mapping(target = "preventions", ignore = true)
+	@Mapping(target = "facilities", ignore = true)
 	@Mapping(target = "createdAt", ignore = true)
 	@Mapping(target = "modifiedAt", ignore = true)
 	StackEntity toEntity(Stack stack);
-	
+
 	@Mapping(target = "workplaceId", source = "workplace.id")
-	@Mapping(target = "preventions", ignore = true)
-	@Mapping(target = "facilities", ignore = true)
 	Stack toDomain(StackEntity entity);
 
 	@Mapping(target = "companyName", source = "workplace.company.name")
