@@ -5,8 +5,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Builder(toBuilder = true)
 @AllArgsConstructor
 @NoArgsConstructor
@@ -15,8 +13,6 @@ public class Prevention {
 	private Long id;
 	private Long stackId;
 	private String name;
-	
-	private List<TargetSubstance> targets;
 
 	public static Prevention register(Long stackId, String name) {
 		return Prevention.builder().stackId(stackId).name(name).build();

@@ -10,7 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Builder(toBuilder = true)
 @AllArgsConstructor
@@ -32,9 +31,6 @@ public class Stack {
 	private Orientation orientation;
 	private LocalDateTime createdAt;
 	private LocalDateTime modifiedAt;
-	
-	private List<Prevention> preventions;
-	private List<Facility> facilities;
 
 	public static Stack register(
 		Long workplaceId, MeasurementField field, String name, String semsNumber, Grade grade, String businessCategory, String mainProduct

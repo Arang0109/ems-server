@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.presentation.prevention;
 
-import com.ensolution.ems.client_management.application.service.PreventionService;
+import com.ensolution.ems.client_management.application.service.PreventionCommandService;
+import com.ensolution.ems.client_management.application.service.PreventionQueryService;
 import com.ensolution.ems.client_management.domain.Prevention;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,7 +21,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PreventionController {
 
-	private final PreventionService preventionService;
+	private final PreventionCommandService preventionCommandService;
+	private final PreventionQueryService preventionQueryService;
 	private final PreventionMapper mapper;
 
 	@Operation(summary = "방지설비 등록")
@@ -28,7 +30,7 @@ public class PreventionController {
 	public ResponseEntity<ApiResponse<PreventionResponse>> createPrevention(
 		@Valid @RequestBody CreatePreventionRequest request
 	) {
-		Prevention prevention = preventionService.createPrevention(mapper.toCreateCommand(request));
+		Prevention prevention = preventionCommandService.createPrevention(mapper.toCreateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(prevention)));
 	}
 
@@ -38,7 +40,7 @@ public class PreventionController {
 		@RequestParam Long stackId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			mapper.toResponses(preventionService.getPreventionList(stackId))
+			mapper.toResponses(preventionQueryService.getPreventionList(stackId))
 		));
 	}
 
@@ -46,7 +48,7 @@ public class PreventionController {
 	@GetMapping("/{preventionId}")
 	public ResponseEntity<ApiResponse<PreventionResponse>> getPrevention(@PathVariable Long preventionId) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			mapper.toResponse(preventionService.getPrevention(preventionId))
+			mapper.toResponse(preventionQueryService.getPrevention(preventionId))
 		));
 	}
 
@@ -56,14 +58,14 @@ public class PreventionController {
 		@PathVariable Long preventionId,
 		@RequestBody UpdatePreventionRequest request
 	) {
-		Prevention prevention = preventionService.updatePrevention(preventionId, mapper.toUpdateCommand(request));
+		Prevention prevention = preventionCommandService.updatePrevention(preventionId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(prevention)));
 	}
 
 	@Operation(summary = "방지설비 삭제")
 	@DeleteMapping("/{preventionId}")
 	public ResponseEntity<ApiResponse<Void>> deletePrevention(@PathVariable Long preventionId) {
-		preventionService.deletePrevention(preventionId);
+		preventionCommandService.deletePrevention(preventionId);
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 }

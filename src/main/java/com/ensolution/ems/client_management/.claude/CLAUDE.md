@@ -69,8 +69,8 @@ Stack의 속성에서 사용하는 Enum(`Grade`, `MeasurementField`, `Shape`, `O
 - 목록 조회 시 연관 도메인 정보(부모명 등)를 포함하는 VO는 `application/command/`에 Record로 정의합니다.
   - `WorkplaceListItem` — `companyName` 포함 사업장 목록 아이템
   - `StackListItem` — `companyName`, `workplaceName` 포함 측정시설 목록 아이템
-- Infrastructure 매퍼(`{도메인}DomainEntityMapper`)가 JPA 엔티티 → VO 변환을 담당합니다.
-- Presentation 매퍼(`{도메인}PresentationMapper`)가 VO → Response DTO 변환을 담당합니다.
+- Infrastructure 매퍼(`{도메인}EntityMapper`)가 JPA 엔티티 → VO 변환을 담당합니다.
+- Presentation 매퍼(`{도메인}Mapper`)가 VO → Response DTO 변환을 담당합니다.
   - 메서드명: `toListResponse()` / `toListResponses()`
 
 ### 연관 관계 조회

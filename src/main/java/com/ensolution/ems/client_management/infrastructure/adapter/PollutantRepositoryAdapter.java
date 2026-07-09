@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.application.port.out.PollutantRepository;
 import com.ensolution.ems.client_management.infrastructure.mapper.PollutantEntityMapper;
 import com.ensolution.ems.client_management.infrastructure.repository.PollutantJpaRepository;
+import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,12 @@ public class PollutantRepositoryAdapter implements PollutantRepository {
 	public List<Pollutant> findAll() {
 		return mapper.toDomainList(jpaPollutantRepository.findAll());
 	}
-
+	
+	@Override
+	public List<Pollutant> findByField(MeasurementField field) {
+		return mapper.toDomainList(jpaPollutantRepository.findByField(field));
+	}
+	
 	@Override
 	public void deleteById(Long id) {
 		jpaPollutantRepository.deleteById(id);

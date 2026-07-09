@@ -12,10 +12,7 @@ import java.util.List;
 @Mapper(
 	componentModel = "spring",
 	builder = @Builder(),
-	unmappedTargetPolicy = ReportingPolicy.ERROR,
-	uses = {
-		TargetEntityMapper.class
-	}
+	unmappedTargetPolicy = ReportingPolicy.ERROR
 )
 public interface PreventionEntityMapper {
 	@Mapping(target = "stack", ignore = true)

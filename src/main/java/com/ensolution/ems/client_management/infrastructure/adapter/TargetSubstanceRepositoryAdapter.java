@@ -3,7 +3,7 @@ package com.ensolution.ems.client_management.infrastructure.adapter;
 import com.ensolution.ems.client_management.application.port.out.TargetSubstanceRepository;
 import com.ensolution.ems.client_management.domain.TargetSubstance;
 import com.ensolution.ems.client_management.infrastructure.entity.TargetSubstanceEntity;
-import com.ensolution.ems.client_management.infrastructure.mapper.TargetEntityMapper;
+import com.ensolution.ems.client_management.infrastructure.mapper.TargetSubstanceEntityMapper;
 import com.ensolution.ems.client_management.infrastructure.repository.PreventionJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.TargetSubstanceJpaRepository;
 import com.ensolution.ems.global.exception.CustomException;
@@ -21,7 +21,7 @@ public class TargetSubstanceRepositoryAdapter implements TargetSubstanceReposito
 
 	private final TargetSubstanceJpaRepository jpaTargetSubstanceRepository;
 	private final PreventionJpaRepository jpaPreventionRepository;
-	private final TargetEntityMapper mapper;
+	private final TargetSubstanceEntityMapper mapper;
 
 	@Override
 	public TargetSubstance save(TargetSubstance targetSubstance) {

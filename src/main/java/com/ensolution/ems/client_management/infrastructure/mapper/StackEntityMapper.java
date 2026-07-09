@@ -13,11 +13,7 @@ import java.util.List;
 @Mapper(
 	componentModel = "spring",
 	builder = @Builder(),
-	unmappedTargetPolicy = ReportingPolicy.ERROR,
-	uses = {
-		PreventionEntityMapper.class,
-		FacilityEntityMapper.class
-	}
+	unmappedTargetPolicy = ReportingPolicy.ERROR
 )
 public interface StackEntityMapper {
 

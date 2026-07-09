@@ -8,7 +8,9 @@
       "PowerShell($jarPath = \"C:\\\\dev\\\\projects\\\\new\\\\ems\\\\gradle\\\\wrapper\\\\gradle-wrapper.jar\"; \\(Get-FileHash -Path $jarPath -Algorithm SHA256\\).Hash)",
       "Bash(git show *)",
       "Read(//tmp/**)",
-      "Bash(xargs -I {} cat {})"
+      "Bash(xargs -I {} cat {})",
+      "Bash(git diff *)",
+      "Bash(git -C \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\Ubuntu-22.04\\\\\\\\home\\\\\\\\kmsq321\\\\\\\\dev_wsl\\\\\\\\projects\\\\\\\\ems-server\" status --short)"
     ]
   }
 }

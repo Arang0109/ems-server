@@ -1,13 +1,16 @@
 package com.ensolution.ems.client_management.presentation.stack.mapper;
 
 import com.ensolution.ems.client_management.application.command.create.CreateStackCommand;
+import com.ensolution.ems.client_management.application.command.detail.StackDetail;
 import com.ensolution.ems.client_management.application.command.update.UpdateStackCommand;
 import com.ensolution.ems.client_management.application.command.list_item.StackListItem;
 import com.ensolution.ems.client_management.domain.Stack;
+import com.ensolution.ems.client_management.presentation.facility.mapper.FacilityMapper;
+import com.ensolution.ems.client_management.presentation.prevention.PreventionMapper;
 import com.ensolution.ems.client_management.presentation.stack.request.CreateStackRequest;
 import com.ensolution.ems.client_management.presentation.stack.response.StackDetailResponse;
 import com.ensolution.ems.client_management.presentation.stack.response.StackResponse;
-import com.ensolution.ems.client_management.presentation.stack.response.StackTableResponse;
+import com.ensolution.ems.client_management.presentation.stack.response.StackTableListResponse;
 import com.ensolution.ems.client_management.presentation.stack.request.UpdateStackRequest;
 import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
@@ -17,16 +20,38 @@ import java.util.List;
 
 @Mapper(
 		componentModel = "spring",
-		builder = @Builder
+		builder = @Builder,
+		uses = {
+			PreventionMapper.class,
+			FacilityMapper.class
+		}
 )
 public interface StackMapper {
 	CreateStackCommand toCreateCommand(CreateStackRequest request);
 	UpdateStackCommand toUpdateCommand(UpdateStackRequest request);
 	StackResponse toResponse(Stack stack);
-	StackDetailResponse toDetailResponse(Stack stack);
+
+	@Mapping(target = "id", source = "stack.id")
+	@Mapping(target = "workplaceId", source = "stack.workplaceId")
+	@Mapping(target = "field", source = "stack.field")
+	@Mapping(target = "name", source = "stack.name")
+	@Mapping(target = "semsNumber", source = "stack.semsNumber")
+	@Mapping(target = "grade", source = "stack.grade")
+	@Mapping(target = "businessCategory", source = "stack.businessCategory")
+	@Mapping(target = "mainProduct", source = "stack.mainProduct")
+	@Mapping(target = "height", source = "stack.height")
+	@Mapping(target = "horizontalLength", source = "stack.horizontalLength")
+	@Mapping(target = "verticalLength", source = "stack.verticalLength")
+	@Mapping(target = "shape", source = "stack.shape")
+	@Mapping(target = "orientation", source = "stack.orientation")
+	@Mapping(target = "createdAt", source = "stack.createdAt")
+	@Mapping(target = "modifiedAt", source = "stack.modifiedAt")
+	@Mapping(target = "preventions", source = "preventions")
+	@Mapping(target = "facilities", source = "facilities")
+	StackDetailResponse toDetailResponse(StackDetail detail);
 
 	@Mapping(target = "stackName", source = "name")
-	StackTableResponse toListResponse(StackListItem stackListItem);
+	StackTableListResponse toTableListResponse(StackListItem stackListItem);
 
-	List<StackTableResponse> toListResponses(List<StackListItem> items);
+	List<StackTableListResponse> toTableListResponses(List<StackListItem> items);
 }
