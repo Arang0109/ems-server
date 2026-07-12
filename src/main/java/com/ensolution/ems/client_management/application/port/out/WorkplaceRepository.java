@@ -8,10 +8,10 @@ import java.util.List;
 public interface WorkplaceRepository {
 	Workplace save(Workplace workplace);
 	Workplace findById(Long id);
-	List<WorkplaceListItem> findByCompanyId(Long companyId);
+	List<WorkplaceListItem> findByClientId(Long clientId);
 	List<WorkplaceListItem> findAll();
 	void deleteById(Long id);
-	
+
 	boolean existsById(Long workplaceId);
-	boolean existsByNameAndCompanyId(String name, Long companyId);
+	boolean existsByNameAndClientId(String name, Long clientId);
 }

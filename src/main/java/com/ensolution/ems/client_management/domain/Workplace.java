@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Getter
 public class Workplace {
 	private Long id;
-	private Long companyId;
+	private Long clientId;
 	private String name;
 	private String zipcode;
 	private String roadAddress;
@@ -21,7 +21,7 @@ public class Workplace {
 	private Grade grade;
 
 	public static Workplace register(
-		Long companyId,
+		Long clientId,
 		String name,
 		String zipcode,
 		String roadAddress,
@@ -30,7 +30,7 @@ public class Workplace {
 		Grade grade
 	) {
 		return Workplace.builder()
-			.companyId(companyId)
+			.clientId(clientId)
 			.name(name)
 			.zipcode(zipcode)
 			.roadAddress(roadAddress)

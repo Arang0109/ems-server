@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.presentation.workplace.controller;
 
-import com.ensolution.ems.client_management.application.service.WorkplaceCommandService;
-import com.ensolution.ems.client_management.application.service.WorkplaceQueryService;
+import com.ensolution.ems.client_management.application.service.WorkplaceService;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.presentation.workplace.mapper.WorkplaceMapper;
 import com.ensolution.ems.client_management.presentation.workplace.request.CreateWorkplaceRequest;
@@ -26,8 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WorkplaceController {
 	
-	private final WorkplaceCommandService workplaceCommandService;
-	private final WorkplaceQueryService workplaceQueryService;
+	private final WorkplaceService workplaceService;
 	private final WorkplaceMapper mapper;
 	
 	@Operation(summary = "사업장 등록")
@@ -35,24 +33,24 @@ public class WorkplaceController {
 	public ResponseEntity<ApiResponse<WorkplaceResponse>> createWorkplace(
 		@Valid @RequestBody CreateWorkplaceRequest request
 	) {
-		Workplace workplace = workplaceCommandService.createWorkplace(mapper.toCreateCommand(request));
+		Workplace workplace = workplaceService.createWorkplace(mapper.toCreateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
 	}
 	
-	@Operation(summary = "사업장 목록 조회", description = "companyId 쿼리 파라미터로 의뢰기관을 지정합니다.")
+	@Operation(summary = "사업장 목록 조회", description = "clientId 쿼리 파라미터로 의뢰기관을 지정합니다.")
 	@GetMapping()
 	public ResponseEntity<ApiResponse<List<WorkplaceTableListResponse>>> getWorkplaceList(
-		@RequestParam(required = false) Long companyId
+		@RequestParam(required = false) Long clientId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toTableListResponses(
-			workplaceQueryService.getWorkplaceList(companyId)
+			workplaceService.getWorkplaceList(clientId)
 		)));
 	}
 	
 	@Operation(summary = "사업장 상세 조회")
 	@GetMapping("/{workplaceId}")
 	public ResponseEntity<ApiResponse<WorkplaceResponse>> getWorkplaceDetail(@PathVariable Long workplaceId) {
-		Workplace workplace = workplaceQueryService.getWorkplace(workplaceId);
+		Workplace workplace = workplaceService.getWorkplace(workplaceId);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
 	}
 	
@@ -62,14 +60,14 @@ public class WorkplaceController {
 		@PathVariable Long workplaceId,
 		@RequestBody UpdateWorkplaceRequest request
 	) {
-		Workplace workplace = workplaceCommandService.updateWorkplace(workplaceId, mapper.toUpdateCommand(request));
+		Workplace workplace = workplaceService.updateWorkplace(workplaceId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
 	}
 
 	@Operation(summary = "사업장 삭제")
 	@DeleteMapping("/{workplaceId}")
 	public ResponseEntity<ApiResponse<Void>> deleteWorkplace(@PathVariable Long workplaceId) {
-		workplaceCommandService.deleteWorkplace(workplaceId);
+		workplaceService.deleteWorkplace(workplaceId);
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 }

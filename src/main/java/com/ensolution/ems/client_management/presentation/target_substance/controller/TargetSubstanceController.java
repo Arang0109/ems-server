@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.presentation.target_substance.controller;
 
-import com.ensolution.ems.client_management.application.service.TargetSubstanceCommandService;
-import com.ensolution.ems.client_management.application.service.TargetSubstanceQueryService;
+import com.ensolution.ems.client_management.application.service.TargetSubstanceService;
 import com.ensolution.ems.client_management.domain.TargetSubstance;
 import com.ensolution.ems.client_management.presentation.target_substance.request.CreateTargetSubstanceRequest;
 import com.ensolution.ems.client_management.presentation.target_substance.mapper.TargetSubstanceMapper;
@@ -25,8 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TargetSubstanceController {
 
-	private final TargetSubstanceCommandService targetSubstanceCommandService;
-	private final TargetSubstanceQueryService targetSubstanceQueryService;
+	private final TargetSubstanceService targetSubstanceService;
 	private final TargetSubstanceMapper mapper;
 
 	@Operation(summary = "목표물질 등록")
@@ -34,7 +32,7 @@ public class TargetSubstanceController {
 	public ResponseEntity<ApiResponse<TargetSubstanceResponse>> createTargetSubstance(
 		@Valid @RequestBody CreateTargetSubstanceRequest request
 	) {
-		TargetSubstance targetSubstance = targetSubstanceCommandService.createTargetSubstance(mapper.toCreateCommand(request));
+		TargetSubstance targetSubstance = targetSubstanceService.createTargetSubstance(mapper.toCreateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(targetSubstance)));
 	}
 
@@ -44,7 +42,7 @@ public class TargetSubstanceController {
 		@RequestParam Long preventionId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			mapper.toResponses(targetSubstanceQueryService.getTargetSubstanceList(preventionId))
+			mapper.toResponses(targetSubstanceService.getTargetSubstanceList(preventionId))
 		));
 	}
 
@@ -54,7 +52,7 @@ public class TargetSubstanceController {
 		@PathVariable Long targetSubstanceId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			mapper.toResponse(targetSubstanceQueryService.getTargetSubstance(targetSubstanceId))
+			mapper.toResponse(targetSubstanceService.getTargetSubstance(targetSubstanceId))
 		));
 	}
 
@@ -64,14 +62,14 @@ public class TargetSubstanceController {
 		@PathVariable Long targetSubstanceId,
 		@RequestBody UpdateTargetSubstanceRequest request
 	) {
-		TargetSubstance targetSubstance = targetSubstanceCommandService.updateTargetSubstance(targetSubstanceId, mapper.toUpdateCommand(request));
+		TargetSubstance targetSubstance = targetSubstanceService.updateTargetSubstance(targetSubstanceId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(targetSubstance)));
 	}
 
 	@Operation(summary = "목표물질 삭제")
 	@DeleteMapping("/{targetSubstanceId}")
 	public ResponseEntity<ApiResponse<Void>> deleteTargetSubstance(@PathVariable Long targetSubstanceId) {
-		targetSubstanceCommandService.deleteTargetSubstance(targetSubstanceId);
+		targetSubstanceService.deleteTargetSubstance(targetSubstanceId);
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 }

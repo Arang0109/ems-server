@@ -91,7 +91,7 @@ RESTful API를 우선합니다.
 
 좋은 예
 
-/company/{id}
+/clients/{id}
 
 /workplaces/{id}
 
@@ -151,7 +151,7 @@ Infrastructure
 
 현재 프로젝트의 주요 도메인은 다음과 같습니다.
 
-- Company
+- Client
 - Workplace
 - Stack
 - Prevention

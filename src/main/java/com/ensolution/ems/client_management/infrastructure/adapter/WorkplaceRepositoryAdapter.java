@@ -3,7 +3,7 @@ package com.ensolution.ems.client_management.infrastructure.adapter;
 import com.ensolution.ems.client_management.application.command.list_item.WorkplaceListItem;
 import com.ensolution.ems.client_management.domain.Workplace;
 import com.ensolution.ems.client_management.application.port.out.WorkplaceRepository;
-import com.ensolution.ems.client_management.infrastructure.repository.CompanyJpaRepository;
+import com.ensolution.ems.client_management.infrastructure.repository.ClientJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.WorkplaceEntity;
 import com.ensolution.ems.client_management.infrastructure.repository.WorkplaceJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.mapper.WorkplaceEntityMapper;
@@ -21,7 +21,7 @@ import java.util.List;
 public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 
 	private final WorkplaceJpaRepository jpaWorkplaceRepository;
-	private final CompanyJpaRepository jpaCompanyRepository;
+	private final ClientJpaRepository jpaClientRepository;
 	private final WorkplaceEntityMapper mapper;
 
 	@Override
@@ -30,14 +30,14 @@ public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 			WorkplaceEntity existing = jpaWorkplaceRepository.findById(workplace.getId())
 				.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 			WorkplaceEntity updated = mapper.toEntity(workplace).toBuilder()
-				.company(existing.getCompany())
+				.client(existing.getClient())
 				.stacks(existing.getStacks())
 				.build();
 			return mapper.toDomain(jpaWorkplaceRepository.save(updated));
 		}
 		WorkplaceEntity entity = mapper.toEntity(workplace)
 			.toBuilder()
-			.company(jpaCompanyRepository.getReferenceById(workplace.getCompanyId()))
+			.client(jpaClientRepository.getReferenceById(workplace.getClientId()))
 			.build();
 		return mapper.toDomain(jpaWorkplaceRepository.save(entity));
 	}
@@ -48,28 +48,28 @@ public class WorkplaceRepositoryAdapter implements WorkplaceRepository {
 		return jpaWorkplaceRepository.findById(id)
 			.map(mapper::toDomain).orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 	}
-	
+
 	@Override
 	public List<WorkplaceListItem> findAll() {
 		return mapper.toWorkplaceListItems(jpaWorkplaceRepository.findAll());
 	}
-	
+
 	@Override
 	@Transactional(readOnly = true)
-	public List<WorkplaceListItem> findByCompanyId(Long companyId) {
-		return mapper.toWorkplaceListItems(jpaWorkplaceRepository.findByCompanyId(companyId));
+	public List<WorkplaceListItem> findByClientId(Long clientId) {
+		return mapper.toWorkplaceListItems(jpaWorkplaceRepository.findByClientId(clientId));
 	}
 
 	@Override
 	public void deleteById(Long id) {
 			jpaWorkplaceRepository.deleteById(id);
 	}
-	
+
 	@Override
 	public boolean existsById(Long workplaceId) { return jpaWorkplaceRepository.existsById(workplaceId); }
-	
+
 	@Override
-	public boolean existsByNameAndCompanyId(String name, Long companyId) {
-		return jpaWorkplaceRepository.existsByNameAndCompanyId(name, companyId);
+	public boolean existsByNameAndClientId(String name, Long clientId) {
+		return jpaWorkplaceRepository.existsByNameAndClientId(name, clientId);
 	}
 }

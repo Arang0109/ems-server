@@ -45,14 +45,18 @@
 
 ### 3. Mapping 규칙
 - 객체 변환은 `MapStruct`를 사용합니다.
-- MapStruct 매퍼는 `presentation/mapper/`(요청/응답 ↔ 커맨드)와 `infrastructure/mapper/`(JPA 엔티티 ↔ 도메인)에 위치합니다. 컨트롤러나 서비스에서 직접 매핑하지 않습니다.
+- MapStruct 매퍼는 `presentation/**/mapper/`(요청/응답 ↔ 커맨드)와 `infrastructure/mapper/`(JPA 엔티티 ↔ 도메인)에 위치합니다. 컨트롤러나 서비스에서 직접 매핑하지 않습니다.
+  - 애그리거트가 여러 개인 모듈은 `presentation/{aggregate}/mapper/`로 애그리거트별 그룹핑합니다.
 
 ### 4. Repository 규칙
 Application Service는 Spring Data Repository를 직접 사용하지 않습니다.
-반드시 `domain/port`를 통해 접근합니다.
+반드시 Outbound Port를 통해 접근하며, Outbound Port의 표준 위치는 `application/port/out/`입니다.
 
     Ex)
-    CompanyRepository (domain/port) → CompanyRepositoryAdapter → CompanyJpaRepository
+    ClientRepository (application/port/out) → ClientRepositoryAdapter → ClientJpaRepository
+
+> **포트 위치 표준화**: Repository 등 Outbound Port는 `application/port/out/`, 외부 공개 Inbound Port(UseCase)는 `application/port/in/`에 둡니다.
+> `client_management`는 이관 완료. `auth`·`contract`는 아직 `domain/port/`를 사용하며 향후 정렬 예정입니다.
 
 ### 5. 생성자 주입
 Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다. 필드 주입은 사용하지 않습니다.
@@ -65,25 +69,32 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 #### 클래스 명
 | 구분 | 패턴 | 예시 |
 |------|------|------|
-| Controller | `{도메인}Controller` | `CompanyController` |
-| Service | `{도메인}Service` | `CompanyService` |
-| Domain 모델 | 단순 명사 | `Company`, `User` |
-| Domain Port | 역할 기반 명사 | `CompanyRepository`, `TokenIssuer` |
-| Application Port | 역할 기반 명사 | `RefreshTokenStore` |
-| Command | `{동작}{대상}Command` (Record) | `CreateCompanyCommand` |
+| Controller | `{도메인}Controller` | `ClientController` |
+| Service | `{도메인}Service` | `ClientService` |
+| Detail Assembler | `{도메인}DetailAssembler` | `StackDetailAssembler` |
+| Domain 모델 | 단순 명사 | `Client`, `User` |
+| Outbound Port | 역할 기반 명사 | `ClientRepository`, `TokenIssuer` |
+| Inbound Port (UseCase) | `{도메인}{동작}UseCase` | `WorkplaceQueryUseCase` |
+| Command | `{동작}{대상}Command` (Record) | `CreateClientCommand` |
 | VO (결과값) | 의미 있는 명사 (Record) | `TokenResult`, `AuthenticatedUser` |
-| Request DTO | `{동작}{대상}Request` | `CreateCompanyRequest` |
-| Response DTO | `{대상}Response` | `CompanyResponse`, `WorkplaceListResponse` |
-| JPA 엔티티 | `{도메인}Entity` | `CompanyEntity` |
-| JPA Repository | `{도메인}JpaRepository` | `CompanyJpaRepository` |
-| Repository Adapter | `{도메인}RepositoryAdapter` | `CompanyRepositoryAdapter` |
+| Request DTO | `{동작}{대상}Request` | `CreateClientRequest` |
+| Response DTO | `{대상}Response` | `ClientResponse`, `WorkplaceListResponse` |
+| JPA 엔티티 | `{도메인}Entity` | `ClientEntity` |
+| JPA Repository | `{도메인}JpaRepository` | `ClientJpaRepository` |
+| Repository Adapter | `{도메인}RepositoryAdapter` | `ClientRepositoryAdapter` |
 | 기타 Adapter | 기술+역할 | `BCryptPasswordEncryptor`, `JwtTokenIssuer` |
-| Presentation 매퍼 | `{도메인}Mapper` | `CompanyMapper` |
-| Infrastructure 매퍼 | `{도메인}EntityMapper` | `CompanyEntityMapper` |
+| Presentation 매퍼 | `{도메인}Mapper` | `ClientMapper` |
+| Infrastructure 매퍼 | `{도메인}EntityMapper` | `ClientEntityMapper` |
 
 > **Response DTO 주의**: 이름에 UI 컴포넌트(`Table`, `Grid`, `Card` 등)를 포함하지 않습니다.
 > 동일한 응답이 다양한 UI로 렌더링될 수 있으므로 용도가 아닌 도메인 개념으로 명명합니다.
 > 예) `WorkplaceTableListResponse` (X) → `WorkplaceListResponse` (O)
+>
+> **알려진 위반 (TODO)**: `WorkplaceTableListResponse`, `StackTableListResponse`, `PollutantTableListResponse`,
+> `StackPollutantTableListResponse` 4건은 아직 규칙을 어긴 이름입니다. 향후 `*ListResponse`로 리네이밍 예정입니다.
+
+> **Service 분리 방침**: 유스케이스는 도메인당 단일 `{도메인}Service`로 둡니다. Command/Query 서비스 분리(CQRS)는
+> 현재 채택하지 않으며, 규모가 커지면 재검토합니다. 트리 조립처럼 별도 책임은 `{도메인}DetailAssembler`로 분리합니다.
 
 #### 매퍼 메서드 명
 - `toCreateCommand()` — 생성 Request → Create Command
@@ -99,10 +110,10 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 #### Repository Port 메서드 명
 | 동작 | 메서드 패턴 | 반환 타입 | 예시 |
 |------|------------|---------|------|
-| 저장 | `save(T entity)` | `T` | `save(Company company)` |
+| 저장 | `save(T entity)` | `T` | `save(Client client)` |
 | PK 단건 조회 | `findById(Long id)` | `T` | `findById(Long id)` |
 | 필드 조건 단건 조회 | `findBy{Field}(value)` | `T` | `findByUsername(String username)` |
-| 부모 ID 기준 목록 조회 | `findBy{ParentId}(Long id)` | `List<VO>` | `findByCompanyId(Long companyId)` |
+| 부모 ID 기준 목록 조회 | `findBy{ParentId}(Long id)` | `List<VO>` | `findByClientId(Long clientId)` |
 | 전체 목록 조회 | `findAll()` | `List<T>` | `findAll()` |
 | 존재 확인 | `existsBy{Field}(value)` | `boolean` | `existsByUsername(String username)` |
 | 삭제 | `deleteById(Long id)` | `void` | `deleteById(Long id)` |

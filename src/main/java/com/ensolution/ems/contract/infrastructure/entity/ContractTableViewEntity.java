@@ -27,8 +27,8 @@ public class ContractTableViewEntity {
 	private String contractName;
 	@Column(name = "workplace_name")
 	private String workplaceName;
-	@Column(name = "company_name")
-	private String companyName;
+	@Column(name = "client_name")
+	private String clientName;
 	@Column(name = "contract_date")
 	private LocalDate contractDate;
 	@Column(name = "start_date")

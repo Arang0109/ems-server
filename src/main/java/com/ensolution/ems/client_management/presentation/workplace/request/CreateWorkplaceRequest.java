@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Pattern;
 
 public record CreateWorkplaceRequest(
 	@NotNull
-	Long companyId,
+	Long clientId,
 	@NotBlank(message = "사업장명은 필수 입력값입니다.")
 	String name,
 	String zipcode,

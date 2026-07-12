@@ -19,6 +19,6 @@ public class ContractDetailAssembler {
 
 	public ContractDetail assemble(Contract contract) {
 		ContractSummary summary = workplaceQueryUseCase.getSummaryById(contract.getWorkplaceId());
-		return new ContractDetail(contract, summary.companyName(), summary.workplaceName(), summary.address());
+		return new ContractDetail(contract, summary.clientName(), summary.workplaceName(), summary.address());
 	}
 }

@@ -6,7 +6,7 @@ import com.ensolution.ems.client_management.application.command.update.UpdateSta
 import com.ensolution.ems.client_management.application.command.list_item.StackListItem;
 import com.ensolution.ems.client_management.domain.Stack;
 import com.ensolution.ems.client_management.presentation.facility.mapper.FacilityMapper;
-import com.ensolution.ems.client_management.presentation.prevention.PreventionMapper;
+import com.ensolution.ems.client_management.presentation.prevention.mapper.PreventionMapper;
 import com.ensolution.ems.client_management.presentation.stack.request.CreateStackRequest;
 import com.ensolution.ems.client_management.presentation.stack.response.StackDetailResponse;
 import com.ensolution.ems.client_management.presentation.stack.response.StackResponse;

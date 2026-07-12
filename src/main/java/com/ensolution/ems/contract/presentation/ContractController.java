@@ -1,7 +1,6 @@
 package com.ensolution.ems.contract.presentation;
 
-import com.ensolution.ems.contract.application.ContractCommandService;
-import com.ensolution.ems.contract.application.ContractQueryService;
+import com.ensolution.ems.contract.application.ContractService;
 import com.ensolution.ems.contract.application.command.ContractDetail;
 import com.ensolution.ems.contract.presentation.mapper.ContractMapper;
 import com.ensolution.ems.contract.presentation.request.CreateContractRequest;
@@ -26,8 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContractController {
 
-	private final ContractCommandService contractCommandService;
-	private final ContractQueryService contractQueryService;
+	private final ContractService contractService;
 	private final ContractMapper mapper;
 
 	@Operation(summary = "계약 등록")
@@ -35,7 +33,7 @@ public class ContractController {
 	public ResponseEntity<ApiResponse<ContractResponse>> createContract(
 		@Valid @RequestBody CreateContractRequest request
 	) {
-		ContractDetail detail = contractCommandService.createContract(mapper.toCreateCommand(request));
+		ContractDetail detail = contractService.createContract(mapper.toCreateCommand(request));
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
@@ -45,14 +43,14 @@ public class ContractController {
 		@RequestParam(required = false) Long workplaceId
 	) {
 		return ResponseEntity.ok(ApiResponse.success(mapper.toListResponses(
-			contractQueryService.getContractList(workplaceId)
+			contractService.getContractList(workplaceId)
 		)));
 	}
 
 	@Operation(summary = "계약 상세 조회")
 	@GetMapping("/{contractId}")
 	public ResponseEntity<ApiResponse<ContractResponse>> getContract(@PathVariable Long contractId) {
-		ContractDetail detail = contractQueryService.getContract(contractId);
+		ContractDetail detail = contractService.getContract(contractId);
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
@@ -62,14 +60,14 @@ public class ContractController {
 		@PathVariable Long contractId,
 		@RequestBody UpdateContractRequest request
 	) {
-		ContractDetail detail = contractCommandService.updateContract(contractId, mapper.toUpdateCommand(request));
+		ContractDetail detail = contractService.updateContract(contractId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
 	@Operation(summary = "계약 삭제")
 	@DeleteMapping("/{contractId}")
 	public ResponseEntity<ApiResponse<Void>> deleteContract(@PathVariable Long contractId) {
-		contractCommandService.deleteContract(contractId);
+		contractService.deleteContract(contractId);
 		return ResponseEntity.ok(ApiResponse.success());
 	}
 }

@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.presentation.facility.controller;
 
-import com.ensolution.ems.client_management.application.service.FacilityCommandService;
-import com.ensolution.ems.client_management.application.service.FacilityQueryService;
+import com.ensolution.ems.client_management.application.service.FacilityService;
 import com.ensolution.ems.client_management.domain.Facility;
 import com.ensolution.ems.client_management.presentation.facility.request.CreateFacilityRequest;
 import com.ensolution.ems.client_management.presentation.facility.mapper.FacilityMapper;
@@ -24,8 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FacilityController {
 
-	private final FacilityCommandService facilityCommandService;
-	private final FacilityQueryService facilityQueryService;
+	private final FacilityService facilityService;
 	private final FacilityMapper mapper;
 
 	@Operation(summary = "배출 시설 등록")
@@ -33,7 +31,7 @@ public class FacilityController {
 	public ResponseEntity<ApiResponse<FacilityResponse>> createFacility(
 		@RequestBody CreateFacilityRequest request
 	) {
-		Facility facility = facilityCommandService.createFacility(mapper.toCreateCommand(request));
+		Facility facility = facilityService.createFacility(mapper.toCreateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(facility)));
 	}
 
@@ -43,7 +41,7 @@ public class FacilityController {
 		@RequestParam Long stackId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			mapper.toResponses(facilityQueryService.getFacilityList(stackId))
+			mapper.toResponses(facilityService.getFacilityList(stackId))
 		));
 	}
 
@@ -51,7 +49,7 @@ public class FacilityController {
 	@GetMapping("/{facilityId}")
 	public ResponseEntity<ApiResponse<FacilityResponse>> getFacility(@PathVariable Long facilityId) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			mapper.toResponse(facilityQueryService.getFacility(facilityId))
+			mapper.toResponse(facilityService.getFacility(facilityId))
 		));
 	}
 
@@ -61,14 +59,14 @@ public class FacilityController {
 		@PathVariable Long facilityId,
 		@RequestBody UpdateFacilityRequest request
 	) {
-		Facility facility = facilityCommandService.updateFacility(facilityId, mapper.toUpdateCommand(request));
+		Facility facility = facilityService.updateFacility(facilityId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(facility)));
 	}
 
 	@Operation(summary = "배출 시설 삭제")
 	@DeleteMapping("/{facilityId}")
 	public ResponseEntity<ApiResponse<Void>> deleteFacility(@PathVariable Long facilityId) {
-		facilityCommandService.deleteFacility(facilityId);
+		facilityService.deleteFacility(facilityId);
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 }

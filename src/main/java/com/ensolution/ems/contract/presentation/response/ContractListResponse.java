@@ -6,7 +6,7 @@ public record ContractListResponse(
 	Long id,
 	Long workplaceId,
 	String contractName,
-	String companyName,
+	String clientName,
 	String workplaceName,
 	LocalDate contractDate,
 	long taskPeriod,

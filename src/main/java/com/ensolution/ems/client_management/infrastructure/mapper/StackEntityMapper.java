@@ -27,7 +27,7 @@ public interface StackEntityMapper {
 	@Mapping(target = "workplaceId", source = "workplace.id")
 	Stack toDomain(StackEntity entity);
 
-	@Mapping(target = "companyName", source = "workplace.company.name")
+	@Mapping(target = "clientName", source = "workplace.client.name")
 	@Mapping(target = "workplaceName", source = "workplace.name")
 	StackListItem toStackListItem(StackEntity entity);
 	List<StackListItem> toStackListItems(List<StackEntity> entities);

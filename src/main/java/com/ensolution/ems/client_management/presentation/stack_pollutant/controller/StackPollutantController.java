@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.presentation.stack_pollutant.controller;
 
-import com.ensolution.ems.client_management.application.service.StackPollutantCommandService;
-import com.ensolution.ems.client_management.application.service.StackPollutantQueryService;
+import com.ensolution.ems.client_management.application.service.StackPollutantService;
 import com.ensolution.ems.client_management.domain.StackPollutant;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.mapper.StackPollutantMapper;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.request.CreateStackPollutantRequest;
@@ -25,8 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StackPollutantController {
 
-	private final StackPollutantCommandService stackPollutantCommandService;
-	private final StackPollutantQueryService stackPollutantQueryService;
+	private final StackPollutantService stackPollutantService;
 	private final StackPollutantMapper mapper;
 
 	@Operation(summary = "시설별 측정물질 등록")
@@ -34,7 +32,7 @@ public class StackPollutantController {
 	public ResponseEntity<ApiResponse<StackPollutantResponse>> registerPollutant(
 		@Valid @RequestBody CreateStackPollutantRequest request
 	) {
-		StackPollutant stackPollutant = stackPollutantCommandService.createStackPollutant(mapper.toCreateCommand(request));
+		StackPollutant stackPollutant = stackPollutantService.createStackPollutant(mapper.toCreateCommand(request));
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(stackPollutant)));
 	}
 
@@ -44,14 +42,14 @@ public class StackPollutantController {
 		@RequestParam Long stackId
 	) {
 		return ResponseEntity.ok(ApiResponse.success(
-			mapper.toListResponses(stackPollutantQueryService.getStackPollutantList(stackId))
+			mapper.toListResponses(stackPollutantService.getStackPollutantList(stackId))
 		));
 	}
 
 	@Operation(summary = "시설별 측정물질 삭제")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse<Void>> removeStackPollutant(@PathVariable Long id) {
-		stackPollutantCommandService.removeStackPollutant(id);
+		stackPollutantService.removeStackPollutant(id);
 		return ResponseEntity.ok(ApiResponse.success());
 	}
 }

@@ -4,7 +4,8 @@
 ```
 src/main/java/com/ensolution/ems/
 ├── auth/                      # 인증 및 JWT
-├── client_management/         # 업체 / 사업장 / 굴뚝 관리
+├── client_management/         # 의뢰기관 / 사업장 / 측정시설(굴뚝) 및 하위 설비·측정물질 관리
+├── contract/                  # 계약 관리
 └── global/                    # 공통: 보안 설정, Swagger, 공통 enum, ApiResponse
 ```
 
@@ -63,7 +64,7 @@ src/main/java/com/ensolution/ems/
 
 | 위치 | 구현체 | 호출자 |
 |------|--------|--------|
-| `application/port/` | Application Service | 외부 모듈의 Service, Controller |
+| `application/port/in/` | Application Service | 외부 모듈의 Service, Controller |
 
 ```
 WorkplaceQueryUseCase  — 사업장 존재 확인 (외부 모듈 전용)
@@ -77,12 +78,16 @@ WorkplaceQueryUseCase  — 사업장 존재 확인 (외부 모듈 전용)
 이 모듈이 외부 기술(DB, Redis 등)에 "무엇을 해달라"고 요청하는 인터페이스입니다.
 구현체는 항상 Infrastructure Adapter입니다.
 
-**위치는 의존하는 계층 기준으로 결정됩니다:**
+**Repository를 포함한 Outbound Port는 `application/port/out/`에 두는 것을 표준으로 합니다.**
+도메인 계층은 순수하게 유지하고, 인프라에 요구하는 계약은 Application 계층이 소유합니다.
 
-| 위치 | 의존 계층 | 예시 |
-|------|----------|------|
-| `domain/port/` | Domain → Infrastructure | `UserRepository`, `CompanyRepository`, `PasswordEncryptor`, `TokenIssuer`, `Authenticator` |
-| `application/port/` | Application → Infrastructure | `RefreshTokenStore` |
+| 위치 | 용도 | 예시 |
+|------|------|------|
+| `application/port/out/` | Repository 등 인프라에 요구하는 Outbound 계약 (표준) | `ClientRepository`, `WorkplaceRepository`, `StackRepository` (client_management) |
+| `domain/port/` | 기술 어댑터형 Outbound 계약 (레거시 위치, 정렬 예정) | `UserRepository`, `PasswordEncryptor`, `TokenIssuer`, `Authenticator` (auth), `ContractRepository` (contract) |
+
+> **표준화 진행 상황**: `client_management`는 모든 Repository 포트를 `application/port/out/`으로 이관 완료.
+> `auth`·`contract`는 아직 `domain/port/`를 사용하며 향후 `application/port/out/`으로 정렬 예정입니다.
 
 ---
 
@@ -91,23 +96,29 @@ WorkplaceQueryUseCase  — 사업장 존재 확인 (외부 모듈 전용)
 ```
 {feature}/
 ├── presentation/
-│   ├── {Feature}Controller.java
-│   ├── request/             # 요청 DTO
-│   ├── response/            # 응답 DTO
-│   └── mapper/              # Request/Response ↔ Command (MapStruct)
+│   └── {aggregate}/         # 애그리거트가 여러 개인 모듈은 애그리거트별로 그룹핑
+│       ├── controller/      # {Aggregate}Controller
+│       ├── request/         # 요청 DTO
+│       ├── response/        # 응답 DTO
+│       └── mapper/          # Request/Response ↔ Command (MapStruct)
 ├── application/
-│   ├── {Feature}Service.java
-│   ├── command/             # Command 객체, Result VO (Java Record)
-│   └── port/                # Application Port 인터페이스
+│   ├── service/             # {Aggregate}Service (유스케이스), {Aggregate}DetailAssembler (트리 조립)
+│   ├── command/             # Command 객체, 결과 VO (Java Record)
+│   └── port/
+│       ├── in/              # Inbound Port (UseCase) — 외부 모듈에 공개하는 계약
+│       └── out/             # Outbound Port (Repository 등) — 인프라에 요구하는 계약
 ├── domain/
-│   ├── {Entity}.java        # 도메인 모델
-│   └── port/                # Domain Port 인터페이스
+│   └── {Entity}.java        # 도메인 모델 (순수 자바, 프레임워크 비의존)
 └── infrastructure/
-    ├── Jpa{Entity}Entity.java
-    ├── Jpa{Entity}Repository.java
-    ├── adapter/             # Port 구현체
-    └── mapper/              # JPA 엔티티 ↔ 도메인 모델 (MapStruct)
+    ├── entity/              # {Entity}Entity — JPA 엔티티
+    ├── repository/          # {Entity}JpaRepository — Spring Data JPA
+    ├── adapter/             # {Entity}RepositoryAdapter — Port 구현체
+    └── mapper/              # {Entity}EntityMapper — JPA 엔티티 ↔ 도메인 모델 (MapStruct)
 ```
+
+> **presentation 구조**: 애그리거트가 여러 개인 모듈(`client_management`)은 위와 같이 애그리거트별 서브패키지 아래
+> `controller/request/response/mapper`로 중첩합니다. 단일 애그리거트 모듈(`auth`, `contract`)은
+> `presentation/` 바로 아래에 `{Feature}Controller`와 `request/response/mapper`를 두는 플랫 구조를 허용합니다.
 
 ---
 
@@ -119,13 +130,13 @@ WorkplaceQueryUseCase  — 사업장 존재 확인 (외부 모듈 전용)
 HTTP Request
     ↓
 Controller          — Request DTO 수신
-    ↓ (PresentationMapper)
+    ↓ ({Domain}Mapper)
 Command             — 불변 입력 객체 (Java Record)
     ↓
 Application Service — 유스케이스 조율, 트랜잭션 관리
-    ↓ (Domain Port)
+    ↓ (Outbound Port)
 Domain Model        — 비즈니스 규칙 실행 (정적 팩토리 메서드)
-    ↓ (DomainEntityMapper)
+    ↓ ({Domain}EntityMapper)
 JPA Entity / 외부 기술
 ```
 
@@ -136,10 +147,10 @@ HTTP Request
     ↓
 Controller
     ↓
-Application Service — Domain Port로 조회
-    ↓ (DomainEntityMapper)
+Application Service — Outbound Port로 조회
+    ↓ ({Domain}EntityMapper)
 Domain Model
-    ↓ (PresentationMapper)
+    ↓ ({Domain}Mapper)
 Response DTO
     ↓
 ApiResponse<T>      — HTTP Response
@@ -149,10 +160,10 @@ ApiResponse<T>      — HTTP Response
 
 ## 객체 변환 경계
 
-| 변환 위치 | 변환 방향 | 담당 매퍼 |
-|---|---|---|
-| Presentation ↔ Application | Request ↔ Command, Domain ↔ Response | `{Domain}PresentationMapper` |
-| Domain ↔ Infrastructure | Domain Model ↔ JPA Entity | `{Domain}DomainEntityMapper` |
+| 변환 위치 | 변환 방향 | 담당 매퍼 | 위치 |
+|---|---|---|---|
+| Presentation ↔ Application | Request ↔ Command, Domain ↔ Response | `{Domain}Mapper` | `presentation/**/mapper/` |
+| Domain ↔ Infrastructure | Domain Model ↔ JPA Entity | `{Domain}EntityMapper` | `infrastructure/mapper/` |
 
 컨트롤러, 서비스에서 직접 변환하지 않습니다.
 
@@ -175,13 +186,13 @@ Domain은 어떤 계층도 참조하지 않습니다.
 
 ### 핵심 규칙
 
-다른 모듈의 기능이 필요할 때, 반드시 해당 모듈의 **Inbound Port (application/port/)** 를 통해 접근합니다.
-Domain Port (domain/port/) 를 외부 모듈에서 직접 참조하는 것은 금지입니다.
+다른 모듈의 기능이 필요할 때, 반드시 해당 모듈의 **Inbound Port (application/port/in/)** 를 통해 접근합니다.
+Outbound Port (application/port/out/, 레거시는 domain/port/) 를 외부 모듈에서 직접 참조하는 것은 금지입니다.
 
 **이유:**
-- `domain/port/Repository`는 해당 모듈이 인프라에 요구하는 **Outbound 계약**입니다.
+- `application/port/out/Repository`는 해당 모듈이 인프라에 요구하는 **Outbound 계약**입니다.
   외부에 공개하는 인터페이스가 아니며, 참조 시 모듈 내부 구현 세부사항이 노출됩니다.
-- `application/port/UseCase`는 해당 모듈이 외부에 공개한 **Inbound 계약**입니다.
+- `application/port/in/UseCase`는 해당 모듈이 외부에 공개한 **Inbound 계약**입니다.
   내부 구현이 바뀌어도 이 계약이 유지되는 한 호출자는 영향을 받지 않습니다.
 
 ### 올바른 방향 (O)
@@ -190,13 +201,13 @@ Domain Port (domain/port/) 를 외부 모듈에서 직접 참조하는 것은 �
 [contract 모듈]
   ContractService
       │
-      ▼ (application/port/ — Inbound Port)
+      ▼ (application/port/in/ — Inbound Port)
   WorkplaceQueryUseCase         ← client_management 모듈이 외부에 공개한 계약
       │
       ▼ (구현체)
-  WorkplaceQueryService
+  WorkplaceService
       │
-      ▼ (domain/port/ — Outbound Port, 모듈 내부)
+      ▼ (application/port/out/ — Outbound Port, 모듈 내부)
   WorkplaceRepository
 ```
 
@@ -206,7 +217,7 @@ Domain Port (domain/port/) 를 외부 모듈에서 직접 참조하는 것은 �
 [contract 모듈]
   ContractService
       │
-      ▼ (domain/port/ — Outbound Port를 외부에서 직접 참조)
+      ▼ (application/port/out/ — Outbound Port를 외부에서 직접 참조)
   WorkplaceRepository           ← 캡슐화 위반: 모듈 내부 계약 노출
 ```
 
@@ -214,4 +225,4 @@ Domain Port (domain/port/) 를 외부 모듈에서 직접 참조하는 것은 �
 
 - **좁은 인터페이스**: 호출자가 필요한 기능만 메서드로 정의합니다. Repository 전체를 노출하지 않습니다.
 - **의미 있는 이름**: `WorkplaceQueryUseCase`, `WorkplaceCommandUseCase`처럼 역할을 명시합니다.
-- **구현체는 Application Service**: `WorkplaceQueryService implements WorkplaceQueryUseCase`
+- **구현체는 Application Service**: `WorkplaceService implements WorkplaceQueryUseCase`

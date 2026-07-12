@@ -3,7 +3,7 @@ package com.ensolution.ems.client_management.application.command.create;
 import com.ensolution.ems.global.common.enums.Grade;
 
 public record CreateWorkplaceCommand(
-	Long companyId,
+	Long clientId,
 	String name,
 	String zipcode,
 	String roadAddress,

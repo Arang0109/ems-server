@@ -1,8 +1,7 @@
 package com.ensolution.ems.client_management.presentation.stack.controller;
 
 import com.ensolution.ems.client_management.application.command.detail.StackDetail;
-import com.ensolution.ems.client_management.application.service.StackCommandService;
-import com.ensolution.ems.client_management.application.service.StackQueryService;
+import com.ensolution.ems.client_management.application.service.StackService;
 import com.ensolution.ems.client_management.domain.Stack;
 import com.ensolution.ems.client_management.presentation.stack.mapper.StackMapper;
 import com.ensolution.ems.client_management.presentation.stack.request.CreateStackRequest;
@@ -28,8 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StackController {
 
-	private final StackCommandService stackCommandService;
-	private final StackQueryService stackQueryService;
+	private final StackService stackService;
 	private final StackMapper mapper;
 
 	@Operation(summary = "측정시설 등록")
@@ -37,7 +35,7 @@ public class StackController {
 	public ResponseEntity<ApiResponse<StackResponse>> createStack(
 		@Valid @RequestBody CreateStackRequest request
 	) {
-		Stack stack = stackCommandService.createStack(mapper.toCreateCommand(request));
+		Stack stack = stackService.createStack(mapper.toCreateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(stack)));
 	}
 
@@ -47,14 +45,14 @@ public class StackController {
 		@RequestParam(required = false) Long workplaceId
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toTableListResponses(
-				stackQueryService.getStackList(workplaceId)
+				stackService.getStackList(workplaceId)
 		)));
 	}
 
 	@Operation(summary = "측정시설 상세 조회")
 	@GetMapping("/{stackId}")
 	public ResponseEntity<ApiResponse<StackDetailResponse>> getStackDetail(@PathVariable Long stackId) {
-		StackDetail detail = stackQueryService.getStackDetail(stackId);
+		StackDetail detail = stackService.getStackDetail(stackId);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toDetailResponse(detail)));
 	}
 
@@ -64,14 +62,14 @@ public class StackController {
 		@PathVariable Long stackId,
 		@RequestBody UpdateStackRequest request
 	) {
-		Stack stack = stackCommandService.updateStack(stackId, mapper.toUpdateCommand(request));
+		Stack stack = stackService.updateStack(stackId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(stack)));
 	}
 
 	@Operation(summary = "측정시설 삭제")
 	@DeleteMapping("/{stackId}")
 	public ResponseEntity<ApiResponse<Void>> deleteStack(@PathVariable Long stackId) {
-		stackCommandService.deleteStack(stackId);
+		stackService.deleteStack(stackId);
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 }

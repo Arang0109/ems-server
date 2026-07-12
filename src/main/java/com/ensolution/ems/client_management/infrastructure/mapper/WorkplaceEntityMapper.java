@@ -17,15 +17,15 @@ import java.util.List;
 )
 public interface WorkplaceEntityMapper {
 
-    @Mapping(target = "company", ignore = true)
+    @Mapping(target = "client", ignore = true)
     @Mapping(target = "stacks", ignore = true)
     WorkplaceEntity toEntity(Workplace workplace);
 
-    @Mapping(target = "companyId", source = "company.id")
+    @Mapping(target = "clientId", source = "client.id")
     Workplace toDomain(WorkplaceEntity entity);
 
-		@Mapping(target = "companyId", source = "company.id")
-		@Mapping(target = "companyName", source = "company.name")
+		@Mapping(target = "clientId", source = "client.id")
+		@Mapping(target = "clientName", source = "client.name")
 		WorkplaceListItem toWorkplaceListItem(WorkplaceEntity entity);
 
     List<WorkplaceListItem> toWorkplaceListItems(List<WorkplaceEntity> entities);

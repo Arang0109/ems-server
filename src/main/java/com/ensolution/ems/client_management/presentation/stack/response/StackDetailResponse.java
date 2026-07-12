@@ -1,7 +1,7 @@
 package com.ensolution.ems.client_management.presentation.stack.response;
 
 import com.ensolution.ems.client_management.presentation.facility.response.FacilityResponse;
-import com.ensolution.ems.client_management.presentation.prevention.PreventionDetailResponse;
+import com.ensolution.ems.client_management.presentation.prevention.response.PreventionDetailResponse;
 import com.ensolution.ems.global.common.enums.Grade;
 import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.common.enums.Orientation;

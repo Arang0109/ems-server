@@ -20,7 +20,7 @@ public record ContractResponse(
 	int advancePaymentDueDate,
 	int delayPenaltyRate,
 	String remark,
-	String companyName,
+	String clientName,
 	String workplaceName,
 	String workplaceAddress
 ) {}

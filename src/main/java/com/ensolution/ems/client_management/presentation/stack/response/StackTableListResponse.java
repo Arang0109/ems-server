@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 public record StackTableListResponse(
 	Long id,
-	String companyName,
+	String clientName,
 	String workplaceName,
 	MeasurementField field,
 	String stackName,

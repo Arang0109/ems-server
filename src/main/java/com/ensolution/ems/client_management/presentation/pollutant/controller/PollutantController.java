@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.presentation.pollutant.controller;
 
-import com.ensolution.ems.client_management.application.service.PollutantCommandService;
-import com.ensolution.ems.client_management.application.service.PollutantQueryService;
+import com.ensolution.ems.client_management.application.service.PollutantService;
 import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.presentation.pollutant.request.CreatePollutantRequest;
 import com.ensolution.ems.client_management.presentation.pollutant.mapper.PollutantMapper;
@@ -26,8 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PollutantController {
 
-	private final PollutantCommandService pollutantCommandService;
-	private final PollutantQueryService pollutantQueryService;
+	private final PollutantService pollutantService;
 	private final PollutantMapper mapper;
 
 	@Operation(summary = "측정물질 등록")
@@ -35,7 +33,7 @@ public class PollutantController {
 	public ResponseEntity<ApiResponse<PollutantResponse>> createPollutant(
 		@Valid @RequestBody CreatePollutantRequest request
 	) {
-		Pollutant pollutant = pollutantCommandService.createPollutant(mapper.toCreateCommand(request));
+		Pollutant pollutant = pollutantService.createPollutant(mapper.toCreateCommand(request));
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(pollutant)));
 	}
 
@@ -44,13 +42,13 @@ public class PollutantController {
 	public ResponseEntity<ApiResponse<List<PollutantResponse>>> getPollutantList(
 		@RequestParam(required = false)MeasurementField field
 		) {
-		return ResponseEntity.ok(ApiResponse.success(mapper.toResponses(pollutantQueryService.getPollutantList(field))));
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponses(pollutantService.getPollutantList(field))));
 	}
 
 	@Operation(summary = "측정물질 상세 조회")
 	@GetMapping("/{pollutantId}")
 	public ResponseEntity<ApiResponse<PollutantResponse>> getPollutant(@PathVariable Long pollutantId) {
-		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(pollutantQueryService.getPollutant(pollutantId))));
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(pollutantService.getPollutant(pollutantId))));
 	}
 
 	@Operation(summary = "측정물질 수정", description = "전달하지 않은 필드는 기존 값을 유지합니다.")
@@ -59,14 +57,14 @@ public class PollutantController {
 		@PathVariable Long pollutantId,
 		@RequestBody UpdatePollutantRequest request
 	) {
-		Pollutant pollutant = pollutantCommandService.updatePollutant(pollutantId, mapper.toUpdateCommand(request));
+		Pollutant pollutant = pollutantService.updatePollutant(pollutantId, mapper.toUpdateCommand(request));
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(pollutant)));
 	}
 
 	@Operation(summary = "측정물질 삭제")
 	@DeleteMapping("/{pollutantId}")
 	public ResponseEntity<ApiResponse<Void>> deletePollutant(@PathVariable Long pollutantId) {
-		pollutantCommandService.deletePollutant(pollutantId);
+		pollutantService.deletePollutant(pollutantId);
 		return ResponseEntity.ok(ApiResponse.success());
 	}
 }

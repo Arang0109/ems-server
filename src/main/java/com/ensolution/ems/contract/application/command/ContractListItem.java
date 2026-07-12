@@ -6,7 +6,7 @@ public record ContractListItem(
 	Long id,
 	Long workplaceId,
 	String contractName,
-	String companyName,
+	String clientName,
 	String workplaceName,
 	LocalDate contractDate,
 	LocalDate startDate,
