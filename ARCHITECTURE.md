@@ -226,3 +226,19 @@ Outbound Port (application/port/out/, 레거시는 domain/port/) 를 외부 모�
 - **좁은 인터페이스**: 호출자가 필요한 기능만 메서드로 정의합니다. Repository 전체를 노출하지 않습니다.
 - **의미 있는 이름**: `WorkplaceQueryUseCase`, `WorkplaceCommandUseCase`처럼 역할을 명시합니다.
 - **구현체는 Application Service**: `WorkplaceService implements WorkplaceQueryUseCase`
+
+### 엔티티/모델 참조 규칙 (ID 참조)
+
+모듈 경계를 넘는 참조는 **객체 그래프가 아니라 식별자(ID)** 로 합니다.
+
+- JPA 연관관계(`@ManyToOne`, `@OneToMany`, `@OneToOne`)와 도메인 객체 참조는 **모듈 내부에서만** 사용합니다.
+- 다른 모듈의 엔티티/도메인 모델은 직접 참조(`@ManyToOne TenantEntity`)하지 않고, **`Long tenantId`처럼 ID 값**으로만 보유합니다.
+  - `UserEntity` → `private Long tenantId;` (`auth`, tenant 엔티티 직접 참조 금지)
+  - `ContractEntity` → `private Long workplaceId;` (`contract`, tenant 엔티티 직접 참조 금지)
+- 다른 모듈의 **데이터(이름·상태 등)** 가 필요하면 그 모듈의 Inbound Port로 조회합니다.
+  (예: `ContractDetailAssembler`가 `WorkplaceQueryUseCase.getSummaryById()`로 사업장 요약을 가져옴)
+- **역방향 참조 금지**: 참조 방향은 종속 모듈 → 중심 모듈(`auth`/`contract` → `tenant`) 단방향입니다.
+  `tenant`는 `auth`·`contract`를 알지 못합니다.
+
+**이유:** 모듈 경계를 넘는 객체 그래프 결합은 인프라(JPA·물리 FK) 레벨까지 두 모듈을 묶어
+독립 배포·변경을 막습니다. 물리 FK가 필요하면 도메인 결합과 분리해 스키마/마이그레이션 레벨에서 관리합니다.

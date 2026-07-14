@@ -16,7 +16,8 @@ import java.util.List;
 	builder = @Builder
 )
 public interface ContractMapper {
-	CreateContractCommand toCreateCommand(CreateContractRequest request);
+	@Mapping(target = "tenantId", source = "tenantId")
+	CreateContractCommand toCreateCommand(CreateContractRequest request, Long tenantId);
 	UpdateContractCommand toUpdateCommand(UpdateContractRequest request);
 
 	@Mapping(source = "contract.id", target = "id")

@@ -10,6 +10,8 @@ public enum ErrorCode {
 
   // 도메인 특화: {DOMAIN}_{CONDITION} 패턴
   SCHEDULE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 해당 사업장·팀·측정일에 등록된 일정이 존재합니다."),
+  ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 권한입니다."),
+  USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
 
   // 범용 HTTP 상태
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),

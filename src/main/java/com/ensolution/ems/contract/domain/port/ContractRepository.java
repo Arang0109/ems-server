@@ -9,7 +9,7 @@ public interface ContractRepository {
 	Contract save(Contract contract);
 	Contract findById(Long id);
 	List<ContractListItem> findByWorkplaceId(Long workplaceId);
-	List<ContractListItem> findAll();
+	List<ContractListItem> findAllByTenantId(Long tenantId);
 	void deleteById(Long id);
 	void deleteByWorkplaceId(Long workplaceId);
 }

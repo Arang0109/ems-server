@@ -17,16 +17,20 @@ public class SpringSecurityAuthenticator implements Authenticator {
 	
 	@Override
 	public AuthenticatedUser authenticate(String username, String password) {
+		System.out.println("DEBUG : " + username + "접속");
 		Authentication authentication = authenticationManager.authenticate(
 				new UsernamePasswordAuthenticationToken(username, password)
 		);
 		
 		CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
-		
+		System.out.println("DEBUG2 : " + principal.getUsername() + "접속");
 		return new AuthenticatedUser(
 				principal.getUserId(),
+				principal.getTenantId(),
+				principal.getTenant(),
 				principal.getUsername(),
-				principal.getName()
+				principal.getName(),
+				principal.getRole()
 		);
 	}
 }

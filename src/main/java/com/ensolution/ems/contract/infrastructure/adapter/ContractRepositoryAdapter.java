@@ -43,8 +43,8 @@ public class ContractRepositoryAdapter implements ContractRepository {
 	}
 
 	@Override
-	public List<ContractListItem> findAll() {
-		return contractListItemMapper.toListItems(jpaContractTableViewRepository.findAll());
+	public List<ContractListItem> findAllByTenantId(Long tenantId) {
+		return contractListItemMapper.toListItems(jpaContractTableViewRepository.findByTenantId(tenantId));
 	}
 
 	@Override

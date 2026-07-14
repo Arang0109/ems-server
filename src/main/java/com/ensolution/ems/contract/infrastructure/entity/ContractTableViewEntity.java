@@ -8,10 +8,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Immutable;
 
 import java.time.LocalDate;
 
 @Builder(toBuilder = true)
+@Immutable
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -19,10 +21,13 @@ import java.time.LocalDate;
 @Table(name = "contract_table")
 public class ContractTableViewEntity {
 	@Id
-	private Long id;
+	@Column(name = "contract_id")
+	private Long contractId;
 
 	@Column(name = "workplace_id")
 	private Long workplaceId;
+	@Column(name = "tenant_id")
+	private Long tenantId;
 	@Column(name = "contract_name")
 	private String contractName;
 	@Column(name = "workplace_name")

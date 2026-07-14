@@ -17,19 +17,25 @@ public class JwtTokenIssuer implements TokenIssuer {
 	
 	@Override
 	public TokenResult issue(AuthenticatedUser user) {
-		
+
 		String username = user.username();
 		String name = user.name();
-		
-		String accessToken = jwtTokenProvider.createAccessToken(username);
+		Long tenantId = user.tenantId();
+		String tenant = user.tenant();
+		String role = user.role();
+
+		String accessToken = jwtTokenProvider.createAccessToken(username, tenant, role);
 		String refreshToken = jwtTokenProvider.createRefreshToken(username);
-		
+
 		return new TokenResult(
-				accessToken,
-				refreshToken,
-				username,
-				name,
-				jwtProperties.refreshTokenValidity()
+			accessToken,
+			refreshToken,
+			tenantId,
+			tenant,
+			username,
+			name,
+			role,
+			jwtProperties.refreshTokenValidity()
 		);
 	}
 }

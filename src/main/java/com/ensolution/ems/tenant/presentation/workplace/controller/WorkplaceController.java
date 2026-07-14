@@ -1,0 +1,84 @@
+package com.ensolution.ems.tenant.presentation.workplace.controller;
+
+import com.ensolution.ems.tenant.application.service.WorkplaceService;
+import com.ensolution.ems.tenant.domain.Workplace;
+import com.ensolution.ems.tenant.presentation.workplace.mapper.WorkplaceMapper;
+import com.ensolution.ems.tenant.presentation.workplace.request.CreateWorkplaceRequest;
+import com.ensolution.ems.tenant.presentation.workplace.request.UpdateWorkplaceRequest;
+import com.ensolution.ems.tenant.presentation.workplace.response.WorkplaceResponse;
+import com.ensolution.ems.tenant.presentation.workplace.response.WorkplaceListResponse;
+import com.ensolution.ems.global.security.user.CustomUserDetails;
+import com.ensolution.ems.global.web.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Tag(name = "Workplace", description = "측정대상 사업장 API")
+@SecurityRequirement(name = "bearerAuth")
+@RestController
+@RequestMapping("/api/workplaces")
+@RequiredArgsConstructor
+public class WorkplaceController {
+	
+	private final WorkplaceService workplaceService;
+	private final WorkplaceMapper mapper;
+	
+	@Operation(summary = "사업장 등록")
+	@PostMapping()
+	public ResponseEntity<ApiResponse<WorkplaceResponse>> createWorkplace(
+		@Valid @RequestBody CreateWorkplaceRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		Workplace workplace = workplaceService.createWorkplace(mapper.toCreateCommand(request, principal.getTenantId()));
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
+	}
+	
+	@Operation(summary = "사업장 목록 조회", description = "clientId 쿼리 파라미터로 의뢰기관을 지정합니다.")
+	@GetMapping()
+	public ResponseEntity<ApiResponse<List<WorkplaceListResponse>>> getWorkplaceList(
+		@RequestParam(required = false) Long clientId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toListResponses(
+			workplaceService.getWorkplaceList(clientId, principal.getTenantId())
+		)));
+	}
+
+	@Operation(summary = "사업장 상세 조회")
+	@GetMapping("/{workplaceId}")
+	public ResponseEntity<ApiResponse<WorkplaceResponse>> getWorkplaceDetail(
+		@PathVariable Long workplaceId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		Workplace workplace = workplaceService.getWorkplace(workplaceId, principal.getTenantId());
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
+	}
+
+	@Operation(summary = "사업장 수정", description = "전달하지 않은 필드는 기존 값을 유지합니다.")
+	@PutMapping("/{workplaceId}")
+	public ResponseEntity<ApiResponse<WorkplaceResponse>> updateWorkplace(
+		@PathVariable Long workplaceId,
+		@RequestBody UpdateWorkplaceRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		Workplace workplace = workplaceService.updateWorkplace(workplaceId, principal.getTenantId(), mapper.toUpdateCommand(request));
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(workplace)));
+	}
+
+	@Operation(summary = "사업장 삭제")
+	@DeleteMapping("/{workplaceId}")
+	public ResponseEntity<ApiResponse<Void>> deleteWorkplace(
+		@PathVariable Long workplaceId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		workplaceService.deleteWorkplace(workplaceId, principal.getTenantId());
+		return ResponseEntity.ok().body(ApiResponse.success());
+	}
+}

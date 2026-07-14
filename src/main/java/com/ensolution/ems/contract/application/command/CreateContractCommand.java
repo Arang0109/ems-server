@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record CreateContractCommand(
+	Long tenantId,
 	Long workplaceId,
 	String contractName,
 	LocalDate contractDate,

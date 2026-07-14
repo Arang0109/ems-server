@@ -14,6 +14,7 @@ import java.time.LocalDate;
 @Getter
 public class Contract {
 	private Long id;
+	private Long tenantId;
 	private Long workplaceId;
 	private String contractName;
 	private LocalDate contractDate;
@@ -29,6 +30,7 @@ public class Contract {
 	private String remark;
 
 	public static Contract register(
+		Long tenantId,
 		Long workplaceId,
 		String contractName,
 		LocalDate contractDate,
@@ -44,6 +46,7 @@ public class Contract {
 		String remark
 	) {
 		return Contract.builder()
+			.tenantId(tenantId)
 			.workplaceId(workplaceId)
 			.contractName(contractName)
 			.contractDate(contractDate)

@@ -6,6 +6,7 @@
 - 모든 응답은 **한국어**로 작성합니다.
 - 아키텍처 상세내용은 `ARCHITECTURE.md`를 참고합니다.
 - 앱 실행 후 API 문서는 `/swagger-ui.html`에서 확인할 수 있습니다.
+- **프론트엔드 저장소**: 이 백엔드와 연동되는 프론트엔드 코드 root는 `C:\dev\projects\new\ems-web` (Vite + React + TypeScript, 별도 저장소)입니다. API 연동 규격·요청/응답 형태 확인이 필요할 때 참조합니다.
 
 ## 기술 스택
 - **Java** 21
@@ -47,6 +48,8 @@
 - 객체 변환은 `MapStruct`를 사용합니다.
 - MapStruct 매퍼는 `presentation/**/mapper/`(요청/응답 ↔ 커맨드)와 `infrastructure/mapper/`(JPA 엔티티 ↔ 도메인)에 위치합니다. 컨트롤러나 서비스에서 직접 매핑하지 않습니다.
   - 애그리거트가 여러 개인 모듈은 `presentation/{aggregate}/mapper/`로 애그리거트별 그룹핑합니다.
+  - **인터모듈 매퍼**: 타 모듈의 inbound port DTO(`application/port/in`의 VO·Command) ↔ 자기 도메인/커맨드 변환은 `application/mapper/`에 둡니다. 소비 모듈이 공급 모듈의 port/in 계약과만 결합하도록 하는 경계 변환이며, 위 두 범주(요청·응답, JPA 엔티티)에 속하지 않습니다.
+    - 예) `admin/application/mapper/MemberPortMapper` — auth의 `UserSummary`→admin `Member`, admin `CreateMemberCommand`→auth `UserCreateCommand`.
 
 ### 4. Repository 규칙
 Application Service는 Spring Data Repository를 직접 사용하지 않습니다.
@@ -75,8 +78,8 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | Domain 모델 | 단순 명사 | `Client`, `User` |
 | Outbound Port | 역할 기반 명사 | `ClientRepository`, `TokenIssuer` |
 | Inbound Port (UseCase) | `{도메인}{동작}UseCase` | `WorkplaceQueryUseCase` |
-| Command | `{동작}{대상}Command` (Record) | `CreateClientCommand` |
-| VO (결과값) | 의미 있는 명사 (Record) | `TokenResult`, `AuthenticatedUser` |
+| Command | `{동작}{대상}Command` (Record) | `CreateClientCommand`, `CreateUserCommand` |
+| VO (결과값) | `{대상}{종류}` (Record, 아래 접미사 표 참고) | `SignInResult`, `WorkplaceListItem`, `StackDetail`, `UserSummary` |
 | Request DTO | `{동작}{대상}Request` | `CreateClientRequest` |
 | Response DTO | `{대상}Response` | `ClientResponse`, `WorkplaceListResponse` |
 | JPA 엔티티 | `{도메인}Entity` | `ClientEntity` |
@@ -89,12 +92,33 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 > **Response DTO 주의**: 이름에 UI 컴포넌트(`Table`, `Grid`, `Card` 등)를 포함하지 않습니다.
 > 동일한 응답이 다양한 UI로 렌더링될 수 있으므로 용도가 아닌 도메인 개념으로 명명합니다.
 > 예) `WorkplaceTableListResponse` (X) → `WorkplaceListResponse` (O)
->
-> **알려진 위반 (TODO)**: `WorkplaceTableListResponse`, `StackTableListResponse`, `PollutantTableListResponse`,
-> `StackPollutantTableListResponse` 4건은 아직 규칙을 어긴 이름입니다. 향후 `*ListResponse`로 리네이밍 예정입니다.
 
 > **Service 분리 방침**: 유스케이스는 도메인당 단일 `{도메인}Service`로 둡니다. Command/Query 서비스 분리(CQRS)는
 > 현재 채택하지 않으며, 규모가 커지면 재검토합니다. 트리 조립처럼 별도 책임은 `{도메인}DetailAssembler`로 분리합니다.
+
+#### DTO·VO 접미사 체계 (Request / Response / Command / VO)
+**핵심 원칙: 접미사가 그 타입의 계층과 입·출력 방향을 결정한다.** 파일이 많아져도 접미사만 보면 위치를 판단할 수 있어야 합니다.
+
+| 접미사 | 계층·방향 | 프리픽스 규칙 | 위치 | 예시 |
+|--------|-----------|--------------|------|------|
+| `~Request` | presentation **입력** | `{동작}{대상}Request` | `presentation/**/request/` | `CreateMemberRequest`, `SignInRequest` |
+| `~Response` | presentation **출력** | `{대상}Response`, `{대상}List·Detail`+`Response` | `presentation/**/response/` | `MemberResponse`, `ContractListResponse`, `StackDetailResponse` |
+| `~Command` | application **입력**(쓰기 유스케이스 파라미터) | `{동작}{대상}Command` | `application/command/` | `CreateMemberCommand`, `UpdateStackCommand` |
+| `~Result` | application **출력**(쓰기 유스케이스 반환 VO) | `{동작}{대상}Result` | `application/command/` | `SignInResult` |
+| `~ListItem` | application **출력**(목록 조회 아이템 VO) | `{대상}ListItem` | `application/command/` | `WorkplaceListItem`, `StackListItem` |
+| `~Detail` | application **출력**(상세·조립 조회 VO) | `{대상}Detail` | `application/command/` | `StackDetail`, `ContractDetail` |
+| `~Summary` | application **출력**, **타 모듈 공개용** | `{대상}Summary` | `application/port/in/` | `UserSummary`, `ContractSummary` |
+
+**프리픽스 2대 원칙**
+- **입력 계열(Request/Command/Result)**: 동작을 앞에 — `Create`/`Update`/`SignIn` + 대상. (예: `CreateMemberCommand`)
+- **조회 결과 VO(ListItem/Detail/Summary)**: 대상을 앞에 — 대상 + 종류접미사. (예: `WorkplaceListItem`)
+- 타 모듈 공개 `port/in`의 **Command도 입력 계열이므로 동작을 앞에** 둡니다. (예: `CreateUserCommand` — `UserCreateCommand` (X))
+
+> **`~Result` vs `~Response` 구분 유지**: `~Result`는 application VO, `~Response`는 presentation DTO입니다.
+> 계층 경계를 나타내므로 (`SignInResult` → `SignInResponse`) 하나로 합치지 않습니다.
+
+> **Command 하위 패키지**: 커맨드/VO 파일이 적으면 `application/command/` flat로 둡니다.
+> 애그리거트가 많아 파일이 늘면 `command/create·update·detail·list_item/`처럼 종류별로 하위 그룹핑합니다 (tenant 모듈 참고).
 
 #### 매퍼 메서드 명
 - `toCreateCommand()` — 생성 Request → Create Command

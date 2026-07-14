@@ -12,11 +12,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Entity
 @Getter
-@Table(name = "contract")
+@Table(name = "contracts")
 public class ContractEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@Column(name = "contract_id")
+	private Long contractId;
+	
+	@Column(name = "tenant_id", nullable = false)
+	private Long tenantId;
 
 	@Column(name = "workplace_id", nullable = false)
 	private Long workplaceId;

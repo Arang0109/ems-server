@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -45,10 +47,13 @@ public class JwtTokenProvider {
         buildToken(username, RT_VALID));
   }
   
-  public String createAccessToken(String username) {
-    return buildToken(username, AT_VALID);
+  public String createAccessToken(String username, String tenant, String role) {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("tenant", tenant);
+    claims.put("role", role);
+    return buildToken(username, AT_VALID, claims);
   }
-	
+
 	public String createRefreshToken(String username) {
 		return buildToken(username, RT_VALID);
 	}
@@ -70,10 +75,15 @@ public class JwtTokenProvider {
   }
   
   private String buildToken(String username, long validity) {
+    return buildToken(username, validity, Map.of());
+  }
+
+  private String buildToken(String username, long validity, Map<String, Object> claims) {
     Date now = new Date();
     Date expiry = new Date(now.getTime() + validity);
-    
+
     return Jwts.builder()
+        .claims(claims)                 // 커스텀 클레임 (tenantId, role 등)
         .subject(username)              // 사용자 식별자 (보통 username)
         .issuedAt(now)                  // 발급 시각
         .expiration(expiry)             // 만료 시각

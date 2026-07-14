@@ -1,0 +1,15 @@
+package com.ensolution.ems.tenant.application.command.create;
+
+import com.ensolution.ems.global.common.enums.Grade;
+
+public record CreateWorkplaceCommand(
+	Long tenantId,
+	Long clientId,
+	String name,
+	String roadAddress,
+	String detailAddress,
+	String zipcode,
+	String bizNumber,
+	Grade grade
+) {
+}
