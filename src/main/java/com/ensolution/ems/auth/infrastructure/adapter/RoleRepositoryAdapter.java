@@ -9,13 +9,20 @@ import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 @RequiredArgsConstructor
 public class RoleRepositoryAdapter implements RoleRepository {
 
 	private final RoleJpaRepository repository;
 	private final RoleEntityMapper mapper;
-
+	
+	@Override
+	public List<Role> findAll() {
+		return mapper.toDomainList(repository.findAll());
+	}
+	
 	@Override
 	public Role findById(Long id) {
 		return repository.findById(id)

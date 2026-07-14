@@ -4,6 +4,8 @@ import com.ensolution.ems.tenant.application.command.create.CreateStackCommand;
 import com.ensolution.ems.tenant.application.command.detail.StackDetail;
 import com.ensolution.ems.tenant.application.command.list_item.StackListItem;
 import com.ensolution.ems.tenant.application.command.update.UpdateStackCommand;
+import com.ensolution.ems.tenant.application.port.in.StackMeasurementSummary;
+import com.ensolution.ems.tenant.application.port.in.StackQueryUseCase;
 import com.ensolution.ems.tenant.application.port.out.StackRepository;
 import com.ensolution.ems.tenant.domain.Stack;
 import com.ensolution.ems.global.common.enums.MeasurementField;
@@ -18,10 +20,11 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class StackService {
+public class StackService implements StackQueryUseCase {
 
 	private final StackRepository stackRepository;
 	private final StackDetailAssembler stackDetailAssembler;
+	private final StackSnapshotAssembler stackSnapshotAssembler;
 
 	public Stack createStack(CreateStackCommand command) {
 		Long workplaceId = command.workplaceId();
@@ -55,6 +58,7 @@ public class StackService {
 			command.grade(),
 			command.businessCategory(),
 			command.mainProduct(),
+			command.standardOxygen(),
 			command.height(),
 			command.horizontalLength(),
 			command.verticalLength(),
@@ -75,5 +79,11 @@ public class StackService {
 	@Transactional(readOnly = true)
 	public StackDetail getStackDetail(Long stackId, Long tenantId) {
 		return stackDetailAssembler.assemble(stackId, tenantId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public StackMeasurementSummary getMeasurementTargetSummary(Long stackId, Long tenantId) {
+		return stackSnapshotAssembler.assemble(stackId, tenantId);
 	}
 }

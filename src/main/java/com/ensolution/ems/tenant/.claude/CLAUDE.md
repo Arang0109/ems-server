@@ -13,6 +13,8 @@ Client (의뢰기관)
                     └── TargetSubstance (측정대상물질)  1:N
 
 Pollutant (측정물질 마스터) ──< StackPollutant (시설별 측정물질) >── Stack
+
+Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 장비(equipment) id 관리
 ```
 
 ### 도메인 모델 책임
@@ -26,6 +28,7 @@ Pollutant (측정물질 마스터) ──< StackPollutant (시설별 측정물�
 | `TargetSubstance` | Prevention이 처리하는 측정대상물질. 제거효율 포함 |
 | `Pollutant` | 측정물질 마스터 데이터(측정분야·상·측정방법 등). 특정 Stack에 종속되지 않음 |
 | `StackPollutant` | Stack과 Pollutant를 연결하는 시설별 측정물질. 측정주기·허용치 관리 |
+| `Team` | tenant 직속 측정 팀. 사수(mentor)·부사수(mentee) user id와 장비 id 4종(입자샘플러·가스샘플러·피토관·노즐) 관리. users는 `auth`, 장비는 `equipment` 모듈 소유이므로 **plain id 컬럼**만 보관(FK 없음) |
 
 ### Enum 위치
 도메인 속성에서 사용하는 Enum(`Grade`, `MeasurementField`, `Shape`, `Orientation`,
@@ -48,11 +51,14 @@ Pollutant (측정물질 마스터) ──< StackPollutant (시설별 측정물�
 | `TargetSubstanceService` | `createTargetSubstance`, `getTargetSubstance`, `getTargetSubstanceList(preventionId)`, `updateTargetSubstance`, `deleteTargetSubstance` |
 | `PollutantService` | `createPollutant`, `getPollutant`, `getPollutantList(field)`, `updatePollutant`, `deletePollutant` |
 | `StackPollutantService` | `createStackPollutant`, `getStackPollutantList(stackId)`, `removeStackPollutant` |
+| `TeamService` | `createTeam`, `getTeam`, `getTeamList`, `updateTeam`, `deleteTeam`. 사수·부사수 user는 `auth`의 `UserQueryUseCase`로 존재+tenant 검증(불일치 시 `TEAM_MENTOR_NOT_FOUND`/`TEAM_MENTEE_NOT_FOUND`, 404 은닉). 장비 id는 검증 없이 저장 |
 
 ### 트리 조립 (Detail Assembler)
 - `StackDetailAssembler` — Stack과 하위 aggregate(Facility·Prevention·TargetSubstance)를 각 Outbound Port로 읽어
   `StackDetail`로 조립합니다. 트리 조립 책임을 서비스·도메인 모델에서 분리한 `@Component`입니다.
 - `StackService.getStackDetail()`이 이 Assembler에 위임합니다.
+- `TeamAssembler` — Team 도메인에 타 모듈(`auth`)의 사수·부사수 **이름**을 결합해 `TeamDetail`/`TeamListItem`으로 조립합니다.
+  users는 별도 모듈이라 JPA 조인 불가 → `UserQueryUseCase`(인바운드 포트)로 채웁니다. 목록은 `getUserList(tenantId)` 1회 + `Map`으로 N+1을 회피합니다.
 
 ### 외부 공개 (Inbound Port)
 - `WorkplaceService implements WorkplaceQueryUseCase` — 다른 모듈(contract 등)이 사업장 존재 확인·요약 조회 시
@@ -80,6 +86,7 @@ Outbound Port는 `application/port/out/`에 둡니다. (`domain/port/`가 아님
 - `application/port/out/TargetSubstanceRepository` — `save()`, `findById(id, tenantId)`, `findByPreventionId(preventionId, tenantId)`, `deleteById(id, tenantId)`
 - `application/port/out/PollutantRepository` — `save()`, `findById(id, tenantId)`, `findByField(field, tenantId)`, `findAll(tenantId)`, `existsByNameKrAndTenantId()`, `deleteById(id, tenantId)`
 - `application/port/out/StackPollutantRepository` — `save()`, `findByStackId(stackId, tenantId)`, `existsByStackIdAndPollutantId()`, `deleteById(id, tenantId)`
+- `application/port/out/TeamRepository` — `save()`, `findById(id, tenantId)`, `findAll(tenantId)`, `existsByNameAndTenantId()`, `deleteById(id, tenantId)`
 - 부모-자식 조회는 반드시 Port 메서드로 추상화합니다. (예: `findByClientId(Long clientId, Long tenantId)`)
 - `findById()` 는 `Optional` 을 반환하지 않고 `T` 를 직접 반환합니다. 없으면 Adapter에서 `NOT_FOUND` 예외를 던집니다.
 

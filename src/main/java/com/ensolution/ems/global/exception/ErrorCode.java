@@ -10,8 +10,14 @@ public enum ErrorCode {
 
   // 도메인 특화: {DOMAIN}_{CONDITION} 패턴
   SCHEDULE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 해당 사업장·팀·측정일에 등록된 일정이 존재합니다."),
+  SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 측정계획입니다."),
+  SCHEDULE_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "측정계획 상세 정보를 찾을 수 없습니다."),
+  SCHEDULE_NOT_EDITABLE(HttpStatus.CONFLICT, "완료되었거나 취소된 측정계획은 수정할 수 없습니다."),
+  SCHEDULE_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 변경입니다."),
   ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 권한입니다."),
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
+  TEAM_MENTOR_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사수입니다."),
+  TEAM_MENTEE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부사수입니다."),
 
   // 범용 HTTP 상태
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),

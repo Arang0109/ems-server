@@ -77,6 +77,9 @@ public class StackEntity {
 
 	@Column(name = "main_product")
 	private String mainProduct;
+	
+	@Column(name = "standard_oxygen")
+	private Integer standardOxygen;
 
 	private String height;
 

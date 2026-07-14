@@ -2,6 +2,8 @@ package com.ensolution.ems.equipment.application.service;
 
 import com.ensolution.ems.equipment.application.command.CreateEquipmentCommand;
 import com.ensolution.ems.equipment.application.command.UpdateEquipmentCommand;
+import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
+import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
 import com.ensolution.ems.equipment.application.port.out.EquipmentRepository;
 import com.ensolution.ems.equipment.domain.EquipStatus;
 import com.ensolution.ems.equipment.domain.EquipType;
@@ -13,7 +15,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class EquipmentService {
+public class EquipmentService implements EquipmentQueryUseCase {
 
 	private final EquipmentRepository equipmentRepository;
 
@@ -77,5 +79,23 @@ public class EquipmentService {
 			return equipmentRepository.findAll(tenantId);
 		}
 		return equipmentRepository.findByType(type, tenantId);
+	}
+
+	@Override
+	public EquipmentSummary getEquipmentSummary(String equipmentId, Long tenantId) {
+		Equipment equipment = equipmentRepository.findById(equipmentId, tenantId);
+		return new EquipmentSummary(
+			equipment.getId(),
+			equipment.getType(),
+			equipment.getManagementNumber(),
+			equipment.getSerialNumber(),
+			equipment.getModelName(),
+			equipment.getEquipmentName(),
+			equipment.getAlias(),
+			equipment.getManufacturer(),
+			equipment.getCalibrationCycle(),
+			equipment.getLastCalibrationDate(),
+			equipment.getSpec()
+		);
 	}
 }

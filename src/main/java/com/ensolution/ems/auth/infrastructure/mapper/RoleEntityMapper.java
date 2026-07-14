@@ -6,6 +6,8 @@ import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
+import java.util.List;
+
 @Mapper(
 		componentModel = "spring",
 		builder = @Builder(),
@@ -13,4 +15,5 @@ import org.mapstruct.ReportingPolicy;
 )
 public interface RoleEntityMapper {
 	Role toDomain(RoleEntity roleEntity);
+	List<Role> toDomainList(List<RoleEntity> roleEntities);
 }

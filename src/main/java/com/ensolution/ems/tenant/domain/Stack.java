@@ -25,6 +25,7 @@ public class Stack {
 	private Grade grade;
 	private String businessCategory;
 	private String mainProduct;
+	private Integer standardOxygen;
 	private String height;
 	private String horizontalLength;
 	private String verticalLength;
@@ -49,7 +50,7 @@ public class Stack {
 	}
 
 	public Stack update(
-		MeasurementField field, String name, String semsNumber, Grade grade, String businessCategory, String mainProduct,
+		MeasurementField field, String name, String semsNumber, Grade grade, String businessCategory, String mainProduct, Integer standardOxygen,
 		String height, String horizontalLength, String verticalLength, Shape shape, Orientation orientation
 	) {
 		return this.toBuilder()
@@ -59,6 +60,7 @@ public class Stack {
 			.grade(grade != null ? grade : this.grade)
 			.businessCategory(keep(businessCategory, this.businessCategory))
 			.mainProduct(keep(mainProduct, this.mainProduct))
+			.standardOxygen(standardOxygen != null ? standardOxygen : this.standardOxygen)
 			.height(keep(height, this.height))
 			.horizontalLength(keep(horizontalLength, this.horizontalLength))
 			.verticalLength(keep(verticalLength, this.verticalLength))

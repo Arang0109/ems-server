@@ -12,6 +12,7 @@ public record UpdateStackCommand(
 	Grade grade,
 	String businessCategory,
 	String mainProduct,
+	Integer standardOxygen,
 	String height,
 	String horizontalLength,
 	String verticalLength,
