@@ -13,8 +13,10 @@ import com.ensolution.ems.tenant.application.port.in.TeamSummary;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -30,12 +32,15 @@ public class ScheduleSnapshotAssembler {
 	private final EquipmentQueryUseCase equipmentQueryUseCase;
 	private final ScheduleSnapshotMapper snapshotMapper;
 
-	public ScheduleSnapshot assemble(Schedule meta) {
+	public ScheduleSnapshot assemble(Schedule meta, List<Long> pollutantIds) {
 		Long tenantId = meta.getTenantId();
 
 		StackMeasurementSummary stackSummary = stackQueryUseCase.getMeasurementTargetSummary(meta.getStackId(), tenantId);
 		TeamSummary teamSummary = teamQueryUseCase.getTeamSummary(meta.getTeamId(), tenantId);
 		List<EquipmentSummary> equipmentSummaries = resolveEquipments(teamSummary, tenantId);
+
+		List<StackMeasurementSummary.MeasurementItemInfo> selectedItems =
+			filterByPollutantIds(stackSummary.measurementItems(), pollutantIds);
 
 		BasicInfo basicInfo = new BasicInfo(
 			meta.getReferenceNumber(),
@@ -54,9 +59,18 @@ public class ScheduleSnapshotAssembler {
 			snapshotMapper.toTeamSnapshot(teamSummary),
 			snapshotMapper.toClientSnapshot(stackSummary),
 			snapshotMapper.toEquipmentSnapshots(equipmentSummaries),
-			snapshotMapper.toItemSnapshots(stackSummary.measurementItems()),
+			snapshotMapper.toItemSnapshots(selectedItems),
 			List.of()
 		);
+	}
+
+	/** 시설의 측정항목 중 요청으로 선택된 측정물질(pollutantId)에 해당하는 항목만 남긴다. */
+	private List<StackMeasurementSummary.MeasurementItemInfo> filterByPollutantIds(
+		List<StackMeasurementSummary.MeasurementItemInfo> items, List<Long> pollutantIds) {
+		Set<Long> selected = new HashSet<>(pollutantIds);
+		return items.stream()
+			.filter(item -> selected.contains(item.pollutantId()))
+			.toList();
 	}
 
 	private List<EquipmentSummary> resolveEquipments(TeamSummary team, Long tenantId) {

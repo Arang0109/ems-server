@@ -87,4 +87,10 @@ public class WorkplaceService implements WorkplaceQueryUseCase {
 	public boolean existsById(Long workplaceId) {
 		return workplaceRepository.existsById(workplaceId);
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public long countWorkplaces(Long tenantId) {
+		return workplaceRepository.findAll(tenantId).size();
+	}
 }

@@ -6,6 +6,8 @@ import com.ensolution.ems.schedule.application.command.create.CreateScheduleComm
 import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
+import com.ensolution.ems.schedule.application.port.in.MonthlyMeasurementCount;
+import com.ensolution.ems.schedule.application.port.in.ScheduleStatisticsUseCase;
 import com.ensolution.ems.schedule.application.port.out.ScheduleDocumentRepository;
 import com.ensolution.ems.schedule.application.port.out.ScheduleRepository;
 import com.ensolution.ems.global.exception.CustomException;
@@ -21,10 +23,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * 측정계획 유스케이스. 메타(MySQL)를 진실의 원천으로 두고, 세부 스냅샷(MongoDB) 저장/삭제를
@@ -33,7 +37,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class ScheduleService {
+public class ScheduleService implements ScheduleStatisticsUseCase {
 
 	private final ScheduleRepository scheduleRepository;
 	private final ScheduleDocumentRepository scheduleDocumentRepository;
@@ -56,7 +60,7 @@ public class ScheduleService {
 			command.referenceNumber()
 		));
 
-		ScheduleSnapshot snapshot = snapshotAssembler.assemble(saved);
+		ScheduleSnapshot snapshot = snapshotAssembler.assemble(saved, command.pollutantIds());
 		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(snapshot);
 		return new ScheduleDetail(saved, savedSnapshot);
 	}
@@ -143,6 +147,43 @@ public class ScheduleService {
 		return scheduleRepository.findAll(tenantId).stream()
 			.map(meta -> toListItem(meta, snapshotByScheduleId.get(meta.getId())))
 			.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public long countCompleted(Long tenantId) {
+		return scheduleRepository.findAll(tenantId).stream()
+			.filter(ScheduleService::isCompleted)
+			.count();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public long countCompletedInMonth(Long tenantId, YearMonth yearMonth) {
+		return scheduleRepository.findAll(tenantId).stream()
+			.filter(ScheduleService::isCompleted)
+			.filter(schedule -> yearMonth.equals(YearMonth.from(schedule.getMeasureDate())))
+			.count();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<MonthlyMeasurementCount> monthlyCompletedCounts(Long tenantId, int year) {
+		Map<Integer, Long> countByMonth = scheduleRepository.findAll(tenantId).stream()
+			.filter(ScheduleService::isCompleted)
+			.filter(schedule -> schedule.getMeasureDate().getYear() == year)
+			.collect(Collectors.groupingBy(
+				schedule -> schedule.getMeasureDate().getMonthValue(),
+				Collectors.counting()));
+
+		return IntStream.rangeClosed(1, 12)
+			.mapToObj(month -> new MonthlyMeasurementCount(month, countByMonth.getOrDefault(month, 0L)))
+			.toList();
+	}
+
+	/** 완료 상태이면서 집계 기준일(measureDate)을 가진 측정계획인지 여부. */
+	private static boolean isCompleted(Schedule schedule) {
+		return schedule.getStatus() == ScheduleStatus.COMPLETED && schedule.getMeasureDate() != null;
 	}
 
 	private ScheduleListItem toListItem(Schedule meta, ScheduleSnapshot snapshot) {

@@ -12,9 +12,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.ensolution.ems.global.security.user.CustomUserDetails;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/stack-pollutants")
 @RequiredArgsConstructor
+@Validated
 public class StackPollutantController {
 
 	private final StackPollutantService stackPollutantService;
@@ -37,6 +40,17 @@ public class StackPollutantController {
 	) {
 		StackPollutant stackPollutant = stackPollutantService.createStackPollutant(mapper.toCreateCommand(request, principal.getTenantId()));
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(stackPollutant)));
+	}
+
+	@Operation(summary = "시설별 측정물질 다중 등록", description = "여러 시설별 측정물질을 한 트랜잭션으로 등록합니다. 하나라도 중복이면 전체 롤백됩니다.")
+	@PostMapping("/batch")
+	public ResponseEntity<ApiResponse<List<StackPollutantResponse>>> registerPollutants(
+		@RequestBody @Valid @NotEmpty List<@Valid CreateStackPollutantRequest> requests,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		List<StackPollutant> stackPollutants = stackPollutantService.createStackPollutants(
+			mapper.toCreateCommands(requests, principal.getTenantId()));
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponses(stackPollutants)));
 	}
 
 	@Operation(summary = "시설별 측정물질 목록 조회", description = "stackId 쿼리 파라미터로 시설을 지정합니다.")

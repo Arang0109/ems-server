@@ -86,4 +86,10 @@ public class StackService implements StackQueryUseCase {
 	public StackMeasurementSummary getMeasurementTargetSummary(Long stackId, Long tenantId) {
 		return stackSnapshotAssembler.assemble(stackId, tenantId);
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public long countStacks(Long tenantId) {
+		return stackRepository.findAll(tenantId).size();
+	}
 }

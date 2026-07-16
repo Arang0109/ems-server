@@ -6,4 +6,7 @@ package com.ensolution.ems.tenant.application.port.in;
  */
 public interface StackQueryUseCase {
 	StackMeasurementSummary getMeasurementTargetSummary(Long stackId, Long tenantId);
+
+	/** 테넌트 소속 측정시설(굴뚝) 수. */
+	long countStacks(Long tenantId);
 }

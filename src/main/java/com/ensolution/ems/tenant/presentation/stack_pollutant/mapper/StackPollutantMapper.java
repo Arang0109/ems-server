@@ -19,8 +19,14 @@ import java.util.List;
 public interface StackPollutantMapper {
 	@Mapping(target = "tenantId", source = "tenantId")
 	CreateStackPollutantCommand toCreateCommand(CreateStackPollutantRequest request, Long tenantId);
+
+	default List<CreateStackPollutantCommand> toCreateCommands(List<CreateStackPollutantRequest> requests, Long tenantId) {
+		return requests.stream().map(request -> toCreateCommand(request, tenantId)).toList();
+	}
+
 	StackPollutantResponse toResponse(StackPollutant stackPollutant);
-	
+	List<StackPollutantResponse> toResponses(List<StackPollutant> stackPollutants);
+
 	StackPollutantListResponse toListResponse(StackPollutantListItem item);
 	List<StackPollutantListResponse> toListResponses(List<StackPollutantListItem> items);
 }
