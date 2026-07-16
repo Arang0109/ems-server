@@ -64,7 +64,7 @@ public class ScheduleController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
-	@Operation(summary = "측정계획 메타 수정", description = "전달하지 않은 필드는 기존 값을 유지합니다. 완료·취소 상태는 수정할 수 없습니다.")
+	@Operation(summary = "측정계획 메타 수정", description = "메타와 함께 문서 스냅샷을 갱신합니다. client를 전달하면 시설·의뢰기관 정보(문서 스냅샷)를 전체 교체하며 원장은 변경하지 않습니다. 전달하지 않은 필드는 기존 값을 유지합니다. 완료·취소 상태는 수정할 수 없습니다.")
 	@PutMapping("/{scheduleId}")
 	public ResponseEntity<ApiResponse<ScheduleResponse>> updateSchedule(
 		@PathVariable Long scheduleId,

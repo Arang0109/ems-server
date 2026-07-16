@@ -15,6 +15,7 @@ import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
 import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
 import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
@@ -75,8 +76,17 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 			command.measurementType(),
 			command.referenceNumber()
 		));
+
 		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
-		return new ScheduleDetail(saved, snapshot);
+		BasicInfo basicInfo = new BasicInfo(
+			saved.getReferenceNumber(),
+			saved.getMeasureDate(),
+			saved.getMeasurementField(),
+			saved.getMeasurementType()
+		);
+		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(
+			snapshot.applyMetaUpdate(basicInfo, command.client()));
+		return new ScheduleDetail(saved, savedSnapshot);
 	}
 
 	public ScheduleDetail changeStatus(Long id, Long tenantId, ScheduleStatus next) {

@@ -33,4 +33,17 @@ public record ScheduleSnapshot(
 	public ScheduleSnapshot withSheets(List<MeasurementSheet> newSheets) {
 		return new ScheduleSnapshot(id, scheduleId, tenantId, referenceNumber, status, basicInfo, team, client, equipments, items, newSheets);
 	}
+
+	/**
+	 * 메타 수정 결과를 문서에 반영한다. basicInfo·referenceNumber는 항상 갱신하고,
+	 * client 트리는 전달된 경우에만 전체 교체(overwrite)하며 null이면 기존 트리를 유지한다.
+	 */
+	public ScheduleSnapshot applyMetaUpdate(BasicInfo newBasicInfo, ClientSnapshot newClient) {
+		return new ScheduleSnapshot(
+			id, scheduleId, tenantId,
+			newBasicInfo.referenceNumber(),
+			status, newBasicInfo, team,
+			newClient != null ? newClient : client,
+			equipments, items, sheets);
+	}
 }
