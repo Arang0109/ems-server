@@ -28,6 +28,18 @@ public class TenantEntity {
 	@Column(name = "biz_number", length = 10, unique = true)
 	private String bizNumber;
 	
+	@Column
+	private String representative;
+	
+	@Column(name = "road_address")
+	private String roadAddress;
+	
+	@Column(name = "detail_address")
+	private String detailAddress;
+	
+	@Column
+	private String zipcode;
+	
 	@Enumerated(EnumType.STRING)
 	private TenantStatus status;
 	

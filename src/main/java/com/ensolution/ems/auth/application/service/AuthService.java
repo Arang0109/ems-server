@@ -6,7 +6,6 @@ import com.ensolution.ems.auth.application.command.SignUpCommand;
 import com.ensolution.ems.auth.application.port.in.UserCommandUseCase;
 import com.ensolution.ems.auth.application.port.in.CreateUserCommand;
 import com.ensolution.ems.auth.application.port.in.UpdateUserCommand;
-import com.ensolution.ems.auth.domain.Role;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.auth.domain.port.Authenticator;
@@ -20,8 +19,6 @@ import com.ensolution.ems.auth.domain.port.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -135,9 +132,5 @@ public class AuthService implements UserCommandUseCase {
 				tokenResult.role(),
 				tokenResult.refreshTokenValidity()
 		);
-	}
-	
-	public List<Role> getRoleList() {
-		return roleRepository.findAll();
 	}
 }

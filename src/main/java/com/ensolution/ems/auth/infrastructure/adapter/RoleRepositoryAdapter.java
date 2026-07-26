@@ -29,4 +29,21 @@ public class RoleRepositoryAdapter implements RoleRepository {
 				.map(mapper::toDomain)
 				.orElseThrow(() -> new CustomException(ErrorCode.ROLE_NOT_FOUND));
 	}
+
+	@Override
+	public Role findByName(String name) {
+		return repository.findByName(name)
+				.map(mapper::toDomain)
+				.orElseThrow(() -> new CustomException(ErrorCode.ROLE_NOT_FOUND));
+	}
+
+	@Override
+	public boolean existsByName(String name) {
+		return repository.existsByName(name);
+	}
+
+	@Override
+	public Role save(Role role) {
+		return mapper.toDomain(repository.save(mapper.toEntity(role)));
+	}
 }

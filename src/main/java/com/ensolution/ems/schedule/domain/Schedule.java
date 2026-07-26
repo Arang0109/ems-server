@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -25,8 +26,8 @@ public class Schedule {
 	private Long stackId;
 	private Long teamId;
 	private MeasurementField measurementField;
-	private LocalDateTime measureDate;
-	private String measurementType;
+	private LocalDate sampledAt;
+	private String schedulePurpose;
 	private ScheduleStatus status;
 	private String referenceNumber;
 	private LocalDateTime createdAt;
@@ -37,8 +38,8 @@ public class Schedule {
 		Long stackId,
 		Long teamId,
 		MeasurementField measurementField,
-		LocalDateTime measureDate,
-		String measurementType,
+		LocalDate sampledAt,
+		String schedulePurpose,
 		String referenceNumber
 	) {
 		return Schedule.builder()
@@ -46,8 +47,8 @@ public class Schedule {
 			.stackId(stackId)
 			.teamId(teamId)
 			.measurementField(measurementField)
-			.measureDate(measureDate)
-			.measurementType(measurementType)
+			.sampledAt(sampledAt)
+			.schedulePurpose(schedulePurpose)
 			.status(ScheduleStatus.SCHEDULED)
 			.referenceNumber(referenceNumber)
 			.build();
@@ -55,14 +56,14 @@ public class Schedule {
 
 	public Schedule update(
 		MeasurementField measurementField,
-		LocalDateTime measureDate,
-		String measurementType,
+		LocalDate sampledAt,
+		String schedulePurpose,
 		String referenceNumber
 	) {
 		return this.toBuilder()
 			.measurementField(measurementField != null ? measurementField : this.measurementField)
-			.measureDate(measureDate != null ? measureDate : this.measureDate)
-			.measurementType(keep(measurementType, this.measurementType))
+			.sampledAt(sampledAt != null ? sampledAt : this.sampledAt)
+			.schedulePurpose(keep(schedulePurpose, this.schedulePurpose))
 			.referenceNumber(keep(referenceNumber, this.referenceNumber))
 			.build();
 	}

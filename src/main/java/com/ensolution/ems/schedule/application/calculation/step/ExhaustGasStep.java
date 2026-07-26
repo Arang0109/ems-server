@@ -38,10 +38,14 @@ public class ExhaustGasStep implements SheetStep {
 		BigDecimal co2 = calculator.averageTreatNullAsZero(exhaustGas.getCo2Concentration(), 1);
 		BigDecimal co = calculator.averageTreatNullAsZero(exhaustGas.getCoConcentration(), 1);
 		BigDecimal n2 = BigDecimal.valueOf(100).subtract(o2.add(co2).add(co));
-
+		
 		BigDecimal standardOxygen = context.getStandardOxygen();
 		if (standardOxygen != null) {
-			context.setOxygenCorrectionFactor(calcOxygenCorrectionFactor(standardOxygen, o2));
+			context.setOxygenCorrectionFactor(
+				standardOxygen.compareTo(BigDecimal.valueOf(20.9)) >= 0
+					? BigDecimal.ONE
+					: calcOxygenCorrectionFactor(standardOxygen, o2)
+			);
 		}
 
 		BigDecimal Md = calcDryMolecularWeight(o2, co2, co, n2);

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -44,8 +45,8 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 
 	@Override
 	@Transactional(readOnly = true)
-	public boolean existsByStackIdAndTeamIdAndMeasureDate(Long stackId, Long teamId, LocalDateTime measureDate) {
-		return scheduleJpaRepository.existsByStackIdAndTeamIdAndMeasureDate(stackId, teamId, measureDate);
+	public boolean existsByStackIdAndTeamIdAndMeasureDate(Long stackId, Long teamId, LocalDate sampledAt) {
+		return scheduleJpaRepository.existsByStackIdAndTeamIdAndSampledAt(stackId, teamId, sampledAt);
 	}
 
 	@Override

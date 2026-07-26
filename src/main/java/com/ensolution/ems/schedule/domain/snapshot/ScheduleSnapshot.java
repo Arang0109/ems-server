@@ -15,35 +15,55 @@ public record ScheduleSnapshot(
 	String id,             // Mongo _id (= scheduleId 문자열)
 	Long scheduleId,       // MySQL 메타 PK 연결키
 	Long tenantId,
-	String referenceNumber,
 	ScheduleStatus status,
 	BasicInfo basicInfo,
 	TeamSnapshot team,
+	TenantSnapshot tenant,
 	ClientSnapshot client,
 	List<EquipmentSnapshot> equipments,
-	List<MeasurementItemSnapshot> items,
+	List<SamplingItemSnapshot> items,
 	List<MeasurementSheet> sheets
 ) {
 	/** 상태만 교체한 새 스냅샷을 반환한다(메타 상태와 동기화용). */
 	public ScheduleSnapshot syncStatus(ScheduleStatus next) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, referenceNumber, next, basicInfo, team, client, equipments, items, sheets);
+		return new ScheduleSnapshot(id, scheduleId, tenantId, next, basicInfo, team, tenant, client, equipments, items, sheets);
 	}
 
 	/** 측정 시트만 교체한 새 스냅샷을 반환한다. */
 	public ScheduleSnapshot withSheets(List<MeasurementSheet> newSheets) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, referenceNumber, status, basicInfo, team, client, equipments, items, newSheets);
+		return new ScheduleSnapshot(id, scheduleId, tenantId, status, basicInfo, team, tenant, client, equipments, items, newSheets);
 	}
 
 	/**
-	 * 메타 수정 결과를 문서에 반영한다. basicInfo·referenceNumber는 항상 갱신하고,
-	 * client 트리는 전달된 경우에만 전체 교체(overwrite)하며 null이면 기존 트리를 유지한다.
+	 * 측정장비 교체 결과를 반영한 새 스냅샷을 반환한다. 팀의 장비 id(team)·장비 목록(equipments)·
+	 * 재계산된 시트(sheets)를 함께 교체하며, 원장(tenant·equipment)은 변경하지 않는다.
 	 */
-	public ScheduleSnapshot applyMetaUpdate(BasicInfo newBasicInfo, ClientSnapshot newClient) {
+	public ScheduleSnapshot applyEquipmentChange(TeamSnapshot newTeam,
+	                                             List<EquipmentSnapshot> newEquipments,
+	                                             List<MeasurementSheet> newSheets) {
+		return new ScheduleSnapshot(id, scheduleId, tenantId, status, basicInfo,
+			newTeam, tenant, client, newEquipments, items, newSheets);
+	}
+
+	/**
+	 * 의뢰기관 스냅샷 수정 결과를 반영한 새 스냅샷을 반환한다. client 트리(→사업장→측정시설)를 재귀 병합하고
+	 * 재계산된 시트를 함께 교체하며, 원장(tenant)은 변경하지 않는다.
+	 */
+	public ScheduleSnapshot applyClientChange(ClientSnapshot patch, List<MeasurementSheet> newSheets) {
+		return new ScheduleSnapshot(id, scheduleId, tenantId, status, basicInfo, team, tenant,
+			client == null ? patch : client.merge(patch),
+			equipments, items, newSheets);
+	}
+
+	/**
+	 * 메타 수정 결과를 문서에 반영한다. basicInfo·referenceNumber를 갱신하며, client 트리는 변경하지 않는다
+	 * (의뢰기관·사업장·측정시설 스냅샷 수정은 {@link #applyClientChange} 경로를 사용한다).
+	 */
+	public ScheduleSnapshot applyMetaUpdate(BasicInfo newBasicInfo, TenantSnapshot newTenant) {
 		return new ScheduleSnapshot(
 			id, scheduleId, tenantId,
-			newBasicInfo.referenceNumber(),
-			status, newBasicInfo, team,
-			newClient != null ? newClient : client,
+			status, newBasicInfo, team, newTenant,
+			client,
 			equipments, items, sheets);
 	}
 }

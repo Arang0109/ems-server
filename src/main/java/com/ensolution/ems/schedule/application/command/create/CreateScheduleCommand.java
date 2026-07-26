@@ -2,6 +2,7 @@ package com.ensolution.ems.schedule.application.command.create;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,8 +11,8 @@ public record CreateScheduleCommand(
 	Long stackId,
 	Long teamId,
 	MeasurementField measurementField,
-	LocalDateTime measureDate,
+	LocalDate sampledAt,
 	List<Long> pollutantIds,
-	String measurementType,
+	String schedulePurpose,
 	String referenceNumber
 ) {}

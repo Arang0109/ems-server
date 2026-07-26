@@ -8,4 +8,10 @@ public interface RoleRepository {
 		List<Role> findAll();
 
     Role findById(Long id);
+
+    Role findByName(String name);
+
+    boolean existsByName(String name);
+
+    Role save(Role role);
 }

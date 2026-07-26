@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface TenantJpaRepository extends JpaRepository<TenantEntity, Long> {
 	Optional<TenantEntity> findByTenantId(Long tenantId);
 
+	Optional<TenantEntity> findByBizNumber(String bizNumber);
+
 	boolean existsByBizNumber(String bizNumber);
 }

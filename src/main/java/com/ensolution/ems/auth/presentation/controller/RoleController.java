@@ -1,6 +1,6 @@
 package com.ensolution.ems.auth.presentation.controller;
 
-import com.ensolution.ems.auth.application.service.AuthService;
+import com.ensolution.ems.auth.application.service.RoleService;
 import com.ensolution.ems.auth.presentation.mapper.RoleMapper;
 import com.ensolution.ems.auth.presentation.response.RoleResponse;
 import com.ensolution.ems.global.web.ApiResponse;
@@ -19,14 +19,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RoleController {
 	
-	private final AuthService authService;
+	private final RoleService roleService;
 	private final RoleMapper roleMapper;
-	
+
 	@GetMapping()
 	public ResponseEntity<ApiResponse<List<RoleResponse>>> getRoleList() {
-		
+
 		return ResponseEntity.ok().body(ApiResponse.success(
-			roleMapper.toResponses(authService.getRoleList())
+			roleMapper.toResponses(roleService.getRoleList())
 		));
 	}
 }

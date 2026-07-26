@@ -6,7 +6,9 @@ import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
 import com.ensolution.ems.schedule.application.service.ScheduleService;
 import com.ensolution.ems.schedule.presentation.mapper.ScheduleMapper;
+import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleStatusRequest;
+import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.request.SaveSheetsRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleRequest;
@@ -64,7 +66,8 @@ public class ScheduleController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
-	@Operation(summary = "측정계획 메타 수정", description = "메타와 함께 문서 스냅샷을 갱신합니다. client를 전달하면 시설·의뢰기관 정보(문서 스냅샷)를 전체 교체하며 원장은 변경하지 않습니다. 전달하지 않은 필드는 기존 값을 유지합니다. 완료·취소 상태는 수정할 수 없습니다.")
+	@Operation(summary = "측정계획 메타 수정", description = "메타와 함께 문서 스냅샷의 기본정보를 갱신합니다. 전달하지 않은 필드는 기존 값을 유지합니다. "
+		+ "의뢰기관·사업장·측정시설 정보는 PATCH /api/schedules/{scheduleId}/client 로 수정합니다. 완료·취소 상태는 수정할 수 없습니다.")
 	@PutMapping("/{scheduleId}")
 	public ResponseEntity<ApiResponse<ScheduleResponse>> updateSchedule(
 		@PathVariable Long scheduleId,
@@ -86,6 +89,39 @@ public class ScheduleController {
 	) {
 		ScheduleDetail detail = scheduleService.changeStatus(
 			scheduleId, principal.getTenantId(), request.status()
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 측정장비 변경",
+		description = "장비 spec별 id로 측정장비를 교체합니다. 전달하지 않은 장비는 기존 값을 유지하며, "
+			+ "팀 스냅샷의 장비 id도 함께 갱신하고 기존 측정 시트를 새 장비 spec으로 재계산합니다. "
+			+ "장비 원장은 변경하지 않습니다. 완료·취소 상태는 변경할 수 없습니다.")
+	@PatchMapping("/{scheduleId}/equipments")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> changeEquipments(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody ChangeScheduleEquipmentsRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = scheduleService.changeEquipments(
+			scheduleId, principal.getTenantId(), mapper.toChangeEquipmentsCommand(request)
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 의뢰기관 스냅샷 수정",
+		description = "측정계획 문서의 의뢰기관·사업장·측정시설 정보를 수정합니다. 전달하지 않은 필드는 기존 값을 유지하며, "
+			+ "하위 사업장(workplace)·측정시설(workplace.stack)도 중첩 전달로 함께 부분 수정됩니다. "
+			+ "배출·방지시설 목록은 전달하면 전체 교체합니다. 표준산소농도·굴뚝 형상 등 계산 입력이 바뀌면 "
+			+ "기존 측정 시트를 재계산합니다. 원장은 변경하지 않습니다. 완료·취소 상태는 변경할 수 없습니다.")
+	@PatchMapping("/{scheduleId}/client")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> changeClient(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody ChangeClientSnapshotRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = scheduleService.changeClient(
+			scheduleId, principal.getTenantId(), mapper.toChangeClientCommand(request)
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}

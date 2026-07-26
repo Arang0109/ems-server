@@ -14,14 +14,16 @@ public class Prevention {
 	private Long tenantId;
 	private Long stackId;
 	private String name;
+	private Double capacity;
 
-	public static Prevention register(Long tenantId, Long stackId, String name) {
-		return Prevention.builder().tenantId(tenantId).stackId(stackId).name(name).build();
+	public static Prevention register(Long tenantId, Long stackId, String name, Double capacity) {
+		return Prevention.builder().tenantId(tenantId).stackId(stackId).name(name).capacity(capacity).build();
 	}
 
-	public Prevention update(String name) {
+	public Prevention update(String name, Double capacity) {
 		return this.toBuilder()
 			.name(keep(name, this.name))
+			.capacity(capacity != null ? capacity : this.capacity)
 			.build();
 	}
 

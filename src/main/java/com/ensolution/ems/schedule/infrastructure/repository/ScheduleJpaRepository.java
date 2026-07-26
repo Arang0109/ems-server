@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +19,7 @@ public interface ScheduleJpaRepository extends JpaRepository<ScheduleEntity, Lon
 
 	List<ScheduleEntity> findAllByTenantId(Long tenantId);
 
-	boolean existsByStackIdAndTeamIdAndMeasureDate(Long stackId, Long teamId, LocalDateTime measureDate);
+	boolean existsByStackIdAndTeamIdAndSampledAt(Long stackId, Long teamId, LocalDate sampledAt);
 
 	@Modifying
 	@Query("delete from ScheduleEntity s where s.scheduleId = :id and s.tenantId = :tenantId")

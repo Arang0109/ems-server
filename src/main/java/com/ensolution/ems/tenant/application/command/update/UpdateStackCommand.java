@@ -13,9 +13,9 @@ public record UpdateStackCommand(
 	String businessCategory,
 	String mainProduct,
 	Integer standardOxygen,
-	String height,
-	String horizontalLength,
-	String verticalLength,
+	Double height,
+	Double horizontalLength,
+	Double verticalLength,
 	Shape shape,
 	Orientation orientation
 ) {

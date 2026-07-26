@@ -55,9 +55,9 @@ public record StackMeasurementSummary(
 		String businessCategory,
 		String mainProduct,
 		Integer standardOxygen,
-		String height,
-		String horizontalLength,
-		String verticalLength,
+		Double height,
+		Double horizontalLength,
+		Double verticalLength,
 		Shape shape,
 		Orientation orientation
 	) {}
@@ -73,6 +73,7 @@ public record StackMeasurementSummary(
 	public record PreventionInfo(
 		Long preventionId,
 		String name,
+		Double capacity,
 		List<TargetSubstanceInfo> targetSubstances
 	) {}
 

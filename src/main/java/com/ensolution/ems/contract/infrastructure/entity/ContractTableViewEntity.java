@@ -3,12 +3,13 @@ package com.ensolution.ems.contract.infrastructure.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Immutable;
+import org.hibernate.annotations.Subselect;
+import org.hibernate.annotations.Synchronize;
 
 import java.time.LocalDate;
 
@@ -18,7 +19,17 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Entity
 @Getter
-@Table(name = "contract_table")
+@Subselect("""
+		SELECT c.contract_id, c.tenant_id, c.workplace_id, c.contract_name,
+		       c.contract_date, c.start_date, c.completion_date,
+		       w.name AS workplace_name, cl.name AS client_name,
+		       COALESCE((SELECT GROUP_CONCAT(DISTINCT s.field ORDER BY s.field SEPARATOR ',')
+		                   FROM stacks s WHERE s.workplace_id = c.workplace_id), '') AS fields
+		FROM contracts c
+		JOIN workplaces w ON w.workplace_id = c.workplace_id
+		JOIN clients cl   ON cl.client_id   = w.client_id
+		""")
+@Synchronize({"contracts", "workplaces", "clients", "stacks"})
 public class ContractTableViewEntity {
 	@Id
 	@Column(name = "contract_id")

@@ -242,3 +242,17 @@ Outbound Port (application/port/out/, 레거시는 domain/port/) 를 외부 모�
 
 **이유:** 모듈 경계를 넘는 객체 그래프 결합은 인프라(JPA·물리 FK) 레벨까지 두 모듈을 묶어
 독립 배포·변경을 막습니다. 물리 FK가 필요하면 도메인 결합과 분리해 스키마/마이그레이션 레벨에서 관리합니다.
+
+### Tenant 애그리거트의 소유권 (명시적 예외)
+
+`platform` 모듈은 플랫폼 운영자(PLATFORM_ADMIN)가 고객사(테넌트)의 생명주기를 관리하는 모듈입니다.
+
+- **도메인 `Tenant`와 그 포트·어댑터는 `platform`이 소유합니다.** 도메인 모델, `application/port/out/TenantRepository`,
+  `infrastructure/adapter/TenantRepositoryAdapter`, `infrastructure/mapper/TenantEntityMapper`가 모두 `platform`에 있습니다.
+  테넌트 정보가 필요한 모듈은 `platform/application/port/in/TenantQueryUseCase`로 조회합니다.
+- **단, JPA 영속 앵커(`TenantEntity`/`TenantJpaRepository`)만 예외적으로 `tenant/infrastructure`에 둡니다.**
+  멀티테넌시 공용 앵커로서 `tenant` 엔티티 전반이 `@ManyToOne`으로 참조하기 때문이며,
+  `platform`의 어댑터가 이를 재사용합니다. 이 참조는 infrastructure 계층에 한정됩니다.
+- **`tenant` → `platform` 방향 참조는 금지입니다.** `tenant`는 중심 모듈이며 `platform`을 알지 못합니다.
+  또한 `platform`과 `tenant`에 같은 이름의 `@Service`를 두지 않습니다 — 빈 이름이 충돌합니다
+  (그래서 `platform`의 서비스는 `TenantService`가 아니라 `PlatformService`입니다).

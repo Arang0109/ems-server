@@ -21,18 +21,21 @@ public class PressureStep implements SheetStep {
 		setPg(context);
 	}
 
+	// Pa (mmH2O -> mmHg) 변환 후 Pa에 저장 (대기압)
 	private void setAtmospherePressure(SheetContext context) {
 		WeatherData weather = context.getSheet().getWeather();
-		if (weather == null || weather.getPressure() == null || weather.getPressure().getPressure() == null) return;
-		context.setPa(convertHpaToMmHg(weather.getPressure().getPressure()));
+		if (weather == null || weather.getPressure() == null) return;
+		context.setPa(convertHpaToMmHg(weather.getPressure()));
 	}
 
+	// Pm_g (mmH2O -< mmHg) 변환 후 Pm_g에 저장 (가스미터게이지압)
 	private void setGasMeterGaugePressure(SheetContext context) {
 		MoistureData moisture = context.getSheet().getMoisture();
 		if (moisture == null || moisture.getGasMeterGaugePressure() == null) return;
 		context.setPm_g(convertMmH2OToMmHg(moisture.getGasMeterGaugePressure()));
 	}
 
+	// Pg (대기압 + (정압/13.6)) (배출가스 절대압력 mmHg)
 	private void setPg(SheetContext context) {
 		if (context.getPa() == null || context.getAvgPs() == null) return;
 		context.setPg(context.getPa().add(convertMmH2OToMmHg(context.getAvgPs())));

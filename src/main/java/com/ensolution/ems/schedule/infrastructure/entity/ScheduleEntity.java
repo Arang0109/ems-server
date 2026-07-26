@@ -8,6 +8,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -24,7 +25,7 @@ import java.time.LocalDateTime;
 	uniqueConstraints = {
 		@UniqueConstraint(
 			name = "uk_schedules_stack_team_date",
-			columnNames = {"stack_id", "team_id", "measure_date"}
+			columnNames = {"stack_id", "team_id", "sampled_at"}
 		)
 	},
 	indexes = {
@@ -52,11 +53,11 @@ public class ScheduleEntity {
 	@Column(name = "measurement_field", nullable = false)
 	private MeasurementField measurementField;
 
-	@Column(name = "measure_date", nullable = false)
-	private LocalDateTime measureDate;
+	@Column(name = "sampled_at", nullable = false)
+	private LocalDate sampledAt;
 
-	@Column(name = "measurement_type")
-	private String measurementType;
+	@Column(name = "schedule_purpose")
+	private String schedulePurpose;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)

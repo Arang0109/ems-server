@@ -10,7 +10,13 @@
       "Read(//tmp/**)",
       "Bash(xargs -I {} cat {})",
       "Bash(git diff *)",
-      "Bash(git -C \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\Ubuntu-22.04\\\\\\\\home\\\\\\\\kmsq321\\\\\\\\dev_wsl\\\\\\\\projects\\\\\\\\ems-server\" status --short)"
+      "Bash(git -C \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\Ubuntu-22.04\\\\\\\\home\\\\\\\\kmsq321\\\\\\\\dev_wsl\\\\\\\\projects\\\\\\\\ems-server\" status --short)",
+      "Bash(git -C \"//wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server\" log --oneline --follow -- \"src/main/java/com/ensolution/ems/admin/presentation/controller/MemberController.java\")",
+      "Bash(git -C \"//wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server\" status --short)",
+      "Bash(git *)",
+      "Read(///wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server/src/main/java/com/ensolution/ems/**)",
+      "Read(///wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server/**)",
+      "Bash(cd \"\\\\\\\\wsl.localhost\\\\Ubuntu-22.04\\\\home\\\\kmsq321\\\\dev_wsl\\\\projects\\\\ems-server\")"
     ]
   }
 }

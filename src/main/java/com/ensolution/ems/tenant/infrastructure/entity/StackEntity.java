@@ -80,14 +80,14 @@ public class StackEntity {
 	
 	@Column(name = "standard_oxygen")
 	private Integer standardOxygen;
-
-	private String height;
+	
+	private Double height;
 
 	@Column(name = "horizontal_length")
-	private String horizontalLength;
+	private Double horizontalLength;
 
 	@Column(name = "vertical_length")
-	private String verticalLength;
+	private Double verticalLength;
 
 	@Enumerated(EnumType.STRING)
 	private Shape shape;

@@ -65,6 +65,7 @@ public class SecurityConfig {
         
         .authorizeHttpRequests
           ((authorize) -> authorize
+            .requestMatchers("/api/platform/**").hasRole("PLATFORM_ADMIN")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers(
                 "/api/auth/sign-up",
@@ -113,6 +114,7 @@ public class SecurityConfig {
   @Bean
   public RoleHierarchy roleHierarchy() {
     return RoleHierarchyImpl.fromHierarchy("""
+            ROLE_PLATFORM_ADMIN > ROLE_ADMIN
             ROLE_ADMIN > ROLE_LAB
             ROLE_ADMIN > ROLE_FIELD
             ROLE_ADMIN > ROLE_DOC

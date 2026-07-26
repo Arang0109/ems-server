@@ -2,11 +2,7 @@ package com.ensolution.ems.schedule.infrastructure.document;
 
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
 import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
-import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.MeasurementItemSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,14 +34,14 @@ public class ScheduleDocument {
 	private Long tenantId;
 
 	private Long scheduleId;
-	private String referenceNumber;
+	
 	private ScheduleStatus status;
-
 	private BasicInfo basicInfo;
 	private TeamSnapshot team;
+	private TenantSnapshot tenant;
 	private ClientSnapshot client;
 	private List<EquipmentSnapshot> equipments;
-	private List<MeasurementItemSnapshot> items;
+	private List<SamplingItemSnapshot> items;
 	private List<MeasurementSheet> sheets;
 
 	@CreatedDate

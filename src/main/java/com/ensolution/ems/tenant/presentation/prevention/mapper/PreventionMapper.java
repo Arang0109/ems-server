@@ -32,6 +32,7 @@ public interface PreventionMapper {
 	@Mapping(target = "id", source = "prevention.id")
 	@Mapping(target = "stackId", source = "prevention.stackId")
 	@Mapping(target = "name", source = "prevention.name")
+	@Mapping(target = "capacity", source = "prevention.capacity")
 	@Mapping(target = "targets", source = "targets")
 	PreventionDetailResponse toDetailResponse(PreventionDetail detail);
 }

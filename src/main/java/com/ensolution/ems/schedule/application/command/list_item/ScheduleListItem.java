@@ -3,6 +3,7 @@ package com.ensolution.ems.schedule.application.command.list_item;
 import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -13,8 +14,8 @@ public record ScheduleListItem(
 	Long stackId,
 	Long teamId,
 	MeasurementField measurementField,
-	LocalDateTime measureDate,
-	String measurementType,
+	LocalDate sampledAt,
+	String schedulePurpose,
 	ScheduleStatus status,
 	String referenceNumber,
 	String clientName,

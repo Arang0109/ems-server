@@ -2,6 +2,7 @@ package com.ensolution.ems.schedule.application.calculation.step;
 
 import com.ensolution.ems.schedule.application.calculation.SheetContext;
 import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sheet.QuantityData;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -18,17 +19,30 @@ public class ApplyResultStep implements SheetStep {
 			.weather(sheet.getWeather() == null ? null
 				: sheet.getWeather().toBuilder().Pa(context.getPa()).build())
 			.moisture(sheet.getMoisture() == null ? null
-				: sheet.getMoisture().toBuilder().Xw(context.getXw()).build())
+				: sheet.getMoisture().toBuilder()
+					.Pm_g(context.getPm_g())
+					.Tm_g(context.getTm_g())
+					.Vm_g(context.getVm_g())
+					.ma(context.getMa())
+					.Xw(context.getXw())
+				.build())
 			.exhaustGas(sheet.getExhaustGas() == null ? null
 				: sheet.getExhaustGas().toBuilder()
-					.gasDensity(context.getStandardGasDensity())
+					.standardGasDensity(context.getStandardGasDensity())
 					.o2CorrectionFactor(context.getOxygenCorrectionFactor())
 					.build())
-			.particleSample(sheet.getParticleSample() == null ? null
-				: sheet.getParticleSample().toBuilder().Cp(context.getCp()).build())
-			.avgTg(context.getAvgTg())
-			.avgPv(context.getAvgPv())
-			.avgPs(context.getAvgPs())
+			.quantity((sheet.getQuantity() == null ? QuantityData.builder() : sheet.getQuantity().toBuilder())
+				.avgTg(context.getAvgTg())
+				.avgPv(context.getAvgPv())
+				.avgPs(context.getAvgPs())
+				.gasDensity(context.getGasDensity())
+				.area(context.getArea())
+				.Vs(context.getVs())
+				.quantity(context.getQuantity())
+				.standardQuantity(context.getStandardQuantity())
+				.Cp(context.getCp())
+				.build())
+			.samplingPointCnt(context.getSamplingPointCnt())
 			.avgTm(context.getAvgTm())
 			.build();
 

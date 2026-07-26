@@ -1,10 +1,10 @@
 package com.ensolution.ems.schedule.application.service;
 
-import com.ensolution.ems.equipment.domain.spec.PitotTubeSpec;
-import com.ensolution.ems.schedule.application.calculation.SheetCalculator;
 import com.ensolution.ems.schedule.application.command.create.CreateScheduleCommand;
 import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
+import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
+import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
 import com.ensolution.ems.schedule.application.port.in.MonthlyMeasurementCount;
 import com.ensolution.ems.schedule.application.port.in.ScheduleStatisticsUseCase;
@@ -15,15 +15,11 @@ import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
 import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
-import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -43,11 +39,11 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 	private final ScheduleRepository scheduleRepository;
 	private final ScheduleDocumentRepository scheduleDocumentRepository;
 	private final ScheduleSnapshotAssembler snapshotAssembler;
-	private final SheetCalculator sheetCalculator;
+	private final SnapshotSheetRecalculator recalculator;
 
 	public ScheduleDetail createSchedule(CreateScheduleCommand command) {
 		if (scheduleRepository.existsByStackIdAndTeamIdAndMeasureDate(
-			command.stackId(), command.teamId(), command.measureDate())) {
+			command.stackId(), command.teamId(), command.sampledAt())) {
 			throw new CustomException(ErrorCode.SCHEDULE_ALREADY_EXISTS);
 		}
 
@@ -56,8 +52,8 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 			command.stackId(),
 			command.teamId(),
 			command.measurementField(),
-			command.measureDate(),
-			command.measurementType(),
+			command.sampledAt(),
+			command.schedulePurpose(),
 			command.referenceNumber()
 		));
 
@@ -72,20 +68,19 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 
 		Schedule saved = scheduleRepository.save(schedule.update(
 			command.measurementField(),
-			command.measureDate(),
-			command.measurementType(),
+			command.sampledAt(),
+			command.schedulePurpose(),
 			command.referenceNumber()
 		));
 
 		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
-		BasicInfo basicInfo = new BasicInfo(
+		BasicInfo basicInfo = BasicInfo.fromMeta(
 			saved.getReferenceNumber(),
-			saved.getMeasureDate(),
+			saved.getSampledAt(),
 			saved.getMeasurementField(),
-			saved.getMeasurementType()
-		);
+			saved.getSchedulePurpose());
 		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(
-			snapshot.applyMetaUpdate(basicInfo, command.client()));
+			snapshot.applyMetaUpdate(basicInfo, command.tenant()));
 		return new ScheduleDetail(saved, savedSnapshot);
 	}
 
@@ -112,34 +107,67 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 		meta.requireEditable();
 
 		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
-		List<PitotTubeSpec.PitotCoefficient> pitotCoefficients = resolvePitotCoefficients(snapshot);
-		BigDecimal standardOxygen = resolveStandardOxygen(snapshot);
-
-		List<MeasurementSheet> calculated = sheets.stream()
-			.map(sheet -> sheetCalculator.calculate(sheet, standardOxygen, pitotCoefficients))
-			.toList();
-
-		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(snapshot.withSheets(calculated));
+		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(
+			snapshot.withSheets(recalculator.recalculate(snapshot, sheets)));
 		return new ScheduleDetail(meta, savedSnapshot);
 	}
 
-	private List<PitotTubeSpec.PitotCoefficient> resolvePitotCoefficients(ScheduleSnapshot snapshot) {
-		if (snapshot.equipments() == null) return null;
-		return snapshot.equipments().stream()
-			.map(EquipmentSnapshot::spec)
-			.filter(spec -> spec instanceof PitotTubeSpec)
-			.map(spec -> ((PitotTubeSpec) spec).coefficients())
-			.filter(coefficients -> coefficients != null)
-			.findFirst()
-			.orElse(null);
+	/**
+	 * 측정계획의 측정장비를 교체한다. 전달되지 않은 슬롯은 기존 장비를 유지하며, 팀 스냅샷의 장비 id와
+	 * 장비 목록을 함께 갱신하고 기존 시트를 새 장비 spec으로 재계산한다.
+	 * 장비는 메타(MySQL)가 아닌 문서(MongoDB)에만 존재하므로 문서 단독 쓰기이며, 원장(tenant·equipment)은
+	 * 변경하지 않는다. 완료·취소된 계획은 변경할 수 없다.
+	 */
+	public ScheduleDetail changeEquipments(Long id, Long tenantId, ChangeScheduleEquipmentsCommand command) {
+		Schedule meta = scheduleRepository.findById(id, tenantId);
+		meta.requireEditable();
+
+		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
+		TeamSnapshot newTeam = snapshot.team().withEquipmentIds(
+			command.particleSamplerId(),
+			command.gasSamplerId(),
+			command.pitotTubeId(),
+			command.nozzleId()
+		);
+		List<EquipmentSnapshot> newEquipments = snapshotAssembler.resolveEquipments(newTeam, tenantId);
+
+		// 재계산은 교체 후 스냅샷을 입력으로 해야 새 피토관 계수·노즐경이 반영된다.
+		ScheduleSnapshot changed = snapshot.applyEquipmentChange(newTeam, newEquipments, snapshot.sheets());
+		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(
+			changed.withSheets(recalculator.recalculate(changed, changed.sheets())));
+		return new ScheduleDetail(meta, savedSnapshot);
 	}
 
-	/** 산소보정계수 계산 입력인 표준산소농도를 측정시설 스냅샷에서 가져온다. */
-	private BigDecimal resolveStandardOxygen(ScheduleSnapshot snapshot) {
-		ClientSnapshot client = snapshot.client();
-		if (client == null || client.workplace() == null || client.workplace().stack() == null) return null;
-		Integer standardOxygen = client.workplace().stack().standardOxygen();
-		return standardOxygen == null ? null : BigDecimal.valueOf(standardOxygen);
+	/**
+	 * 측정계획 문서의 의뢰기관(→사업장→측정시설) 스냅샷을 수정한다. 전달되지 않은 필드는 기존 값을 유지하며,
+	 * 측정시설의 표준산소농도·굴뚝 형상 등은 계산 입력이므로 기존 시트를 새 값으로 재계산한다.
+	 * 원장(tenant Client·Workplace·Stack)은 변경하지 않는다. 완료·취소된 계획은 변경할 수 없다.
+	 */
+	public ScheduleDetail changeClient(Long id, Long tenantId, ChangeClientSnapshotCommand command) {
+		Schedule meta = scheduleRepository.findById(id, tenantId);
+		meta.requireEditable();
+
+		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
+		ClientSnapshot patch = new ClientSnapshot(
+			null,                      // clientId는 원장 연결키이므로 변경 대상이 아니다.
+			command.name(),
+			command.bizNumber(),
+			command.representative(),
+			command.roadAddress(),
+			command.detailAddress(),
+			command.zipcode(),
+			command.facilityManager(),
+			command.samplingWitness(),
+			command.email(),
+			command.tel(),
+			command.workplace()
+		);
+
+		// 재계산은 병합 후 스냅샷을 입력으로 해야 새 표준산소농도·굴뚝 형상이 반영된다.
+		ScheduleSnapshot changed = snapshot.applyClientChange(patch, snapshot.sheets());
+		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(
+			changed.withSheets(recalculator.recalculate(changed, changed.sheets())));
+		return new ScheduleDetail(meta, savedSnapshot);
 	}
 
 	@Transactional(readOnly = true)
@@ -172,7 +200,7 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 	public long countCompletedInMonth(Long tenantId, YearMonth yearMonth) {
 		return scheduleRepository.findAll(tenantId).stream()
 			.filter(ScheduleService::isCompleted)
-			.filter(schedule -> yearMonth.equals(YearMonth.from(schedule.getMeasureDate())))
+			.filter(schedule -> yearMonth.equals(YearMonth.from(schedule.getSampledAt())))
 			.count();
 	}
 
@@ -181,9 +209,9 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 	public List<MonthlyMeasurementCount> monthlyCompletedCounts(Long tenantId, int year) {
 		Map<Integer, Long> countByMonth = scheduleRepository.findAll(tenantId).stream()
 			.filter(ScheduleService::isCompleted)
-			.filter(schedule -> schedule.getMeasureDate().getYear() == year)
+			.filter(schedule -> schedule.getSampledAt().getYear() == year)
 			.collect(Collectors.groupingBy(
-				schedule -> schedule.getMeasureDate().getMonthValue(),
+				schedule -> schedule.getSampledAt().getMonthValue(),
 				Collectors.counting()));
 
 		return IntStream.rangeClosed(1, 12)
@@ -193,7 +221,7 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 
 	/** 완료 상태이면서 집계 기준일(measureDate)을 가진 측정계획인지 여부. */
 	private static boolean isCompleted(Schedule schedule) {
-		return schedule.getStatus() == ScheduleStatus.COMPLETED && schedule.getMeasureDate() != null;
+		return schedule.getStatus() == ScheduleStatus.COMPLETED && schedule.getSampledAt() != null;
 	}
 
 	private ScheduleListItem toListItem(Schedule meta, ScheduleSnapshot snapshot) {
@@ -202,8 +230,8 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 			meta.getStackId(),
 			meta.getTeamId(),
 			meta.getMeasurementField(),
-			meta.getMeasureDate(),
-			meta.getMeasurementType(),
+			meta.getSampledAt(),
+			meta.getSchedulePurpose(),
 			meta.getStatus(),
 			meta.getReferenceNumber(),
 			clientName(snapshot),

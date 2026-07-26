@@ -1,7 +1,9 @@
 package com.ensolution.ems.schedule.application.calculation;
 
+import com.ensolution.ems.equipment.domain.spec.NozzleSpec;
 import com.ensolution.ems.equipment.domain.spec.PitotTubeSpec;
 import com.ensolution.ems.schedule.application.calculation.step.SheetStep;
+import com.ensolution.ems.schedule.application.command.StackData;
 import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -21,10 +23,12 @@ public class SheetCalculator {
 
 	public MeasurementSheet calculate(
 		MeasurementSheet sheet,
-		BigDecimal standardOxygen,
-		List<PitotTubeSpec.PitotCoefficient> pitotCoefficients
+		StackData stackData,
+		List<PitotTubeSpec.PitotCoefficient> pitotCoefficients,
+		List<NozzleSpec.NozzleDiameter> diameters,
+		BigDecimal deltaH
 	) {
-		SheetContext context = new SheetContext(sheet, standardOxygen, pitotCoefficients);
+		SheetContext context = new SheetContext(sheet, stackData, pitotCoefficients, diameters, deltaH);
 		for (SheetStep step : steps) {
 			step.execute(context);
 		}

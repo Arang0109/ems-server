@@ -2,14 +2,15 @@ package com.ensolution.ems.schedule.application.service;
 
 import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
+import com.ensolution.ems.platform.application.port.in.TenantQueryUseCase;
+import com.ensolution.ems.platform.application.port.in.TenantSummary;
 import com.ensolution.ems.schedule.application.mapper.ScheduleSnapshotMapper;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
+import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
-import com.ensolution.ems.tenant.application.port.in.StackMeasurementSummary;
-import com.ensolution.ems.tenant.application.port.in.StackQueryUseCase;
-import com.ensolution.ems.tenant.application.port.in.TeamQueryUseCase;
-import com.ensolution.ems.tenant.application.port.in.TeamSummary;
+import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
+import com.ensolution.ems.tenant.application.port.in.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +30,7 @@ public class ScheduleSnapshotAssembler {
 
 	private final StackQueryUseCase stackQueryUseCase;
 	private final TeamQueryUseCase teamQueryUseCase;
+	private final TenantQueryUseCase tenantQueryUseCase;
 	private final EquipmentQueryUseCase equipmentQueryUseCase;
 	private final ScheduleSnapshotMapper snapshotMapper;
 
@@ -37,26 +39,26 @@ public class ScheduleSnapshotAssembler {
 
 		StackMeasurementSummary stackSummary = stackQueryUseCase.getMeasurementTargetSummary(meta.getStackId(), tenantId);
 		TeamSummary teamSummary = teamQueryUseCase.getTeamSummary(meta.getTeamId(), tenantId);
+		TenantSummary tenantSummary = tenantQueryUseCase.getTenantSummary(tenantId);
 		List<EquipmentSummary> equipmentSummaries = resolveEquipments(teamSummary, tenantId);
 
 		List<StackMeasurementSummary.MeasurementItemInfo> selectedItems =
 			filterByPollutantIds(stackSummary.measurementItems(), pollutantIds);
 
-		BasicInfo basicInfo = new BasicInfo(
+		BasicInfo basicInfo = BasicInfo.fromMeta(
 			meta.getReferenceNumber(),
-			meta.getMeasureDate(),
+			meta.getSampledAt(),
 			meta.getMeasurementField(),
-			meta.getMeasurementType()
-		);
+			meta.getSchedulePurpose());
 
 		return new ScheduleSnapshot(
 			String.valueOf(meta.getId()),
 			meta.getId(),
 			tenantId,
-			meta.getReferenceNumber(),
 			meta.getStatus(),
 			basicInfo,
 			snapshotMapper.toTeamSnapshot(teamSummary),
+			snapshotMapper.toTenantSnapshot(tenantSummary),
 			snapshotMapper.toClientSnapshot(stackSummary),
 			snapshotMapper.toEquipmentSnapshots(equipmentSummaries),
 			snapshotMapper.toItemSnapshots(selectedItems),
@@ -73,13 +75,30 @@ public class ScheduleSnapshotAssembler {
 			.toList();
 	}
 
-	private List<EquipmentSummary> resolveEquipments(TeamSummary team, Long tenantId) {
-		return Stream.of(
+	/** 팀 스냅샷의 장비 id 4종으로 장비 스냅샷 목록을 다시 조회한다(장비 교체 시 사용). */
+	public List<EquipmentSnapshot> resolveEquipments(TeamSnapshot team, Long tenantId) {
+		return snapshotMapper.toEquipmentSnapshots(fetchEquipments(
+			Stream.of(
 				team.particleSamplerId(),
 				team.gasSamplerId(),
 				team.pitotTubeId(),
 				team.nozzleId()
-			)
+			), tenantId));
+	}
+
+	private List<EquipmentSummary> resolveEquipments(TeamSummary team, Long tenantId) {
+		return fetchEquipments(
+			Stream.of(
+				team.particleSamplerId(),
+				team.gasSamplerId(),
+				team.pitotTubeId(),
+				team.nozzleId()
+			), tenantId);
+	}
+
+	/** 비어 있지 않은 장비 id만 골라 equipment 모듈에서 요약 정보를 조회한다. */
+	private List<EquipmentSummary> fetchEquipments(Stream<String> equipmentIds, Long tenantId) {
+		return equipmentIds
 			.filter(Objects::nonNull)
 			.filter(id -> !id.isBlank())
 			.map(id -> equipmentQueryUseCase.getEquipmentSummary(id, tenantId))

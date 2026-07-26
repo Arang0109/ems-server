@@ -8,6 +8,7 @@ public record PreventionDetailResponse(
 	Long id,
 	Long stackId,
 	String name,
+	Double capacity,
 
 	List<TargetSubstanceResponse> targets
 ) {

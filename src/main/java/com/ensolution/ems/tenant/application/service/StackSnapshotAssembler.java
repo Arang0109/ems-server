@@ -112,6 +112,7 @@ public class StackSnapshotAssembler {
 		return new StackMeasurementSummary.PreventionInfo(
 			preventionDetail.prevention().getId(),
 			preventionDetail.prevention().getName(),
+			preventionDetail.prevention().getCapacity(),
 			preventionDetail.targets().stream()
 				.map(target -> new StackMeasurementSummary.TargetSubstanceInfo(
 					target.getId(), target.getName(), target.getRemovalEfficiency()

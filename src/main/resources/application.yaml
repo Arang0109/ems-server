@@ -3,16 +3,20 @@ spring:
     import: "optional:file:.env[.properties]"
   application:
     name: ems
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ems}?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ems}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:"0000"}
 
   data:
     redis:
-      host: ${DB_HOST:localhost}
+      host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       timeout: ${REDIS_TIMEOUT:5000}
     mongodb:
@@ -31,6 +35,19 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-validity: ${AT_VALID:3600000}
   refresh-token-validity: ${RT_VALID:25200000}
+
+# 운영자(PLATFORM_ADMIN) 최초 부트스트랩. 최초 배포 시에만 환경변수로 계정을 주입한다.
+platform:
+  bootstrap:
+    enabled: ${PLATFORM_BOOTSTRAP_ENABLED:false}
+    username: ${PLATFORM_ADMIN_USERNAME:}
+    password: ${PLATFORM_ADMIN_PASSWORD:}
+    name: ${PLATFORM_ADMIN_NAME:운영자}
+    email: ${PLATFORM_ADMIN_EMAIL:}
+    department: ${PLATFORM_ADMIN_DEPARTMENT:}
+    tel: ${PLATFORM_ADMIN_TEL:}
+    system-tenant-name: ${PLATFORM_SYSTEM_TENANT_NAME:플랫폼}
+    system-tenant-biz-number: ${PLATFORM_SYSTEM_TENANT_BIZ:0000000000}
 
 logging:
   level:

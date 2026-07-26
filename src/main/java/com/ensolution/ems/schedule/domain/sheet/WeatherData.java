@@ -14,8 +14,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 public class WeatherData {
-
-	private Pressure pressure;
+	
+	private BigDecimal pressure;	// 대기압 (Hpa)
 	private WeatherCondition weatherCondition;
 	private BigDecimal temperature;
 	private BigDecimal humidity;
@@ -24,13 +24,4 @@ public class WeatherData {
 
 	// 계산 결과
 	private BigDecimal Pa; // 대기압 (mmHg)
-
-	@Getter
-	@Jacksonized @Builder(toBuilder = true)
-	@AllArgsConstructor
-	@NoArgsConstructor
-	public static class Pressure {
-		private BigDecimal pressure; // 대기압 입력값 (hPa)
-		private String unit;
-	}
 }

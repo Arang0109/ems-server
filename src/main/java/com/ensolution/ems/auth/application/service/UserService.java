@@ -36,6 +36,11 @@ public class UserService implements UserQueryUseCase {
 			.toList();
 	}
 
+	@Override
+	public boolean existsByUsername(String username) {
+		return userRepository.existsByUsername(username);
+	}
+
 	private UserSummary toSummary(User user) {
 		Role role = roleRepository.findById(user.getRoleId());
 		return new UserSummary(

@@ -18,7 +18,7 @@ public class MoistureStep implements SheetStep {
 		MoistureData moisture = context.getSheet().getMoisture();
 		if (moisture == null) return;
 
-		MoistureData.Weight weight = moisture.getWeight();
+		MoistureData.BattleWeight weight = moisture.getWeight();
 		MoistureData.GasMeterTemperature temp = moisture.getGasMeterTemperature();
 		MoistureData.DryGasVolume volume = moisture.getDryGasVolume();
 		if (weight == null || weight.getAfter() == null || weight.getBefore() == null) return;

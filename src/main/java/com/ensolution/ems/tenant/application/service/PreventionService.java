@@ -22,13 +22,13 @@ public class PreventionService {
 	public Prevention createPrevention(CreatePreventionCommand command) {
 		stackRepository.findById(command.stackId(), command.tenantId());
 		return preventionRepository.save(
-			Prevention.register(command.tenantId(), command.stackId(), command.name())
+			Prevention.register(command.tenantId(), command.stackId(), command.name(), command.capacity())
 		);
 	}
 
 	public Prevention updatePrevention(Long preventionId, Long tenantId, UpdatePreventionCommand command) {
 		Prevention prevention = preventionRepository.findById(preventionId, tenantId);
-		return preventionRepository.save(prevention.update(command.name()));
+		return preventionRepository.save(prevention.update(command.name(), command.capacity()));
 	}
 
 	public void deletePrevention(Long preventionId, Long tenantId) {

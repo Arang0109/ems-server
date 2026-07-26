@@ -1,15 +1,8 @@
 package com.ensolution.ems.schedule.application.mapper;
 
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
-import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.FacilitySnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.MeasurementItemSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.PreventionSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.StackSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.TargetSubstanceSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.WorkplaceSnapshot;
+import com.ensolution.ems.platform.application.port.in.TenantSummary;
+import com.ensolution.ems.schedule.domain.snapshot.*;
 import com.ensolution.ems.tenant.application.port.in.StackMeasurementSummary;
 import com.ensolution.ems.tenant.application.port.in.TeamSummary;
 import org.mapstruct.Mapper;
@@ -23,6 +16,8 @@ import java.util.List;
  */
 @Mapper(componentModel = "spring")
 public interface ScheduleSnapshotMapper {
+	
+	TenantSnapshot toTenantSnapshot(TenantSummary summary);
 
 	TeamSnapshot toTeamSnapshot(TeamSummary summary);
 
@@ -31,9 +26,9 @@ public interface ScheduleSnapshotMapper {
 
 	List<EquipmentSnapshot> toEquipmentSnapshots(List<EquipmentSummary> summaries);
 
-	MeasurementItemSnapshot toItemSnapshot(StackMeasurementSummary.MeasurementItemInfo info);
+	SamplingItemSnapshot toItemSnapshot(StackMeasurementSummary.MeasurementItemInfo info);
 
-	List<MeasurementItemSnapshot> toItemSnapshots(List<StackMeasurementSummary.MeasurementItemInfo> infos);
+	List<SamplingItemSnapshot> toItemSnapshots(List<StackMeasurementSummary.MeasurementItemInfo> infos);
 
 	FacilitySnapshot toFacilitySnapshot(StackMeasurementSummary.FacilityInfo info);
 
@@ -51,7 +46,7 @@ public interface ScheduleSnapshotMapper {
 		StackMeasurementSummary.ClientInfo c = summary.client();
 		return new ClientSnapshot(
 			c.clientId(), c.name(), c.bizNumber(), c.representative(),
-			c.roadAddress(), c.detailAddress(), c.zipcode(), c.manager(), c.email(), c.tel(),
+			c.roadAddress(), c.detailAddress(), c.zipcode(), c.manager(), c.manager(), c.email(), c.tel(),
 			toWorkplaceSnapshot(summary)
 		);
 	}
@@ -71,7 +66,8 @@ public interface ScheduleSnapshotMapper {
 		if (s == null) return null;
 		return new StackSnapshot(
 			s.stackId(), s.field(), s.name(), s.semsNumber(), s.grade(),
-			s.businessCategory(), s.mainProduct(), s.standardOxygen(), s.height(), s.horizontalLength(), s.verticalLength(),
+			s.businessCategory(), s.mainProduct(), s.standardOxygen(),
+			s.height(), s.horizontalLength(), s.verticalLength(),
 			s.shape(), s.orientation(),
 			toFacilitySnapshots(summary.facilities()),
 			toPreventionSnapshots(summary.preventions())

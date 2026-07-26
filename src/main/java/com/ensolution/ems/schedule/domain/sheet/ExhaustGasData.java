@@ -22,13 +22,14 @@ public class ExhaustGasData {
 	private List<BigDecimal> o2Concentration;
 	private List<BigDecimal> co2Concentration;
 	private List<BigDecimal> coConcentration;
+	
 	private List<BigDecimal> noxConcentration;
 	private List<BigDecimal> soxConcentration;
+	
+	private LocalTime gasAnalyzerStartTime;	// 가스분석기 측정시작시간 (15분 고정)
+	private LocalTime thcAnalyzerStartTime; // THC분석기 측정시작시간 (30분 고정)
 
 	// 계산 결과
-	private BigDecimal gasDensity;
-	private BigDecimal o2CorrectionFactor; // 산소보정계수
-
-	private LocalTime gasAnalyzerStartTime;
-	private LocalTime thcAnalyzerStartTime;
+	private BigDecimal standardGasDensity;					// 표준상태 배출가스밀도
+	private BigDecimal o2CorrectionFactor; 					// 산소보정계수
 }

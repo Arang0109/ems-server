@@ -2,6 +2,7 @@ package com.ensolution.ems.schedule.application.port.out;
 
 import com.ensolution.ems.schedule.domain.Schedule;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,6 +11,6 @@ public interface ScheduleRepository {
 	Schedule save(Schedule schedule);
 	Schedule findById(Long id, Long tenantId);
 	List<Schedule> findAll(Long tenantId);
-	boolean existsByStackIdAndTeamIdAndMeasureDate(Long stackId, Long teamId, LocalDateTime measureDate);
+	boolean existsByStackIdAndTeamIdAndMeasureDate(Long stackId, Long teamId, LocalDate measureDate);
 	void deleteById(Long id, Long tenantId);
 }

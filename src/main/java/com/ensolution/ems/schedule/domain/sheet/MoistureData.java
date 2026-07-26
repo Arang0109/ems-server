@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class MoistureData {
 
-	private Weight weight;
+	private BattleWeight weight;
 	private GasMeterTemperature gasMeterTemperature;
 	private DryGasVolume dryGasVolume;
 
@@ -23,6 +23,10 @@ public class MoistureData {
 	private BigDecimal gasMeterGaugePressure;
 
 	// 계산 결과
+	private BigDecimal Pm_g;	// 수분측정용 가스미터 게이지압 (mmHg)
+	private BigDecimal Tm_g;  // 가스미터 흡입 가스온도 (°C)
+	private BigDecimal Vm_g;  // 흡입 건조가스량 (L)
+	private BigDecimal ma;    // 흡습 수분질량 (g)
 	private BigDecimal Xw; // 수분량 (%)
 
 	/** 흡습병 무게(g). */
@@ -30,7 +34,7 @@ public class MoistureData {
 	@Jacksonized @Builder(toBuilder = true)
 	@AllArgsConstructor
 	@NoArgsConstructor
-	public static class Weight {
+	public static class BattleWeight {
 		private BigDecimal before;
 		private BigDecimal after;
 	}

@@ -58,6 +58,9 @@ public class PreventionEntity {
 	@Column(nullable = false)
 	private String name;
 	
+	@Column
+	private Double capacity;
+	
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

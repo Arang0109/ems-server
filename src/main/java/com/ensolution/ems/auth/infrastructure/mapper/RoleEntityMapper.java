@@ -16,4 +16,5 @@ import java.util.List;
 public interface RoleEntityMapper {
 	Role toDomain(RoleEntity roleEntity);
 	List<Role> toDomainList(List<RoleEntity> roleEntities);
+	RoleEntity toEntity(Role role);
 }
