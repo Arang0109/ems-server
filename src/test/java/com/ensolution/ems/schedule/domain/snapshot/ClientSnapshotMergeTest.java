@@ -18,8 +18,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ClientSnapshotMergeTest {
 
-	private static final FacilitySnapshot BOILER = new FacilitySnapshot(10L, "보일러", "100", "LNG", "가스");
-	private static final FacilitySnapshot DRYER = new FacilitySnapshot(11L, "건조기", "50", "B-C", "유류");
+	private static final FacilitySnapshot BOILER =
+		new FacilitySnapshot(10L, "보일러", "100", null, null, "LNG", "가스", "Nm³");
+	private static final FacilitySnapshot DRYER =
+		new FacilitySnapshot(11L, "건조기", "50", null, null, "B-C", "유류", "L");
 	private static final PreventionSnapshot SCRUBBER = new PreventionSnapshot(20L, "흡수탑", 30.0, List.of());
 
 	/** 원장에서 조립된 완전한 스냅샷 트리. */
@@ -33,19 +35,19 @@ class ClientSnapshotMergeTest {
 			200L, "1공장", "222-22-22222", "경기도 화성시", "101동", "18000", Grade.TYPE_3, stack);
 		return new ClientSnapshot(
 			100L, "○○환경", "111-11-11111", "김대표", "서울시 강남구", "2층", "06000",
-			"김담당", "이입회", "client@ex.com", "02-1234-5678", workplace);
+			"client@ex.com", "02-1234-5678", workplace);
 	}
 
 	/** 필드가 모두 비어 있는 patch. 필요한 필드만 채워서 사용한다. */
 	private static ClientSnapshot emptyPatch() {
-		return new ClientSnapshot(null, null, null, null, null, null, null, null, null, null, null, null);
+		return new ClientSnapshot(null, null, null, null, null, null, null, null, null, null);
 	}
 
 	private static ClientSnapshot patchStack(StackSnapshot stackPatch) {
 		WorkplaceSnapshot workplacePatch = new WorkplaceSnapshot(
 			null, null, null, null, null, null, null, stackPatch);
 		return new ClientSnapshot(
-			null, null, null, null, null, null, null, null, null, null, null, workplacePatch);
+			null, null, null, null, null, null, null, null, null, workplacePatch);
 	}
 
 	@Nested
@@ -56,12 +58,12 @@ class ClientSnapshotMergeTest {
 		@DisplayName("전달한 필드만 바뀌고 나머지 트리는 그대로 유지된다")
 		void mergesOnlyProvidedFields() {
 			ClientSnapshot patch = new ClientSnapshot(
-				null, "△△환경", null, null, null, null, null, "박담당", null, null, null, null);
+				null, "△△환경", null, null, null, null, "07000", null, null, null);
 
 			ClientSnapshot merged = existing().merge(patch);
 
 			assertThat(merged.name()).isEqualTo("△△환경");
-			assertThat(merged.facilityManager()).isEqualTo("박담당");
+			assertThat(merged.zipcode()).isEqualTo("07000");
 			assertThat(merged.representative()).isEqualTo("김대표");
 			assertThat(merged.tel()).isEqualTo("02-1234-5678");
 			assertThat(merged.workplace()).isEqualTo(existing().workplace());
@@ -72,7 +74,7 @@ class ClientSnapshotMergeTest {
 		void blankKeepsOriginal() {
 			ClientSnapshot patch = emptyPatch();
 			ClientSnapshot merged = existing().merge(
-				new ClientSnapshot(null, "   ", null, null, null, null, null, null, null, null, null, null));
+				new ClientSnapshot(null, "   ", null, null, null, null, null, null, null, null));
 
 			assertThat(merged.name()).isEqualTo("○○환경");
 			assertThat(existing().merge(patch)).isEqualTo(existing());
@@ -97,7 +99,7 @@ class ClientSnapshotMergeTest {
 			WorkplaceSnapshot workplacePatch = new WorkplaceSnapshot(
 				999L, null, null, null, null, null, null, stackPatch);
 			ClientSnapshot patch = new ClientSnapshot(
-				999L, null, null, null, null, null, null, null, null, null, null, workplacePatch);
+				999L, null, null, null, null, null, null, null, null, workplacePatch);
 
 			ClientSnapshot merged = existing().merge(patch);
 
@@ -142,7 +144,7 @@ class ClientSnapshotMergeTest {
 				new StackSnapshot(null, null, "2호 굴뚝", null, null, null, null, null,
 					null, null, null, null, null, null, null));
 			ClientSnapshot merged = existing().merge(new ClientSnapshot(
-				null, null, null, null, null, null, null, null, null, null, null, workplacePatch));
+				null, null, null, null, null, null, null, null, null, workplacePatch));
 
 			assertThat(merged.workplace().name()).isEqualTo("2공장");
 			assertThat(merged.workplace().grade()).isEqualTo(Grade.TYPE_1);
@@ -187,12 +189,12 @@ class ClientSnapshotMergeTest {
 		@DisplayName("기존 사업장이 없으면 patch의 사업장을 그대로 채택한다")
 		void adoptsWorkplaceWhenAbsent() {
 			ClientSnapshot clientWithoutWorkplace = new ClientSnapshot(
-				100L, "○○환경", null, null, null, null, null, null, null, null, null, null);
+				100L, "○○환경", null, null, null, null, null, null, null, null);
 			WorkplaceSnapshot newWorkplace = new WorkplaceSnapshot(
 				200L, "1공장", null, null, null, null, Grade.TYPE_3, null);
 
 			ClientSnapshot merged = clientWithoutWorkplace.merge(new ClientSnapshot(
-				null, null, null, null, null, null, null, null, null, null, null, newWorkplace));
+				null, null, null, null, null, null, null, null, null, newWorkplace));
 
 			assertThat(merged.workplace()).isEqualTo(newWorkplace);
 			assertThat(merged.clientId()).isEqualTo(100L);

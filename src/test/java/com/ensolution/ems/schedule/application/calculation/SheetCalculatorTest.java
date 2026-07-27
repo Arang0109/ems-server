@@ -82,6 +82,46 @@ class SheetCalculatorTest {
 	}
 
 	@Test
+	void 가스미터_게이지압을_mmHg와_inchH2O로_함께_환산한다() {
+		MeasurementSheet sheet = MeasurementSheet.builder()
+			.category(MeasurementCategory.GAS)
+			.weather(weather())
+			.moisture(moisture().toBuilder().gasMeterGaugePressure(new BigDecimal("13.6")).build())
+			.exhaustGas(exhaustGas())
+			.samplingPoints(List.of(
+				SamplingPoint.builder().Ts(new BigDecimal("100")).Pv(new BigDecimal("5")).Ps(new BigDecimal("-2")).build()))
+			.build();
+
+		MoistureData result = calculator()
+			.calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H)
+			.getMoisture();
+
+		// 13.6 mmH2O ÷ 13.6 = 1.00 mmHg
+		assertThat(result.getPm_g()).isEqualByComparingTo("1.00");
+		// 13.6 mmH2O ÷ 25.4 = 0.535 inchH2O
+		assertThat(result.getPm_g_inch()).isEqualByComparingTo("0.535");
+	}
+
+	@Test
+	void 가스미터_게이지압이_없으면_inchH2O도_비어있다() {
+		MeasurementSheet sheet = MeasurementSheet.builder()
+			.category(MeasurementCategory.GAS)
+			.weather(weather())
+			.moisture(MoistureData.builder().build())   // 게이지압 미입력
+			.exhaustGas(exhaustGas())
+			.samplingPoints(List.of(
+				SamplingPoint.builder().Ts(new BigDecimal("100")).Pv(new BigDecimal("5")).Ps(new BigDecimal("-2")).build()))
+			.build();
+
+		MoistureData result = calculator()
+			.calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H)
+			.getMoisture();
+
+		assertThat(result.getPm_g()).isNull();
+		assertThat(result.getPm_g_inch()).isNull();
+	}
+
+	@Test
 	void 가스상_시트_유량까지_계산한다() {
 		MeasurementSheet sheet = MeasurementSheet.builder()
 			.category(MeasurementCategory.GAS)

@@ -7,6 +7,7 @@ import lombok.extern.jackson.Jacksonized;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
 
 /** 수분 정보. {@code Xw}(수분량 %)는 계산 파이프라인이 채우는 결과 필드. */
 @Getter
@@ -21,9 +22,13 @@ public class MoistureData {
 
 	private BigDecimal suctionVelocity;
 	private BigDecimal gasMeterGaugePressure;
+	
+	private LocalTime samplingStartTime;
+	private LocalTime samplingEndTime;
 
 	// 계산 결과
 	private BigDecimal Pm_g;	// 수분측정용 가스미터 게이지압 (mmHg)
+	private BigDecimal Pm_g_inch; // 수분측정용 가스미터 게이지압 (inchH2O)
 	private BigDecimal Tm_g;  // 가스미터 흡입 가스온도 (°C)
 	private BigDecimal Vm_g;  // 흡입 건조가스량 (L)
 	private BigDecimal ma;    // 흡습 수분질량 (g)

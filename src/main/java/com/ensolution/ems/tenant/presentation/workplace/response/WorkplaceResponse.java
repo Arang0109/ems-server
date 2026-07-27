@@ -10,5 +10,7 @@ public record WorkplaceResponse(
 	String detailAddress,
 	String zipcode,
 	String bizNumber,
+	String facilityManager,
+	String samplingWitness,
 	Grade grade
 ) {}

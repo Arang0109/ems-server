@@ -22,14 +22,18 @@ public class FacilityService {
 	public Facility createFacility(CreateFacilityCommand command) {
 		stackRepository.findById(command.stackId(), command.tenantId());
 		return facilityRepository.save(
-			Facility.register(command.tenantId(), command.stackId(), command.name(), command.fuelUsage(), command.fuelInput(), command.fuelType())
+			Facility.register(
+				command.tenantId(), command.stackId(), command.name(), command.fuelUsage(), command.productOutput(),
+				command.incinerationAmount(), command.fuelInput(), command.fuelType(), command.unit())
 		);
 	}
 
 	public Facility updateFacility(Long facilityId, Long tenantId, UpdateFacilityCommand command) {
 		Facility facility = facilityRepository.findById(facilityId, tenantId);
 		return facilityRepository.save(
-			facility.update(command.name(), command.fuelUsage(), command.fuelInput(), command.fuelType())
+			facility.update(
+				command.name(), command.fuelUsage(), command.productOutput(),
+				command.incinerationAmount(), command.fuelInput(), command.fuelType(), command.unit())
 		);
 	}
 

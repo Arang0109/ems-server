@@ -31,7 +31,6 @@ public record StackMeasurementSummary(
 		String roadAddress,
 		String detailAddress,
 		String zipcode,
-		String manager,
 		String email,
 		String tel
 	) {}
@@ -43,6 +42,8 @@ public record StackMeasurementSummary(
 		String roadAddress,
 		String detailAddress,
 		String zipcode,
+		String facilityManager,
+		String samplingWitness,
 		Grade grade
 	) {}
 
@@ -66,8 +67,11 @@ public record StackMeasurementSummary(
 		Long facilityId,
 		String name,
 		String fuelUsage,
+		String productOutput,
+		String incinerationAmount,
 		String fuelInput,
-		String fuelType
+		String fuelType,
+		String unit
 	) {}
 
 	public record PreventionInfo(

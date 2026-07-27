@@ -40,13 +40,18 @@ public interface ScheduleSnapshotMapper {
 
 	List<PreventionSnapshot> toPreventionSnapshots(List<StackMeasurementSummary.PreventionInfo> infos);
 
-	/** 의뢰기관 스냅샷 트리(→ 사업장 → 측정시설)를 조립한다. */
+	/**
+	 * 의뢰기관 스냅샷 트리(→ 사업장 → 측정시설)를 조립한다.
+	 * 담당자(의뢰기관의 {@code manager}, 사업장의 {@code facilityManager}·{@code samplingWitness})는
+	 * 측정계획마다 달라지는 값이므로 이 트리에 담지 않는다.
+	 * 사업장 원장의 두 담당자는 {@code ScheduleSnapshotAssembler}에서 {@code BasicInfo}의 초기값으로 옮겨 담는다.
+	 */
 	default ClientSnapshot toClientSnapshot(StackMeasurementSummary summary) {
 		if (summary == null || summary.client() == null) return null;
 		StackMeasurementSummary.ClientInfo c = summary.client();
 		return new ClientSnapshot(
 			c.clientId(), c.name(), c.bizNumber(), c.representative(),
-			c.roadAddress(), c.detailAddress(), c.zipcode(), c.manager(), c.manager(), c.email(), c.tel(),
+			c.roadAddress(), c.detailAddress(), c.zipcode(), c.email(), c.tel(),
 			toWorkplaceSnapshot(summary)
 		);
 	}

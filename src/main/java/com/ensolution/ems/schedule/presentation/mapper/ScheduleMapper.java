@@ -5,10 +5,12 @@ import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
 import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.UpdateBasicInfoCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
+import com.ensolution.ems.schedule.presentation.request.UpdateBasicInfoRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.response.ScheduleListResponse;
 import com.ensolution.ems.schedule.presentation.response.ScheduleResponse;
@@ -32,6 +34,8 @@ public interface ScheduleMapper {
 	ChangeScheduleEquipmentsCommand toChangeEquipmentsCommand(ChangeScheduleEquipmentsRequest request);
 
 	ChangeClientSnapshotCommand toChangeClientCommand(ChangeClientSnapshotRequest request);
+
+	UpdateBasicInfoCommand toUpdateBasicInfoCommand(UpdateBasicInfoRequest request);
 
 	@Mapping(target = "id", source = "meta.id")
 	@Mapping(target = "tenantId", source = "meta.tenantId")

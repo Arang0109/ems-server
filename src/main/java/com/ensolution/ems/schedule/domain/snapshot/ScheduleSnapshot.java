@@ -56,6 +56,15 @@ public record ScheduleSnapshot(
 	}
 
 	/**
+	 * 기본 정보(담당자·일자·채취 시각)와 측정자 표기 수정 결과를 반영한 새 스냅샷을 반환한다.
+	 * 계산 입력이 아닌 값만 다루므로 측정 시트는 재계산하지 않고 그대로 유지하며, 원장(tenant·client)도 변경하지 않는다.
+	 */
+	public ScheduleSnapshot applyBasicInfo(BasicInfo newBasicInfo, TeamSnapshot newTeam) {
+		return new ScheduleSnapshot(id, scheduleId, tenantId, status, newBasicInfo,
+			newTeam, tenant, client, equipments, items, sheets);
+	}
+
+	/**
 	 * 메타 수정 결과를 문서에 반영한다. basicInfo·referenceNumber를 갱신하며, client 트리는 변경하지 않는다
 	 * (의뢰기관·사업장·측정시설 스냅샷 수정은 {@link #applyClientChange} 경로를 사용한다).
 	 */

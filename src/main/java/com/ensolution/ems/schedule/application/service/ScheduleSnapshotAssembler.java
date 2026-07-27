@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 /**
  * 측정 시점 세부 스냅샷을 조립한다. 대상(측정시설)·팀·장비 정보를 공급 모듈(tenant·equipment)의
  * 인바운드 포트로 조회해 복사하며, 기본 정보는 메타(Schedule)에서 가져온다.
+ * 단, 배출시설관리자·시료채취입회자는 사업장 원장의 값을 기본 정보의 초기값으로 옮겨 담는다.
  */
 @Component
 @RequiredArgsConstructor
@@ -45,11 +46,14 @@ public class ScheduleSnapshotAssembler {
 		List<StackMeasurementSummary.MeasurementItemInfo> selectedItems =
 			filterByPollutantIds(stackSummary.measurementItems(), pollutantIds);
 
-		BasicInfo basicInfo = BasicInfo.fromMeta(
+		StackMeasurementSummary.WorkplaceInfo workplace = stackSummary.workplace();
+		BasicInfo basicInfo = BasicInfo.create(
 			meta.getReferenceNumber(),
 			meta.getSampledAt(),
 			meta.getMeasurementField(),
-			meta.getSchedulePurpose());
+			meta.getSchedulePurpose(),
+			workplace == null ? null : workplace.facilityManager(),
+			workplace == null ? null : workplace.samplingWitness());
 
 		return new ScheduleSnapshot(
 			String.valueOf(meta.getId()),

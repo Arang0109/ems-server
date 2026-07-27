@@ -21,6 +21,7 @@ public class ApplyResultStep implements SheetStep {
 			.moisture(sheet.getMoisture() == null ? null
 				: sheet.getMoisture().toBuilder()
 					.Pm_g(context.getPm_g())
+					.Pm_g_inch(context.getPm_g_inch())
 					.Tm_g(context.getTm_g())
 					.Vm_g(context.getVm_g())
 					.ma(context.getMa())

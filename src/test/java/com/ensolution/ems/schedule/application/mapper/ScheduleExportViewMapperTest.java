@@ -7,12 +7,17 @@ import com.ensolution.ems.equipment.domain.spec.GasSamplerSpec;
 import com.ensolution.ems.equipment.domain.spec.NozzleSpec;
 import com.ensolution.ems.equipment.domain.spec.ParticleSamplerSpec;
 import com.ensolution.ems.equipment.domain.spec.PitotTubeSpec;
+import com.ensolution.ems.global.common.enums.Orientation;
+import com.ensolution.ems.global.common.enums.Shape;
 import com.ensolution.ems.schedule.application.command.export.EquipmentExportView;
 import com.ensolution.ems.schedule.application.command.export.FacilityExportView;
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
 import com.ensolution.ems.schedule.application.command.export.TargetSubstanceExportView;
+import com.ensolution.ems.schedule.domain.sheet.MeasurementCategory;
+import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
 import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.FacilitySnapshot;
@@ -34,7 +39,7 @@ import static org.assertj.core.api.Assertions.tuple;
 /** 스냅샷의 장비 정보가 엑셀 뷰의 슬롯·목록·유형별 사양으로 평탄화되는지 검증한다. */
 class ScheduleExportViewMapperTest {
 
-	private final ScheduleExportViewMapper mapper = new ScheduleExportViewMapper();
+	private final ScheduleExportViewMapper mapper = new ScheduleExportViewMapper(new SheetExportViewMapper());
 
 	private EquipmentSnapshot equipment(String id, EquipType type, String managementNumber) {
 		return equipment(id, type, managementNumber, null);
@@ -61,7 +66,7 @@ class ScheduleExportViewMapperTest {
 			null, null, null, null, null, null, facilities, preventions);
 		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
-			null, null, null, null, workplace);
+			null, null, workplace);
 		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, client, null, null, null);
 	}
 
@@ -200,17 +205,18 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 배출시설_목록이_평탄화된다() {
 		List<FacilitySnapshot> facilities = List.of(
-			new FacilitySnapshot(1L, "보일러", "1,000", "500", "LNG"),
-			new FacilitySnapshot(2L, "건조기", "300", "150", "경유"));
+			new FacilitySnapshot(1L, "보일러", "1,000", "800", "0", "500", "LNG", "Nm³"),
+			new FacilitySnapshot(2L, "소각로", "300", "0", "1,200", "150", "경유", "kg"));
 
 		ScheduleExportView view = mapper.toExportView(snapshot(facilities, null));
 
 		assertThat(view.getFacilities())
 			.extracting(FacilityExportView::getName, FacilityExportView::getFuelUsage,
-				FacilityExportView::getFuelInput, FacilityExportView::getFuelType)
+				FacilityExportView::getProductOutput, FacilityExportView::getIncinerationAmount,
+				FacilityExportView::getFuelInput, FacilityExportView::getFuelType, FacilityExportView::getUnit)
 			.containsExactly(
-				tuple("보일러", "1,000", "500", "LNG"),
-				tuple("건조기", "300", "150", "경유"));
+				tuple("보일러", "1,000", "800", "0", "500", "LNG", "Nm³"),
+				tuple("소각로", "300", "0", "1,200", "150", "경유", "kg"));
 	}
 
 	@Test
@@ -268,5 +274,62 @@ class ScheduleExportViewMapperTest {
 		assertThat(view.getFacilities()).isEmpty();
 		assertThat(view.getPreventions()).isEmpty();
 		assertThat(view.getTargetSubstances()).isEmpty();
+	}
+
+	@Test
+	void 담당자_정보가_기본정보와_팀에서_모인다() {
+		BasicInfo info = new BasicInfo("REF-1", "이관리", "정입회", "박분석", "최기술",
+			LocalDate.of(2026, 5, 1), null, null, null, null, null, null, "자가측정용");
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, info,
+			team(null, null, null, null), null, null, null, null, null);
+
+		ScheduleExportView view = mapper.toExportView(snapshot);
+
+		assertThat(view.getMentor()).isEqualTo("홍길동");
+		assertThat(view.getMentee()).isEqualTo("김철수");
+		assertThat(view.getFacilityManager()).isEqualTo("이관리");
+		assertThat(view.getSamplingWitness()).isEqualTo("정입회");
+		assertThat(view.getAnalyst()).isEqualTo("박분석");
+		assertThat(view.getTechnicalManager()).isEqualTo("최기술");
+		assertThat(view.getSchedulePurpose()).isEqualTo("자가측정용");
+	}
+
+	@Test
+	void 측정시설의_SEMS번호와_형태_방향이_평탄화된다() {
+		StackSnapshot stack = new StackSnapshot(1L, null, "1번 배출구", "SEMS-001", null, null, null,
+			null, null, null, null, Shape.CIRCULAR, Orientation.VERTICAL, null, null);
+		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, stack);
+		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
+			null, null, workplace);
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, client,
+			null, null, null);
+
+		ScheduleExportView view = mapper.toExportView(snapshot);
+
+		assertThat(view.getSemsNumber()).isEqualTo("SEMS-001");
+		assertThat(view.getStackShape()).isEqualTo("원형");
+		assertThat(view.getStackOrientation()).isEqualTo("수직");
+	}
+
+	@Test
+	void 측정시설_방향이_없으면_라벨도_null이다() {
+		// 측정시설 트리는 있으나 shape·orientation·semsNumber가 비어있는 스냅샷
+		ScheduleExportView view = mapper.toExportView(snapshot(List.of(), List.of()));
+
+		assertThat(view.getStackOrientation()).isNull();
+		assertThat(view.getSemsNumber()).isNull();
+	}
+
+	@Test
+	void 측정_시트가_시트_뷰_목록으로_위임된다() {
+		MeasurementSheet sheet = MeasurementSheet.builder().category(MeasurementCategory.DUST).build();
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null,
+			null, null, List.of(sheet));
+
+		ScheduleExportView view = mapper.toExportView(snapshot);
+
+		// 시트 내부 매핑 검증은 SheetExportViewMapperTest 담당
+		assertThat(view.getSheets()).hasSize(1);
+		assertThat(view.getSheets().getFirst().getCategory()).isEqualTo("먼지");
 	}
 }

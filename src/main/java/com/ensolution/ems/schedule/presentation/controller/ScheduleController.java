@@ -11,6 +11,7 @@ import com.ensolution.ems.schedule.presentation.request.ChangeScheduleStatusRequ
 import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.request.SaveSheetsRequest;
+import com.ensolution.ems.schedule.presentation.request.UpdateBasicInfoRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.response.ScheduleListResponse;
 import com.ensolution.ems.schedule.presentation.response.ScheduleResponse;
@@ -76,6 +77,24 @@ public class ScheduleController {
 	) {
 		ScheduleDetail detail = scheduleService.updateSchedule(
 			scheduleId, principal.getTenantId(), mapper.toUpdateCommand(request)
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 기본 정보 수정",
+		description = "담당자(배출시설관리자·시료채취입회자·시료분석검사자·기술책임자), 시료접수/분석완료/성적서발행일자, "
+			+ "채취 시작·종료 시각, 측정자(멘토·멘티) 표기명을 수정합니다. 전달하지 않은 필드는 기존 값을 유지하며, "
+			+ "계산 입력이 아니므로 측정 시트는 재계산하지 않습니다. 의뢰기관·팀 원장은 변경하지 않습니다. "
+			+ "측정분야·채취일자·측정용도·내부 식별 코드는 PUT /api/schedules/{scheduleId} 를 사용합니다. "
+			+ "완료·취소 상태는 수정할 수 없습니다.")
+	@PatchMapping("/{scheduleId}/basic-info")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> updateBasicInfo(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody UpdateBasicInfoRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = scheduleService.updateBasicInfo(
+			scheduleId, principal.getTenantId(), mapper.toUpdateBasicInfoCommand(request)
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}

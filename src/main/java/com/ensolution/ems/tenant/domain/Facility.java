@@ -14,27 +14,40 @@ public class Facility {
 	private Long tenantId;
 	private Long stackId;
 	private String name;
-	private String fuelUsage;
-	private String fuelInput;
-	private String fuelType;
+	private String fuelUsage;          // 연료 사용량
+	private String productOutput;      // 제품 생산량
+	private String incinerationAmount; // 소각량
+	private String fuelInput;          // 원료 투입량
+	private String fuelType;           // 연료·원료 종류
+	private String unit;               // 사용량·생산량에 적용되는 단위
 
-	public static Facility register(Long tenantId, Long stackId, String name, String fuelUsage, String fuelInput, String fuelType) {
+	public static Facility register(
+		Long tenantId, Long stackId, String name, String fuelUsage, String productOutput,
+		String incinerationAmount, String fuelInput, String fuelType, String unit) {
 		return Facility.builder()
 			.tenantId(tenantId)
 			.stackId(stackId)
 			.name(name)
 			.fuelUsage(fuelUsage)
+			.productOutput(productOutput)
+			.incinerationAmount(incinerationAmount)
 			.fuelInput(fuelInput)
 			.fuelType(fuelType)
+			.unit(unit)
 			.build();
 	}
-	
-	public Facility update(String name, String fuelUsage, String fuelInput, String fuelType) {
+
+	public Facility update(
+		String name, String fuelUsage, String productOutput,
+		String incinerationAmount, String fuelInput, String fuelType, String unit) {
 		return this.toBuilder()
 			.name(keep(name, this.name))
 			.fuelUsage(keep(fuelUsage, this.fuelUsage))
+			.productOutput(keep(productOutput, this.productOutput))
+			.incinerationAmount(keep(incinerationAmount, this.incinerationAmount))
 			.fuelInput(keep(fuelInput, this.fuelInput))
 			.fuelType(keep(fuelType, this.fuelType))
+			.unit(keep(unit, this.unit))
 			.build();
 	}
 

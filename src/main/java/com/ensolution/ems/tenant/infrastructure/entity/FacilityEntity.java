@@ -55,8 +55,11 @@ public class FacilityEntity {
 	
 	@Column(nullable = false) private String name;
 	@Column(name = "fuel_usage") private String fuelUsage;
+	@Column(name = "product_output") private String productOutput;
+	@Column(name = "incineration_amount") private String incinerationAmount;
 	@Column(name = "fuel_input") private String fuelInput;
 	@Column(name = "fuel_type") private String fuelType;
+	@Column(name = "unit") private String unit;
 	
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)

@@ -61,6 +61,12 @@ public class PreventionEntity {
 	@Column
 	private Double capacity;
 	
+	@Column(name = "target_name")
+	private String targetName;
+	
+	@Column(name = "removal_efficiency")
+	private String removalEfficiency;
+	
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

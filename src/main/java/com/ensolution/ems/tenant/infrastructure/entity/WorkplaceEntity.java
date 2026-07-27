@@ -68,6 +68,12 @@ public class WorkplaceEntity {
 	
 	@Column
 	private String zipcode;
+	
+	@Column(name = "facility_manager")
+	private String facilityManager;
+	
+	@Column(name = "sampling_witness")
+	private String samplingWitness;
 
 	@Enumerated(EnumType.STRING)
 	private Grade grade;

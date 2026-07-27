@@ -14,8 +14,11 @@ import lombok.Getter;
 @AllArgsConstructor
 public class FacilityExportView {
 
-	private final String name;       // 시설명
-	private final String fuelUsage;  // 연료 사용량
-	private final String fuelInput;  // 연료 투입량
-	private final String fuelType;   // 연료 종류
+	private final String name;               // 시설명
+	private final String fuelUsage;          // 연료 사용량
+	private final String productOutput;      // 제품 생산량
+	private final String incinerationAmount; // 소각량
+	private final String fuelInput;          // 원료 투입량
+	private final String fuelType;           // 연료·원료 종류
+	private final String unit;               // 사용량·생산량에 적용되는 단위
 }

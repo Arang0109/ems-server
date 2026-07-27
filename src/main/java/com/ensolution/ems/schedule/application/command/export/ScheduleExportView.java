@@ -21,25 +21,35 @@ public class ScheduleExportView {
 
 	// 기본 정보
 	private final String referenceNumber;   // 내부 식별 코드
-	private final String mentor;
-	private final String mentee;
-	private final String analyst;           // 시료분석검사자
 	private final String measurementField;  // 측정분야 (대기/수질 등)
-	private final String schedulePurpose;   // 성적서 종류
+	private final String schedulePurpose;   // 측정용도
+	
 	private final LocalDate sampledAt;      // 채취일자
 	private final LocalDate receivedAt;     // 시료접수일자
 	private final LocalDate analyzedAt;     // 분석완료일자
 	private final LocalDate issuedAt;       // 성적서발행일자
+	
 	private final LocalTime samplingStartedAt;
 	private final LocalTime samplingEndedAt;
-
+	
+	private final String mentor;
+	private final String mentee;
+	private final String facilityManager;   // 배출시설관리자
+	private final String samplingWitness;   // 시료채취입회자(환경기술인)
+	private final String analyst;           // 시료분석검사자
+	private final String technicalManager;  // 기술책임자
+	
+	// 고객사
+	private final String tenantName;
+	private final String tenantBizNumber;
+	private final String tenantRepresentative;
+	private final String tenantAddress;
+	
 	// 의뢰기관
 	private final String clientName;
 	private final String clientBizNumber;
 	private final String clientRepresentative;
 	private final String clientAddress;
-	private final String facilityManager;   // 시설관리인
-	private final String samplingWitness;   // 채취입회인
 
 	// 사업장
 	private final String workplaceName;
@@ -49,10 +59,12 @@ public class ScheduleExportView {
 
 	// 측정시설(굴뚝)
 	private final String stackName;
+	private final String semsNumber;
 	private final String businessCategory;
 	private final String mainProduct;
 	private final String stackGrade;
 	private final String stackShape;        // 원형/사각형
+	private final String stackOrientation;
 	private final Double horizontalLength;
 	private final Double verticalLength;
 	private final Double height;

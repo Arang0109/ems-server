@@ -83,14 +83,15 @@ public class StackSnapshotAssembler {
 		return new StackMeasurementSummary.ClientInfo(
 			client.getId(), client.getName(), client.getBizNumber(), client.getRepresentative(),
 			client.getRoadAddress(), client.getDetailAddress(), client.getZipcode(),
-			client.getManager(), client.getEmail(), client.getTel()
+			client.getEmail(), client.getTel()
 		);
 	}
 
 	private StackMeasurementSummary.WorkplaceInfo toWorkplaceInfo(Workplace workplace) {
 		return new StackMeasurementSummary.WorkplaceInfo(
 			workplace.getId(), workplace.getName(), workplace.getBizNumber(),
-			workplace.getRoadAddress(), workplace.getDetailAddress(), workplace.getZipcode(), workplace.getGrade()
+			workplace.getRoadAddress(), workplace.getDetailAddress(), workplace.getZipcode(),
+			workplace.getFacilityManager(), workplace.getSamplingWitness(), workplace.getGrade()
 		);
 	}
 
@@ -104,7 +105,8 @@ public class StackSnapshotAssembler {
 
 	private StackMeasurementSummary.FacilityInfo toFacilityInfo(Facility facility) {
 		return new StackMeasurementSummary.FacilityInfo(
-			facility.getId(), facility.getName(), facility.getFuelUsage(), facility.getFuelInput(), facility.getFuelType()
+			facility.getId(), facility.getName(), facility.getFuelUsage(), facility.getProductOutput(),
+			facility.getIncinerationAmount(), facility.getFuelInput(), facility.getFuelType(), facility.getUnit()
 		);
 	}
 

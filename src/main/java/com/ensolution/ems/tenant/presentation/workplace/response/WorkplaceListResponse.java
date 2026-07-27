@@ -11,5 +11,7 @@ public record WorkplaceListResponse(
 	String roadAddress,
 	String detailAddress,
 	String zipcode,
+	String facilityManager,
+	String samplingWitness,
 	Grade grade
 ) { }

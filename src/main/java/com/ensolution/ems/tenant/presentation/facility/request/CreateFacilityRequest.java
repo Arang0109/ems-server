@@ -7,7 +7,10 @@ public record CreateFacilityRequest(
 	Long stackId,
 	String name,
 	String fuelUsage,
+	String productOutput,
+	String incinerationAmount,
 	String fuelInput,
-	String fuelType
+	String fuelType,
+	String unit
 ) {
 }

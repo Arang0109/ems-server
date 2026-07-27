@@ -22,8 +22,8 @@ import java.util.zip.ZipOutputStream;
  * jxls-poi 기반 엑셀 렌더러. 업로드된 템플릿에 측정계획 뷰를 채운다.
  * <ul>
  *   <li>성적서({@link #render}): {@code plan}(측정계획 뷰)과 {@code sheets}(측정 시트 목록 전체)를 노출해 단일 파일을 만든다.</li>
- *   <li>채취기록부({@link #renderSamplingRecordsZip}): 시트마다 {@code plan}(원장 데이터)과 {@code sheet}(해당 시트)를
- *       노출해 시트별 파일을 만든 뒤 하나의 ZIP으로 묶는다.</li>
+ *   <li>채취기록부({@link #renderSamplingRecordsZip}): 시트마다 {@code plan}(원장 데이터)과 {@code sheet}(해당 시트),
+ *       그리고 시트의 측정 영역별 하위 뷰를 최상위 변수로 함께 노출해 시트별 파일을 만든 뒤 하나의 ZIP으로 묶는다.</li>
  * </ul>
  * 두 경우 모두 노출 변수만 컨텍스트에 담아, 표현식이 노출 데이터 밖으로 벗어나지 못하도록 제한한다.
  */
@@ -57,11 +57,7 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 
 			for (int i = 0; i < sheets.size(); i++) {
 				SheetExportView sheet = sheets.get(i);
-
-				Map<String, Object> model = new HashMap<>();
-				model.put("plan", data);
-				model.put("sheet", sheet);
-				byte[] rendered = fill(template, model);
+				byte[] rendered = fill(template, samplingRecordModel(data, sheet));
 
 				zip.putNextEntry(new ZipEntry(entryName(i + 1, sheet)));
 				zip.write(rendered);
@@ -74,6 +70,26 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 			log.warn("채취기록부 엑셀 템플릿 렌더링 실패", e);
 			throw new CustomException(ErrorCode.SCHEDULE_EXPORT_FAILED);
 		}
+	}
+
+	/**
+	 * 채취기록부 한 장의 컨텍스트. 원장({@code plan})과 해당 시트({@code sheet})에 더해,
+	 * 시트의 측정 영역별 하위 뷰와 반복 목록을 최상위 변수로도 노출한다.
+	 * 템플릿이 {@code ${sheet.moisture.ratio}} 대신 {@code ${moisture.ratio}}로 짧게 쓸 수 있게 하기 위함이며,
+	 * 하위 뷰는 매퍼가 항상 채우므로({@link SheetExportView} 참고) 여기서 null 검사는 필요하지 않다.
+	 */
+	private Map<String, Object> samplingRecordModel(ScheduleExportView data, SheetExportView sheet) {
+		Map<String, Object> model = new HashMap<>();
+		model.put("plan", data);
+		model.put("sheet", sheet);
+		model.put("weather", sheet.getWeather());
+		model.put("moisture", sheet.getMoisture());
+		model.put("gas", sheet.getGas());
+		model.put("flow", sheet.getFlow());
+		model.put("particle", sheet.getParticle());
+		model.put("points", sheet.getPoints());
+		model.put("samples", sheet.getSamples());
+		return model;
 	}
 
 	/** 단일 템플릿을 주어진 모델로 채워 xlsx 바이트를 반환한다. */

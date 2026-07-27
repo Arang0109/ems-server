@@ -3,25 +3,16 @@ package com.ensolution.ems.schedule.application.mapper;
 import com.ensolution.ems.equipment.domain.EquipType;
 import com.ensolution.ems.equipment.domain.PitotTubeType;
 import com.ensolution.ems.equipment.domain.spec.*;
+import com.ensolution.ems.global.common.enums.Orientation;
 import com.ensolution.ems.global.common.enums.Shape;
 import com.ensolution.ems.schedule.application.command.export.EquipmentExportView;
 import com.ensolution.ems.schedule.application.command.export.FacilityExportView;
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
-import com.ensolution.ems.schedule.application.command.export.PointExportView;
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
-import com.ensolution.ems.schedule.application.command.export.SampleExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
-import com.ensolution.ems.schedule.application.command.export.SheetExportView;
 import com.ensolution.ems.schedule.application.command.export.TargetSubstanceExportView;
-import com.ensolution.ems.schedule.domain.sheet.ExhaustGasData;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.sheet.MoistureData;
-import com.ensolution.ems.schedule.domain.sheet.ParticleData;
-import com.ensolution.ems.schedule.domain.sheet.QuantityData;
-import com.ensolution.ems.schedule.domain.sheet.Sample;
-import com.ensolution.ems.schedule.domain.sheet.SamplingPoint;
-import com.ensolution.ems.schedule.domain.sheet.WeatherData;
 import com.ensolution.ems.schedule.domain.snapshot.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -32,13 +23,18 @@ import java.util.List;
  * 측정계획 스냅샷을 엑셀 템플릿용 뷰({@link ScheduleExportView})로 평탄화한다.
  * 입력값과 계산값을 모두 노출하며, 내부 도메인/스냅샷 구조와 템플릿 계약을 분리하는 경계 매퍼로서
  * 스냅샷 트리의 null 여부를 방어적으로 다룬다.
+ * 측정 시트 변환은 {@link SheetExportViewMapper}에 위임한다.
  */
 @Component
+@RequiredArgsConstructor
 public class ScheduleExportViewMapper {
+
+	private final SheetExportViewMapper sheetExportViewMapper;
 
 	public ScheduleExportView toExportView(ScheduleSnapshot snapshot) {
 		BasicInfo info = snapshot.basicInfo();
 		TeamSnapshot team = snapshot.team();
+		TenantSnapshot tenant = snapshot.tenant();
 		ClientSnapshot client = snapshot.client();
 		WorkplaceSnapshot workplace = client == null ? null : client.workplace();
 		StackSnapshot stack = workplace == null ? null : workplace.stack();
@@ -49,32 +45,46 @@ public class ScheduleExportViewMapper {
 
 		return ScheduleExportView.builder()
 			.referenceNumber(info == null ? null : info.referenceNumber())
-			.mentor(team == null ? null : team.mentorName())
-			.mentee(team == null ? null : team.menteeName())
-			.analyst(info == null ? null : info.analyst())
 			.measurementField(info == null || info.measurementField() == null ? null : info.measurementField().getDesc())
 			.schedulePurpose(info == null ? null : info.schedulePurpose())
+
 			.sampledAt(info == null ? null : info.sampledAt())
 			.receivedAt(info == null ? null : info.receivedAt())
 			.analyzedAt(info == null ? null : info.analyzedAt())
 			.issuedAt(info == null ? null : info.issuedAt())
+
 			.samplingStartedAt(info == null ? null : info.samplingStartedAt())
 			.samplingEndedAt(info == null ? null : info.samplingEndedAt())
+
+			.mentor(team == null ? null : team.mentorName())
+			.mentee(team == null ? null : team.menteeName())
+			.facilityManager(info == null ? null : info.facilityManager())
+			.samplingWitness(info == null ? null : info.samplingWitness())
+			.analyst(info == null ? null : info.analyst())
+			.technicalManager(info == null ? null : info.technicalManager())
+			
+			.tenantName(tenant == null ? null : tenant.name())
+			.tenantBizNumber(tenant == null ? null : tenant.bizNumber())
+			.tenantRepresentative(tenant == null ? null : tenant.representative())
+			.tenantAddress(tenant == null ? null : address(tenant.roadAddress(), tenant.detailAddress()))
+
 			.clientName(client == null ? null : client.name())
 			.clientBizNumber(client == null ? null : client.bizNumber())
 			.clientRepresentative(client == null ? null : client.representative())
 			.clientAddress(client == null ? null : address(client.roadAddress(), client.detailAddress()))
-			.facilityManager(client == null ? null : client.facilityManager())
-			.samplingWitness(client == null ? null : client.samplingWitness())
+
 			.workplaceName(workplace == null ? null : workplace.name())
 			.workplaceBizNumber(workplace == null ? null : workplace.bizNumber())
 			.workplaceAddress(workplace == null ? null : address(workplace.roadAddress(), workplace.detailAddress()))
 			.workplaceGrade(workplace == null || workplace.grade() == null ? null : workplace.grade().getDesc())
+
 			.stackName(stack == null ? null : stack.name())
+			.semsNumber(stack == null ? null : stack.semsNumber())
 			.businessCategory(stack == null ? null : stack.businessCategory())
 			.mainProduct(stack == null ? null : stack.mainProduct())
 			.stackGrade(stack == null || stack.grade() == null ? null : stack.grade().getDesc())
 			.stackShape(stack == null ? null : shapeLabel(stack.shape()))
+			.stackOrientation(stack == null ? null : orientationLabel(stack.orientation()))
 			.horizontalLength(stack == null ? null : stack.horizontalLength())
 			.verticalLength(stack == null ? null : stack.verticalLength())
 			.height(stack == null ? null : stack.height())
@@ -87,7 +97,7 @@ public class ScheduleExportViewMapper {
 			.pitotTube(slot(equipments, team == null ? null : team.pitotTubeId(), EquipType.PITOT_TUBE))
 			.nozzle(slot(equipments, team == null ? null : team.nozzleId(), EquipType.NOZZLE))
 			.equipments(toEquipmentViews(equipments))
-			.sheets(toSheetViews(snapshot.sheets()))
+			.sheets(sheetExportViewMapper.toSheetViews(snapshot.sheets()))
 			.build();
 	}
 
@@ -99,8 +109,11 @@ public class ScheduleExportViewMapper {
 			views.add(FacilityExportView.builder()
 				.name(facility.name())
 				.fuelUsage(facility.fuelUsage())
+				.productOutput(facility.productOutput())
+				.incinerationAmount(facility.incinerationAmount())
 				.fuelInput(facility.fuelInput())
 				.fuelType(facility.fuelType())
+				.unit(facility.unit())
 				.build());
 		}
 		return views;
@@ -251,158 +264,14 @@ public class ScheduleExportViewMapper {
 		return values;
 	}
 
-	private List<SheetExportView> toSheetViews(List<MeasurementSheet> sheets) {
-		if (sheets == null) return List.of();
-		List<SheetExportView> views = new ArrayList<>(sheets.size());
-		for (MeasurementSheet sheet : sheets) {
-			views.add(toSheetView(sheet));
-		}
-		return views;
-	}
-
-	private SheetExportView toSheetView(MeasurementSheet sheet) {
-		WeatherData weather = sheet.getWeather();
-		MoistureData moisture = sheet.getMoisture();
-		MoistureData.BattleWeight weight = moisture == null ? null : moisture.getWeight();
-		MoistureData.GasMeterTemperature gmTemp = moisture == null ? null : moisture.getGasMeterTemperature();
-		MoistureData.DryGasVolume dryVol = moisture == null ? null : moisture.getDryGasVolume();
-		ExhaustGasData gas = sheet.getExhaustGas();
-		QuantityData quantity = sheet.getQuantity();
-		ParticleData particle = sheet.getParticle();
-
-		return SheetExportView.builder()
-			.category(sheet.getCategory() == null ? null : sheet.getCategory().getDescription())
-			.samplingPointCount(sheet.getSamplingPointCnt())
-
-			// 날씨
-			.pressureHpa(weather == null ? null : weather.getPressure())
-			.weatherCondition(weather == null || weather.getWeatherCondition() == null ? null : weather.getWeatherCondition().getDescription())
-			.temperature(weather == null ? null : weather.getTemperature())
-			.humidity(weather == null ? null : weather.getHumidity())
-			.windDirection(weather == null || weather.getWindDirection() == null ? null : weather.getWindDirection().getDescription())
-			.windSpeed(weather == null ? null : weather.getWindSpeed())
-			.atmosphericPressure(weather == null ? null : weather.getPa())
-
-			// 수분
-			.moistureWeightBefore(weight == null ? null : weight.getBefore())
-			.moistureWeightAfter(weight == null ? null : weight.getAfter())
-			.moistureGasMeterInTemperature(gmTemp == null ? null : gmTemp.getIn())
-			.moistureGasMeterOutTemperature(gmTemp == null ? null : gmTemp.getOut())
-			.moistureDryGasVolumeBefore(dryVol == null ? null : dryVol.getBefore())
-			.moistureDryGasVolumeAfter(dryVol == null ? null : dryVol.getAfter())
-			.moistureSuctionVelocity(moisture == null ? null : moisture.getSuctionVelocity())
-			.moistureGasMeterGaugePressure(moisture == null ? null : moisture.getGasMeterGaugePressure())
-			.moistureRatio(moisture == null ? null : moisture.getXw())
-			.moistureAbsorbedMass(moisture == null ? null : moisture.getMa())
-			.moistureIntakeGasTemperature(moisture == null ? null : moisture.getTm_g())
-			.moistureIntakeDryGasVolume(moisture == null ? null : moisture.getVm_g())
-			.moistureGaugePressureMmHg(moisture == null ? null : moisture.getPm_g())
-
-			// 배출가스
-			.o2Concentrations(gas == null ? null : gas.getO2Concentration())
-			.co2Concentrations(gas == null ? null : gas.getCo2Concentration())
-			.coConcentrations(gas == null ? null : gas.getCoConcentration())
-			.noxConcentrations(gas == null ? null : gas.getNoxConcentration())
-			.soxConcentrations(gas == null ? null : gas.getSoxConcentration())
-			.gasAnalyzerStartTime(gas == null ? null : gas.getGasAnalyzerStartTime())
-			.thcAnalyzerStartTime(gas == null ? null : gas.getThcAnalyzerStartTime())
-			.standardGasDensity(gas == null ? null : gas.getStandardGasDensity())
-			.oxygenCorrectionFactor(gas == null ? null : gas.getO2CorrectionFactor())
-
-			// 유량
-			.area(quantity == null ? null : quantity.getArea())
-			.avgGasTemperatureCelsius(quantity == null ? null : quantity.getAvgTs())
-			.avgGasTemperature(quantity == null ? null : quantity.getAvgTg())
-			.avgDynamicPressure(quantity == null ? null : quantity.getAvgPv())
-			.avgStaticPressure(quantity == null ? null : quantity.getAvgPs())
-			.gasDensity(quantity == null ? null : quantity.getGasDensity())
-			.pitotCoefficient(quantity == null ? null : quantity.getCp())
-			.gasVelocity(quantity == null ? null : quantity.getVs())
-			.quantity(quantity == null ? null : quantity.getQuantity())
-			.standardQuantity(quantity == null ? null : quantity.getStandardQuantity())
-			.gasMeterAbsoluteTemperature(sheet.getAvgTm())
-
-			// 입자상 집계
-			.thimbleFilter(particle == null ? null : particle.getThimbleFilter())
-			.bgThimbleFilter(particle == null ? null : particle.getBgThimbleFilter())
-			.particleSamplingStartTime(particle == null ? null : particle.getSamplingStartTime())
-			.particleSamplingEndTime(particle == null ? null : particle.getSamplingEndTime())
-			.avgKFactor(particle == null ? null : particle.getAvgKFactor())
-			.avgOrificeDp(particle == null ? null : particle.getAvgOrificeDp())
-			.avgIsokineticRatio(particle == null ? null : particle.getAvgIsokineticRatio())
-			.totalDryGasVolume(particle == null ? null : particle.getTotalVm())
-			.totalSamplingTime(particle == null ? null : particle.getTotalSamplingTime())
-
-			.points(toPointViews(sheet.getSamplingPoints()))
-			.samples(toSampleViews(sheet.getSamples()))
-			.build();
-	}
-
-	private List<PointExportView> toPointViews(List<SamplingPoint> points) {
-		if (points == null) return List.of();
-		List<PointExportView> views = new ArrayList<>(points.size());
-		for (int i = 0; i < points.size(); i++) {
-			views.add(toPointView(i + 1, points.get(i)));
-		}
-		return views;
-	}
-
-	private PointExportView toPointView(int index, SamplingPoint point) {
-		SamplingPoint.ParticleSampling ps = point.getParticle();
-		SamplingPoint.ParticleSampling.EquipmentTemperature et = ps == null ? null : ps.getEquipmentTemperature();
-		SamplingPoint.ParticleSampling.EquipmentVolume ev = ps == null ? null : ps.getEquipmentVolume();
-
-		return PointExportView.builder()
-			.index(index)
-			.gasTemperature(point.getTs())
-			.dynamicPressure(point.getPv())
-			.staticPressure(point.getPs())
-			.gasVelocity(point.getVs())
-			.gasDensity(point.getGasDensity())
-
-			.nozzleSize(ps == null ? null : ps.getNozzleSize())
-			.samplingTime(ps == null ? null : ps.getSamplingTime())
-			.vacuumGaugePressure(ps == null ? null : ps.getVacuumGaugePressure())
-			.finalImpingerTemperature(ps == null ? null : ps.getFinalImpingerTemperature())
-			.inTemperature(et == null ? null : et.getInTm())
-			.outTemperature(et == null ? null : et.getOutTm())
-			.dryGasVolumeBefore(ev == null ? null : ev.getBeforeVm())
-			.dryGasVolumeAfter(ev == null ? null : ev.getAfterVm())
-
-			.gasMeterAvgTemperature(et == null ? null : et.getAvgTm())
-			.dryGasVolume(ps == null ? null : ps.getVm())
-			.collectedWater(ps == null ? null : ps.getVlc())
-			.kFactor(ps == null ? null : ps.getKFactor())
-			.orificeDp(ps == null ? null : ps.getOrificeDp())
-			.isokineticRatio(ps == null ? null : ps.getIsokineticRatio())
-			.build();
-	}
-
-	private List<SampleExportView> toSampleViews(List<Sample> samples) {
-		if (samples == null) return List.of();
-		List<SampleExportView> views = new ArrayList<>(samples.size());
-		for (Sample s : samples) {
-			views.add(SampleExportView.builder()
-				.sampleName(s.getSampleName())
-				.startTime(s.getStartTime())
-				.endTime(s.getEndTime())
-				.suctionQuantity(s.getSuctionQuantity())
-				.gasMeterGaugePressure(s.getGasMeterGaugePressure())
-				.inTemperature(s.getInTemperature())
-				.outTemperature(s.getOutTemperature())
-				.beforeVolume(s.getBeforeVolume())
-				.afterVolume(s.getAfterVolume())
-				.blankSampleNumber(s.getBlankSampleNumber())
-				.sampleNumber(s.getSampleNumber())
-				.samplingVolume(s.getSamplingVolume())
-				.build());
-		}
-		return views;
-	}
-
 	private String shapeLabel(Shape shape) {
 		if (shape == null) return null;
 		return shape == Shape.CIRCULAR ? "원형" : "사각형";
+	}
+
+	private String orientationLabel(Orientation orientation) {
+		if (orientation == null) return null;
+		return orientation == Orientation.VERTICAL ? "수직" : "수평";
 	}
 
 	private String typeLabel(EquipType type) {

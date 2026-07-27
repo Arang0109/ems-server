@@ -5,6 +5,7 @@ import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
 import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.UpdateBasicInfoCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
 import com.ensolution.ems.schedule.application.port.in.MonthlyMeasurementCount;
 import com.ensolution.ems.schedule.application.port.in.ScheduleStatisticsUseCase;
@@ -74,7 +75,9 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 		));
 
 		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
-		BasicInfo basicInfo = BasicInfo.fromMeta(
+		// 측정·성적서 발행 단계에서 채워지는 값(담당자·접수/분석/발행일자·채취 시각)이
+		// 메타 수정으로 유실되지 않도록 기존 기본 정보에 병합한다.
+		BasicInfo basicInfo = basicInfoOf(snapshot, saved).applyMeta(
 			saved.getReferenceNumber(),
 			saved.getSampledAt(),
 			saved.getMeasurementField(),
@@ -82,6 +85,50 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(
 			snapshot.applyMetaUpdate(basicInfo, command.tenant()));
 		return new ScheduleDetail(saved, savedSnapshot);
+	}
+
+	/**
+	 * 측정계획 문서의 기본 정보를 수정한다. 담당자(배출시설관리자·시료채취입회자·시료분석검사자·기술책임자)·
+	 * 시료접수/분석완료/성적서발행일자·채취 시작/종료 시각과 측정자 표기를 부분 갱신하며,
+	 * 전달되지 않은 필드는 기존 값을 유지한다.
+	 * 계산 입력이 아닌 값만 다루므로 측정 시트는 재계산하지 않는다. 메타(MySQL)와 원장(tenant)은 변경하지 않으며,
+	 * 완료·취소된 계획은 수정할 수 없다.
+	 */
+	public ScheduleDetail updateBasicInfo(Long id, Long tenantId, UpdateBasicInfoCommand command) {
+		Schedule meta = scheduleRepository.findById(id, tenantId);
+		meta.requireEditable();
+
+		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
+		BasicInfo basicInfo = basicInfoOf(snapshot, meta).update(
+			command.facilityManager(),
+			command.samplingWitness(),
+			command.analyst(),
+			command.technicalManager(),
+			command.receivedAt(),
+			command.analyzedAt(),
+			command.issuedAt(),
+			command.samplingStartedAt(),
+			command.samplingEndedAt()
+		);
+		TeamSnapshot team = snapshot.team() == null
+			? null
+			: snapshot.team().withMembers(command.mentorName(), command.menteeName());
+
+		ScheduleSnapshot savedSnapshot = scheduleDocumentRepository.save(
+			snapshot.applyBasicInfo(basicInfo, team));
+		return new ScheduleDetail(meta, savedSnapshot);
+	}
+
+	/** 문서의 기본 정보를 반환한다. 기본 정보 없이 저장된 과거 문서는 메타에서 새로 조립한다. */
+	private BasicInfo basicInfoOf(ScheduleSnapshot snapshot, Schedule meta) {
+		if (snapshot.basicInfo() != null) return snapshot.basicInfo();
+		return BasicInfo.create(
+			meta.getReferenceNumber(),
+			meta.getSampledAt(),
+			meta.getMeasurementField(),
+			meta.getSchedulePurpose(),
+			null,
+			null);
 	}
 
 	public ScheduleDetail changeStatus(Long id, Long tenantId, ScheduleStatus next) {
@@ -113,11 +160,11 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 	}
 
 	/**
-	 * 측정계획의 측정장비를 교체한다. 전달되지 않은 슬롯은 기존 장비를 유지하며, 팀 스냅샷의 장비 id와
-	 * 장비 목록을 함께 갱신하고 기존 시트를 새 장비 spec으로 재계산한다.
-	 * 장비는 메타(MySQL)가 아닌 문서(MongoDB)에만 존재하므로 문서 단독 쓰기이며, 원장(tenant·equipment)은
-	 * 변경하지 않는다. 완료·취소된 계획은 변경할 수 없다.
-	 */
+		* 	 * 측정계획의 측정장비를 교체한다. 전달되지 않은 슬롯은 기존 장비를 유지하며, 팀 스냅샷의 장비 id와
+	 * 	 * 장비 목록을 함께 갱신하고 기존 시트를 새 장비 spec으로 재계산한다.
+		* 	 * 장비는 메타(MySQL)가 아닌 문서(MongoDB)에만 존재하므로 문서 단독 쓰기이며, 원장(tenant·equipment)은
+	 * 	 * 변경하지 않는다. 완료·취소된 계획은 변경할 수 없다.
+	 * 	    */
 	public ScheduleDetail changeEquipments(Long id, Long tenantId, ChangeScheduleEquipmentsCommand command) {
 		Schedule meta = scheduleRepository.findById(id, tenantId);
 		meta.requireEditable();
@@ -156,8 +203,6 @@ public class ScheduleService implements ScheduleStatisticsUseCase {
 			command.roadAddress(),
 			command.detailAddress(),
 			command.zipcode(),
-			command.facilityManager(),
-			command.samplingWitness(),
 			command.email(),
 			command.tel(),
 			command.workplace()

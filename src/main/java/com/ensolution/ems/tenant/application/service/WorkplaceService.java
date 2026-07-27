@@ -38,7 +38,7 @@ public class WorkplaceService implements WorkplaceQueryUseCase {
 		}
 
 		Workplace newWorkplace = Workplace.register(
-			command.tenantId(), clientId, name, command.bizNumber(), command.roadAddress(), command.detailAddress(), command.zipcode(), command.grade()
+			command.tenantId(), clientId, name, command.bizNumber(), command.roadAddress(), command.detailAddress(), command.zipcode(), command.facilityManager(), command.samplingWitness(), command.grade()
 		);
 		return workplaceRepository.save(newWorkplace);
 	}
@@ -46,7 +46,7 @@ public class WorkplaceService implements WorkplaceQueryUseCase {
 	public Workplace updateWorkplace(Long workplaceId, Long tenantId, UpdateWorkplaceCommand command) {
 		Workplace workplace = workplaceRepository.findById(workplaceId, tenantId);
 		Workplace updated = workplace.update(
-			command.name(), command.bizNumber(), command.roadAddress(), command.detailAddress(), command.zipcode(), command.grade()
+			command.name(), command.bizNumber(), command.roadAddress(), command.detailAddress(), command.zipcode(), command.facilityManager(), command.samplingWitness(), command.grade()
 		);
 		return workplaceRepository.save(updated);
 	}

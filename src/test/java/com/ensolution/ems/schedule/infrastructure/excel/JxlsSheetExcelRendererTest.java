@@ -3,10 +3,15 @@ package com.ensolution.ems.schedule.infrastructure.excel;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.schedule.application.command.export.EquipmentExportView;
+import com.ensolution.ems.schedule.application.command.export.FlowExportView;
+import com.ensolution.ems.schedule.application.command.export.MoistureExportView;
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PointExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
 import com.ensolution.ems.schedule.application.command.export.SheetExportView;
+import com.ensolution.ems.schedule.application.command.export.WeatherExportView;
+import com.ensolution.ems.schedule.application.mapper.SheetExportViewMapper;
+import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
@@ -26,6 +31,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** jxls 렌더러가 export 뷰를 템플릿 표현식·반복(jx:each)에 실제로 바인딩하는지 검증하는 런타임 테스트. */
@@ -35,23 +41,27 @@ class JxlsSheetExcelRendererTest {
 
 	private ScheduleExportView view() {
 		PointExportView p1 = PointExportView.builder()
-			.index(1).gasTemperature(new BigDecimal("100")).dynamicPressure(new BigDecimal("5"))
-			.staticPressure(new BigDecimal("-2")).gasVelocity(new BigDecimal("12.3"))
+			.index(1).temperature(new BigDecimal("100")).dynamicPressure(new BigDecimal("5"))
+			.staticPressure(new BigDecimal("-2")).velocity(new BigDecimal("12.3"))
+			.avgTemperature(new BigDecimal("21"))
 			.kFactor(new BigDecimal("0.5")).isokineticRatio(new BigDecimal("98.7")).build();
 		PointExportView p2 = PointExportView.builder()
-			.index(2).gasTemperature(new BigDecimal("101")).dynamicPressure(new BigDecimal("6"))
-			.staticPressure(new BigDecimal("-3")).gasVelocity(new BigDecimal("13.1"))
+			.index(2).temperature(new BigDecimal("101")).dynamicPressure(new BigDecimal("6"))
+			.staticPressure(new BigDecimal("-3")).velocity(new BigDecimal("13.1"))
+			.avgTemperature(new BigDecimal("22"))
 			.kFactor(new BigDecimal("0.6")).isokineticRatio(new BigDecimal("99.1")).build();
 		SheetExportView sheet = SheetExportView.builder()
 			.category("먼지")
-			.samplingPointCount(2)
-			.atmosphericPressure(new BigDecimal("760.0"))
-			.oxygenCorrectionFactor(new BigDecimal("1.54545"))
-			.area(new BigDecimal("0.785"))
-			.pitotCoefficient(new BigDecimal("0.84"))
-			.gasVelocity(new BigDecimal("12.3"))
-			.quantity(new BigDecimal("1000.0"))
-			.standardQuantity(new BigDecimal("850.0"))
+			.pointCount(2)
+			.weather(WeatherExportView.builder().pressureMmHg(new BigDecimal("760.0")).build())
+			.moisture(MoistureExportView.builder().ratio(new BigDecimal("11.8")).build())
+			.flow(FlowExportView.builder()
+				.area(new BigDecimal("0.785"))
+				.pitotCoefficient(new BigDecimal("0.84"))
+				.velocity(new BigDecimal("12.3"))
+				.quantity(new BigDecimal("1000.0"))
+				.standardQuantity(new BigDecimal("850.0"))
+				.build())
 			.points(List.of(p1, p2))
 			.build();
 		return ScheduleExportView.builder()
@@ -68,8 +78,10 @@ class JxlsSheetExcelRendererTest {
 
 	// 시트 2개짜리 뷰 (채취기록부: 시트별 파일 분리 검증용)
 	private ScheduleExportView twoSheetView() {
-		SheetExportView dust = SheetExportView.builder().category("먼지").samplingPointCount(1).build();
-		SheetExportView gas = SheetExportView.builder().category("가스상").samplingPointCount(1).build();
+		SheetExportView dust = SheetExportView.builder().category("먼지").pointCount(1)
+			.flow(FlowExportView.builder().velocity(new BigDecimal("12.3")).build()).build();
+		SheetExportView gas = SheetExportView.builder().category("가스상").pointCount(1)
+			.flow(FlowExportView.builder().velocity(new BigDecimal("9.9")).build()).build();
 		return ScheduleExportView.builder()
 			.referenceNumber("REF-123")
 			.clientName("의뢰기관A")
@@ -82,9 +94,26 @@ class JxlsSheetExcelRendererTest {
 		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 			XSSFSheet s = wb.createSheet("Record");
 			XSSFCell a1 = s.createRow(0).createCell(0);
-			a1.setCellValue("${plan.referenceNumber}");            // 원장 데이터
+			a1.setCellValue("${plan.referenceNumber}");                    // 원장 데이터
 			s.createRow(1).createCell(0).setCellValue("${sheet.category}"); // 단일 시트
+			s.createRow(2).createCell(0).setCellValue("${sheet.flow.velocity}"); // 하위 그룹 경로
+			addComment(wb, s, a1, "jx:area(lastCell=\"A3\")");
+			wb.write(out);
+			return out.toByteArray();
+		}
+	}
+
+	// 채취기록부에서 측정 영역별 하위 뷰를 최상위 변수로 참조하는 템플릿
+	private byte[] flattenedGroupTemplate() throws Exception {
+		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			XSSFSheet s = wb.createSheet("Record");
+			XSSFCell a1 = s.createRow(0).createCell(0);
+			a1.setCellValue("${plan.referenceNumber}/${sheet.category}"
+				+ "/${weather.pressureMmHg}/${moisture.ratio}/${flow.velocity}");
+			XSSFCell a2 = s.createRow(1).createCell(0);
+			a2.setCellValue("${p.index}=${p.temperature}");
 			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
+			addComment(wb, s, a2, "jx:each(items=\"points\" var=\"p\" lastCell=\"A2\")");
 			wb.write(out);
 			return out.toByteArray();
 		}
@@ -98,6 +127,37 @@ class JxlsSheetExcelRendererTest {
 			a1.setCellValue("${plan.referenceNumber}");
 			s.createRow(1).createCell(0).setCellValue("${plan.clientName}");
 			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
+			wb.write(out);
+			return out.toByteArray();
+		}
+	}
+
+	// 시트의 측정 영역별 하위 그룹(weather/moisture/flow)과 측정점 반복을 중첩 경로로 참조하는 템플릿
+	private byte[] nestedGroupTemplate() throws Exception {
+		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			XSSFSheet s = wb.createSheet("Report");
+			XSSFCell a1 = s.createRow(0).createCell(0);
+			a1.setCellValue("${plan.sheets[0].weather.pressureMmHg}/${plan.sheets[0].moisture.ratio}"
+				+ "/${plan.sheets[0].flow.standardQuantity}");
+			XSSFCell a2 = s.createRow(1).createCell(0);
+			a2.setCellValue("${p.index}=${p.avgTemperature}");
+			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
+			addComment(wb, s, a2, "jx:each(items=\"plan.sheets[0].points\" var=\"p\" lastCell=\"A2\")");
+			wb.write(out);
+			return out.toByteArray();
+		}
+	}
+
+	// 값이 하나도 없는 시트에서도 하위 그룹 경로와 빈 목록 반복이 견디는지 확인하는 템플릿
+	private byte[] emptySheetTemplate() throws Exception {
+		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			XSSFSheet s = wb.createSheet("Report");
+			XSSFCell a1 = s.createRow(0).createCell(0);
+			a1.setCellValue("[${plan.sheets[0].weather.temperature}][${plan.sheets[0].moisture.ratio}]");
+			XSSFCell a2 = s.createRow(1).createCell(0);
+			a2.setCellValue("${o}");
+			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
+			addComment(wb, s, a2, "jx:each(items=\"plan.sheets[0].gas.o2\" var=\"o\" lastCell=\"A2\")");
 			wb.write(out);
 			return out.toByteArray();
 		}
@@ -223,6 +283,52 @@ class JxlsSheetExcelRendererTest {
 	}
 
 	@Test
+	void 시트의_하위_그룹_경로가_바인딩된다() throws Exception {
+		byte[] rendered = renderer.render(nestedGroupTemplate(), view());
+
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
+			Sheet s = wb.getSheetAt(0);
+			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("760.0/11.8/850.0");
+			// 측정점 2개가 A2, A3 로 전개되고 가스미터 평균온도가 채워진다
+			assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("1=21");
+			assertThat(s.getRow(2).getCell(0).getStringCellValue()).isEqualTo("2=22");
+		}
+	}
+
+	@Test
+	void 채취기록부는_측정_영역을_최상위_변수로도_노출한다() throws Exception {
+		byte[] zip = renderer.renderSamplingRecordsZip(flattenedGroupTemplate(), view());
+
+		try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zip))) {
+			assertThat(zis.getNextEntry()).isNotNull();
+			try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(zis.readAllBytes()))) {
+				Sheet s = wb.getSheetAt(0);
+				// sheet.weather.pressureMmHg 를 weather.pressureMmHg 로 짧게 쓸 수 있다
+				assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("REF-123/먼지/760.0/11.8/12.3");
+				// 측정점 목록도 sheet 없이 반복할 수 있다
+				assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("1=100");
+				assertThat(s.getRow(2).getCell(0).getStringCellValue()).isEqualTo("2=101");
+			}
+		}
+	}
+
+	@Test
+	void 값이_없는_시트도_하위_그룹_경로에서_깨지지_않는다() throws Exception {
+		// 렌더러가 withExceptionThrower()로 동작하므로, 매퍼가 하위 뷰를 항상 채운다는 계약이 깨지면 여기서 실패한다
+		SheetExportView emptySheet = new SheetExportViewMapper().toSheetView(MeasurementSheet.builder().build());
+		ScheduleExportView plan = ScheduleExportView.builder()
+			.referenceNumber("REF-123").sheets(List.of(emptySheet)).build();
+
+		byte[] template = emptySheetTemplate();
+		assertThatCode(() -> renderer.render(template, plan)).doesNotThrowAnyException();
+
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderer.render(template, plan)))) {
+			Sheet s = wb.getSheetAt(0);
+			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[][]");
+		}
+	}
+
+	@Test
 	void 측정점_반복이_전개된다() throws Exception {
 		byte[] rendered = renderer.render(loopTemplate(), view());
 
@@ -270,6 +376,7 @@ class JxlsSheetExcelRendererTest {
 
 		List<String> entryNames = new ArrayList<>();
 		List<String> categories = new ArrayList<>();
+		List<Double> velocities = new ArrayList<>();
 		try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zip))) {
 			ZipEntry entry;
 			while ((entry = zis.getNextEntry()) != null) {
@@ -280,12 +387,15 @@ class JxlsSheetExcelRendererTest {
 					// 원장 데이터(plan)와 단일 시트(sheet)가 함께 바인딩된다
 					assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("REF-123");
 					categories.add(s.getRow(1).getCell(0).getStringCellValue());
+					// 셀에 값 하나만 있으면 jxls가 숫자 셀로 기록한다
+					velocities.add(s.getRow(2).getCell(0).getNumericCellValue());
 				}
 			}
 		}
 
 		assertThat(entryNames).containsExactly("1_먼지.xlsx", "2_가스상.xlsx");
 		assertThat(categories).containsExactly("먼지", "가스상");
+		assertThat(velocities).containsExactly(12.3, 9.9);
 	}
 
 	@Test

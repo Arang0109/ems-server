@@ -19,6 +19,8 @@ public class Workplace {
 	private String roadAddress;
 	private String detailAddress;
 	private String zipcode;
+	private String facilityManager;
+	private String samplingWitness;
 	private Grade grade;
 
 	public static Workplace register(
@@ -29,6 +31,8 @@ public class Workplace {
 		String roadAddress,
 		String detailAddress,
 		String zipcode,
+		String facilityManager,
+		String samplingWitness,
 		Grade grade
 	) {
 		return Workplace.builder()
@@ -39,6 +43,8 @@ public class Workplace {
 			.roadAddress(roadAddress)
 			.detailAddress(detailAddress)
 			.zipcode(zipcode)
+			.facilityManager(facilityManager)
+			.samplingWitness(samplingWitness)
 			.grade(grade)
 			.build();
 	}
@@ -49,6 +55,8 @@ public class Workplace {
 		String roadAddress,
 		String detailAddress,
 		String zipcode,
+		String facilityManager,
+		String samplingWitness,
 		Grade grade) {
 		return this.toBuilder()
 			.name(keep(name, this.name))
@@ -56,6 +64,8 @@ public class Workplace {
 			.roadAddress(keep(roadAddress, this.roadAddress))
 			.detailAddress(keep(detailAddress, this.detailAddress))
 			.zipcode(keep(zipcode, this.zipcode))
+			.facilityManager(keep(facilityManager, this.facilityManager))
+			.samplingWitness(keep(samplingWitness, this.samplingWitness))
 			.grade(grade != null ? grade : this.grade)
 			.build();
 	}

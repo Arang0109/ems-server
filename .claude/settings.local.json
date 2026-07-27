@@ -16,7 +16,12 @@
       "Bash(git *)",
       "Read(///wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server/src/main/java/com/ensolution/ems/**)",
       "Read(///wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server/**)",
-      "Bash(cd \"\\\\\\\\wsl.localhost\\\\Ubuntu-22.04\\\\home\\\\kmsq321\\\\dev_wsl\\\\projects\\\\ems-server\")"
+      "Bash(cd \"\\\\\\\\wsl.localhost\\\\Ubuntu-22.04\\\\home\\\\kmsq321\\\\dev_wsl\\\\projects\\\\ems-server\")",
+      "Read(///wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server/src/main/**)",
+      "Read(///wsl.localhost/Ubuntu-22.04/home/kmsq321/dev_wsl/projects/ems-server/src/main/java/com/ensolution/ems/global/common/enums/**)",
+      "Read(//c/Users/강민수/.gradle/caches/modules-2/files-2.1/**)",
+      "Bash(echo \"exit=$?\")",
+      "Read(///wsl.localhost/Ubuntu-22.04/home/kmsq321/.gradle/caches/modules-2/files-2.1/org.hibernate.validator/**)"
     ]
   }
 }

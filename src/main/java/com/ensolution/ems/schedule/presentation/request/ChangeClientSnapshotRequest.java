@@ -4,7 +4,8 @@ import com.ensolution.ems.schedule.domain.snapshot.WorkplaceSnapshot;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "의뢰기관 스냅샷 수정 요청. 전달하지 않은 필드는 기존 값을 유지하며, "
-	+ "하위 사업장·측정시설도 중첩 전달로 부분 수정할 수 있습니다.")
+	+ "하위 사업장·측정시설도 중첩 전달로 부분 수정할 수 있습니다. "
+	+ "배출시설관리자·시료채취입회자 등 담당자는 PATCH /api/schedules/{scheduleId}/basic-info 로 수정합니다.")
 public record ChangeClientSnapshotRequest(
 	@Schema(description = "의뢰기관명")
 	String name,
@@ -23,12 +24,6 @@ public record ChangeClientSnapshotRequest(
 
 	@Schema(description = "우편번호")
 	String zipcode,
-
-	@Schema(description = "시설담당자")
-	String facilityManager,
-
-	@Schema(description = "채취입회인")
-	String samplingWitness,
 
 	@Schema(description = "이메일")
 	String email,

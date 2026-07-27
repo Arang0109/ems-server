@@ -31,7 +31,8 @@ public class SheetContext {
 	// 압력
 	private BigDecimal Pa;    // 대기압 (mmHg)
 	private BigDecimal Pg;    // 배출가스 절대압력 (mmHg)
-	private BigDecimal Pm_g;  // 수분측정용 가스미터 게이지압 (mmHg)
+	private BigDecimal Pm_g;      // 수분측정용 가스미터 게이지압 (mmHg)
+	private BigDecimal Pm_g_inch; // 수분측정용 가스미터 게이지압 (inchH2O)
 
 	// 수분
 	private BigDecimal Xw;    // 수분량 (%)
