@@ -10,7 +10,6 @@ import com.ensolution.ems.schedule.application.command.export.FacilityExportView
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
-import com.ensolution.ems.schedule.application.command.export.TargetSubstanceExportView;
 import com.ensolution.ems.schedule.domain.snapshot.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -91,7 +90,6 @@ public class ScheduleExportViewMapper {
 			.standardOxygen(stack == null ? null : stack.standardOxygen())
 			.facilities(toFacilityViews(facilities))
 			.preventions(preventionViews)
-			.targetSubstances(flattenTargetSubstances(preventionViews))
 			.particleSampler(slot(equipments, team == null ? null : team.particleSamplerId(), EquipType.PARTICLE_SAMPLER))
 			.gasSampler(slot(equipments, team == null ? null : team.gasSamplerId(), EquipType.GAS_SAMPLER))
 			.pitotTube(slot(equipments, team == null ? null : team.pitotTubeId(), EquipType.PITOT_TUBE))
@@ -127,36 +125,9 @@ public class ScheduleExportViewMapper {
 			views.add(PreventionExportView.builder()
 				.name(prevention.name())
 				.capacity(prevention.capacity())
-				.targetSubstances(toTargetSubstanceViews(prevention.name(), prevention.targetSubstances()))
+				.targetName(prevention.targetName())
+				.removalEfficiency(prevention.removalEfficiency())
 				.build());
-		}
-		return views;
-	}
-
-	private List<TargetSubstanceExportView> toTargetSubstanceViews(
-		String preventionName, List<TargetSubstanceSnapshot> targetSubstances) {
-		if (targetSubstances == null) return List.of();
-		List<TargetSubstanceExportView> views = new ArrayList<>(targetSubstances.size());
-		for (TargetSubstanceSnapshot substance : targetSubstances) {
-			if (substance == null) continue;
-			views.add(TargetSubstanceExportView.builder()
-				.preventionName(preventionName)
-				.name(substance.name())
-				.removalEfficiency(substance.removalEfficiency())
-				.build());
-		}
-		return views;
-	}
-
-	/**
-	 * 방지시설별로 중첩된 측정대상물질을 하나의 목록으로 펼친다.
-	 * 물질만 한 표로 렌더링하는 템플릿이 중첩 jx:each를 쓰지 않아도 되도록 제공하며,
-	 * 이미 만든 뷰 인스턴스를 그대로 재사용한다(불변이므로 공유해도 안전하다).
-	 */
-	private List<TargetSubstanceExportView> flattenTargetSubstances(List<PreventionExportView> preventions) {
-		List<TargetSubstanceExportView> views = new ArrayList<>();
-		for (PreventionExportView prevention : preventions) {
-			views.addAll(prevention.getTargetSubstances());
 		}
 		return views;
 	}

@@ -33,7 +33,9 @@ public class Tenant {
 	/**
 	 * 신규 고객사 발급. 기본 상태는 ACTIVE.
 	 */
-	public static Tenant provision(String name, String bizNumber, SubscriptionPlan subscriptionPlan) {
+	public static Tenant provision(
+		String name, String bizNumber, SubscriptionPlan subscriptionPlan
+	) {
 		return Tenant.builder()
 			.name(name)
 			.bizNumber(bizNumber)

@@ -31,6 +31,11 @@ spring:
       hibernate:
         format_sql: true  # SQL문 보기 좋게 정렬
 
+# 문서 보관소. LOCAL 저장 시 루트 디렉토리이며, 컨테이너에서는 볼륨 마운트 경로를 주입한다.
+ems:
+  storage:
+    local-root: ${STORAGE_LOCAL_ROOT:./data/storage}
+
 jwt:
   secret: ${JWT_SECRET}
   access-token-validity: ${AT_VALID:3600000}

@@ -41,3 +41,6 @@ out/
 
 ### Logs ###
 *.log
+
+### Local file storage ###
+data/storage/

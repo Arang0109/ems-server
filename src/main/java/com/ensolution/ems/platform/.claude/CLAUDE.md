@@ -16,6 +16,12 @@
 - **인터모듈 연동은 auth의 인바운드 포트로만**: 초기 관리자·운영자 계정 생성은 auth의
   `UserCommandUseCase`, `RoleQueryUseCase`, `RoleCommandUseCase`(`auth/application/port/in`)를 통해서만 한다.
   auth의 domain/infra를 직접 참조하지 않는다.
+- **부트스트랩은 계층 규칙의 명시적 예외**: `PlatformAdminInitializer`는 infrastructure에 있으면서
+  `@Transactional` + 아웃바운드 포트(`TenantRepository`) + 타 모듈 인바운드 포트를 직접 조합해 절차를 오케스트레이션한다.
+  일반 규칙대로면 application 유스케이스로 올려야 하지만, **런타임 유스케이스가 아니라 배포 1회성 설치 코드**이므로
+  현 위치를 유지한다. 별도 inbound port·Command를 만들어 얇은 러너로 쪼개는 리팩터링은 하지 않는다.
+  - 예외 범위는 이 클래스에 한정한다. 부트스트랩 이외의 로직(운영 중 호출되는 흐름)을 여기에 추가하지 않는다.
+    부트스트랩 절차가 커지거나 API로 재사용해야 하면 그때 application으로 승격한다.
 
 ## 구성
 
@@ -28,4 +34,5 @@
 - `infrastructure/adapter/TenantRepositoryAdapter` — `TenantJpaRepository` 재사용.
 - `infrastructure/bootstrap/PlatformAdminInitializer` — 멱등 `ApplicationRunner`. 표준 역할 → 시스템 테넌트 → 운영자 순 확보.
   설정은 `platform.bootstrap.*`(환경변수 주입). `enabled=false`거나 username/password 미설정 시 no-op.
+  계층 예외는 위 경계 규칙 참고.
 - `presentation/controller/PlatformTenantController` — `/api/platform/tenants` (POST 발급 / GET 목록 / GET 단건).

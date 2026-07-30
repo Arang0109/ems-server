@@ -2,11 +2,11 @@ package com.ensolution.ems.platform.infrastructure.adapter;
 
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
-import com.ensolution.ems.platform.application.command.list_item.TenantListItem;
+import com.ensolution.ems.platform.application.result.TenantListItem;
 import com.ensolution.ems.platform.application.port.out.TenantRepository;
 import com.ensolution.ems.platform.domain.Tenant;
 import com.ensolution.ems.platform.infrastructure.mapper.TenantEntityMapper;
-import com.ensolution.ems.tenant.infrastructure.repository.TenantJpaRepository;
+import com.ensolution.ems.platform.infrastructure.repository.TenantJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;

@@ -73,7 +73,6 @@ public class ScheduleExportView {
 	// 배출·방지시설 (jx:each 대상)
 	private final List<FacilityExportView> facilities;
 	private final List<PreventionExportView> preventions;
-	private final List<TargetSubstanceExportView> targetSubstances;  // 방지시설 구분 없이 평탄화한 전체 목록
 
 	// 측정 장비 (팀 슬롯별 단건 참조)
 	private final EquipmentExportView particleSampler;  // 입자상 채취기

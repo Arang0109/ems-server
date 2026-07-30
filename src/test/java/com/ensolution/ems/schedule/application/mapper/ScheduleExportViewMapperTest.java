@@ -14,7 +14,6 @@ import com.ensolution.ems.schedule.application.command.export.FacilityExportView
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
-import com.ensolution.ems.schedule.application.command.export.TargetSubstanceExportView;
 import com.ensolution.ems.schedule.domain.sheet.MeasurementCategory;
 import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
 import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
@@ -24,7 +23,6 @@ import com.ensolution.ems.schedule.domain.snapshot.FacilitySnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.PreventionSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.StackSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.TargetSubstanceSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.WorkplaceSnapshot;
 import org.junit.jupiter.api.Test;
@@ -220,50 +218,43 @@ class ScheduleExportViewMapperTest {
 	}
 
 	@Test
-	void 방지시설에_측정대상물질이_중첩되고_소속명이_채워진다() {
+	void 방지시설의_대상물질과_제거효율이_뷰에_매핑된다() {
 		List<PreventionSnapshot> preventions = List.of(
-			new PreventionSnapshot(1L, "흡착탑", 50.0, List.of(
-				new TargetSubstanceSnapshot(10L, "THC", 90.0))));
+			new PreventionSnapshot(1L, "흡착탑", 50.0, "THC", "90"));
 
 		ScheduleExportView view = mapper.toExportView(snapshot(null, preventions));
 
 		assertThat(view.getPreventions())
-			.extracting(PreventionExportView::getName, PreventionExportView::getCapacity)
-			.containsExactly(tuple("흡착탑", 50.0));
-		assertThat(view.getPreventions().getFirst().getTargetSubstances())
-			.extracting(TargetSubstanceExportView::getPreventionName, TargetSubstanceExportView::getName,
-				TargetSubstanceExportView::getRemovalEfficiency)
-			.containsExactly(tuple("흡착탑", "THC", 90.0));
+			.extracting(PreventionExportView::getName, PreventionExportView::getCapacity,
+				PreventionExportView::getTargetName, PreventionExportView::getRemovalEfficiency)
+			.containsExactly(tuple("흡착탑", 50.0, "THC", "90"));
 	}
 
 	@Test
-	void 최상위_측정대상물질_목록이_방지시설_순서대로_펼쳐진다() {
+	void 방지시설_목록이_스냅샷_순서대로_매핑된다() {
 		List<PreventionSnapshot> preventions = List.of(
-			new PreventionSnapshot(1L, "흡착탑", 50.0, List.of(
-				new TargetSubstanceSnapshot(10L, "THC", 90.0),
-				new TargetSubstanceSnapshot(11L, "먼지", 95.0))),
-			new PreventionSnapshot(2L, "여과집진기", 30.0, List.of(
-				new TargetSubstanceSnapshot(12L, "황산화물", 80.0))));
+			new PreventionSnapshot(1L, "흡착탑", 50.0, "THC", "90"),
+			new PreventionSnapshot(2L, "여과집진기", 30.0, "먼지", "95"));
 
 		ScheduleExportView view = mapper.toExportView(snapshot(null, preventions));
 
-		assertThat(view.getTargetSubstances())
-			.extracting(TargetSubstanceExportView::getPreventionName, TargetSubstanceExportView::getName)
+		assertThat(view.getPreventions())
+			.extracting(PreventionExportView::getName, PreventionExportView::getTargetName)
 			.containsExactly(
 				tuple("흡착탑", "THC"),
-				tuple("흡착탑", "먼지"),
-				tuple("여과집진기", "황산화물"));
+				tuple("여과집진기", "먼지"));
 	}
 
 	@Test
-	void 방지시설에_측정대상물질이_없어도_목록은_비어있다() {
-		List<PreventionSnapshot> preventions = List.of(new PreventionSnapshot(1L, "흡착탑", 50.0, null));
+	void 방지시설에_대상물질_정보가_없으면_null로_유지된다() {
+		List<PreventionSnapshot> preventions = List.of(new PreventionSnapshot(1L, "흡착탑", 50.0, null, null));
 
 		ScheduleExportView view = mapper.toExportView(snapshot(null, preventions));
 
-		// jx:each가 깨지지 않도록 null이 아닌 빈 리스트
-		assertThat(view.getPreventions().getFirst().getTargetSubstances()).isEmpty();
-		assertThat(view.getTargetSubstances()).isEmpty();
+		PreventionExportView prevention = view.getPreventions().getFirst();
+		assertThat(prevention.getName()).isEqualTo("흡착탑");
+		assertThat(prevention.getTargetName()).isNull();
+		assertThat(prevention.getRemovalEfficiency()).isNull();
 	}
 
 	@Test
@@ -273,7 +264,6 @@ class ScheduleExportViewMapperTest {
 
 		assertThat(view.getFacilities()).isEmpty();
 		assertThat(view.getPreventions()).isEmpty();
-		assertThat(view.getTargetSubstances()).isEmpty();
 	}
 
 	@Test

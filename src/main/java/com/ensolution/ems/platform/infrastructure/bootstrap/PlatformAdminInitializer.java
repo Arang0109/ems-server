@@ -58,9 +58,7 @@ public class PlatformAdminInitializer implements ApplicationRunner {
 		}
 
 		// 1. 표준 역할 확보 (멱등)
-		STANDARD_ROLES.forEach((name, description) -> {
-			roleCommandUseCase.ensureRole(name, description);
-		});
+		STANDARD_ROLES.forEach(roleCommandUseCase::ensureRole);
 		Long platformAdminRoleId = roleCommandUseCase.ensureRole(PLATFORM_ADMIN_ROLE, STANDARD_ROLES.get(PLATFORM_ADMIN_ROLE));
 
 		// 2. 시스템 테넌트 확보 (멱등)

@@ -1,6 +1,6 @@
 package com.ensolution.ems.contract.application.service;
 
-import com.ensolution.ems.tenant.application.port.in.WorkplaceQueryUseCase;
+import com.ensolution.ems.client_management.application.port.in.WorkplaceQueryUseCase;
 import com.ensolution.ems.contract.application.command.ContractDetail;
 import com.ensolution.ems.contract.application.command.ContractListItem;
 import com.ensolution.ems.contract.application.command.CreateContractCommand;

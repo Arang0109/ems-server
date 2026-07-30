@@ -3,8 +3,8 @@ package com.ensolution.ems.dashboard.application.service;
 import com.ensolution.ems.dashboard.application.command.DashboardOverview;
 import com.ensolution.ems.dashboard.application.command.MeasurementCountItem;
 import com.ensolution.ems.schedule.application.port.in.ScheduleStatisticsUseCase;
-import com.ensolution.ems.tenant.application.port.in.StackQueryUseCase;
-import com.ensolution.ems.tenant.application.port.in.WorkplaceQueryUseCase;
+import com.ensolution.ems.client_management.application.port.in.StackQueryUseCase;
+import com.ensolution.ems.client_management.application.port.in.WorkplaceQueryUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

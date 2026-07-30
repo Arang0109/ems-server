@@ -75,6 +75,7 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | Controller | `{도메인}Controller` | `ClientController` |
 | Service | `{도메인}Service` | `ClientService` |
 | Detail Assembler | `{도메인}DetailAssembler` | `StackDetailAssembler` |
+| Validator | `{애그리거트}Validator` | `StackValidator`, `TeamValidator` |
 | Domain 모델 | 단순 명사 | `Client`, `User` |
 | Outbound Port | 역할 기반 명사 | `ClientRepository`, `TokenIssuer` |
 | Inbound Port (UseCase) | `{도메인}{동작}UseCase` | `WorkplaceQueryUseCase` |
@@ -132,15 +133,15 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 > 단일 Command만 존재하는 도메인은 `toCreateCommand()` 형태로 작성합니다.
 
 #### Repository Port 메서드 명
-| 동작 | 메서드 패턴 | 반환 타입 | 예시 |
-|------|------------|---------|------|
-| 저장 | `save(T entity)` | `T` | `save(Client client)` |
-| PK 단건 조회 | `findById(Long id)` | `T` | `findById(Long id)` |
-| 필드 조건 단건 조회 | `findBy{Field}(value)` | `T` | `findByUsername(String username)` |
+| 동작 | 메서드 패턴                      | 반환 타입 | 예시 |
+|------|-----------------------------|---------|------|
+| 저장 | `save(T entity)`            | `T` | `save(Client client)` |
+| PK 단건 조회 | `findById(Long id)`         | `T` | `findById(Long id)` |
+| 필드 조건 단건 조회 | `findBy{Field}(value)`      | `T` | `findByUsername(String username)` |
 | 부모 ID 기준 목록 조회 | `findBy{ParentId}(Long id)` | `List<VO>` | `findByClientId(Long clientId)` |
-| 전체 목록 조회 | `findAll()` | `List<T>` | `findAll()` |
-| 존재 확인 | `existsBy{Field}(value)` | `boolean` | `existsByUsername(String username)` |
-| 삭제 | `deleteById(Long id)` | `void` | `deleteById(Long id)` |
+| 전체 목록 조회 | `findAll()`                 | `List<T>` | `findAll()` |
+| 존재 확인 | `existsBy{Field}(value)`    | `boolean` | `existsByUsername(String username)` |
+| 삭제 | `deleteById(Long id)`       | `void` | `deleteById(Long id)` |
 
 > **단건 조회 반환 타입 규칙**: Domain Port의 `findById` / `findBy{Field}` 는 `Optional` 을 반환하지 않습니다.
 > Adapter 구현체에서 `.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND))` 로 처리하고, Port 인터페이스는 `T` 를 직접 반환합니다.
@@ -173,10 +174,43 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 - 모든 Controller 클래스에 `@Tag(name = "...", description = "...")` 어노테이션을 추가합니다.
 - 엔드포인트별 `@Operation`, `@ApiResponse` 어노테이션은 선택 사항이며, 복잡한 API에만 추가합니다.
 
-### 10. 패키지별 규칙
+### 10. 검증(Validation) 계층 규칙
+
+검증 책임은 4곳으로 분배합니다. **어느 계층이 담당하는지는 "그 검증에 무엇이 필요한가"로 결정합니다.**
+
+| 검증 종류 | 담당 | 위치 |
+|-----------|------|------|
+| 형식·필수값·범위 | Bean Validation 어노테이션 | `presentation/**/request/`의 Request DTO |
+| **비즈니스 규칙 (포트 조회 필요)** | **`{애그리거트}Validator`** | **`application/validator/`** |
+| 단건 존재·tenant 소유권 | `findById(id, tenantId)` + `orElseThrow(NOT_FOUND)` | `infrastructure/adapter/` |
+| 외부 의존 없는 도메인 불변식 | 도메인 모델의 `require*()` / 상태 전이 메서드 | `domain/` |
+
+#### Validator 규칙
+- 위치는 `{모듈}/application/validator/`, 클래스명은 `{애그리거트}Validator`입니다.
+  - `service/`에 두지 않습니다. Service·Assembler와 역할이 다르므로 `mapper/`·`command/`처럼 역할 단위 서브패키지로 분리합니다.
+  - `domain/`에 두지 않습니다. port를 주입받아야 하므로 `domain → application` 역방향 의존이 되어 1번 규칙에 위배됩니다.
+- `@Component` + `@RequiredArgsConstructor`로 선언하며, **`application/port/out/`과 타 모듈 `application/port/in/`만 주입**받습니다. Spring Data Repository·JPA 엔티티를 직접 참조하지 않습니다.
+- `@Transactional`을 붙이지 않습니다. 호출하는 Service의 트랜잭션에 참여합니다.
+- 메서드명은 `require{조건}` — 통과 시 `void`, 실패 시 `CustomException`을 던집니다.
+  - `validate*`는 boolean 반환으로 읽히므로 사용하지 않습니다.
+  - 도메인 모델의 불변식 메서드도 같은 접두사를 씁니다 (`Schedule.requireEditable()`).
+
+```java
+// service — 검증 의도만 남고 조건식은 사라진다
+public Stack createStack(CreateStackCommand command) {
+    stackValidator.requireUniqueNameInWorkplace(name, workplaceId, field);
+    return stackRepository.save(Stack.register(...));
+}
+```
+
+> **Validator로 뽑는 기준**: 포트 조회가 필요한 규칙(중복 검사, 타 모듈 리소스 존재+tenant 소속 확인, 배치 입력 내부의 자기 중복)만 뽑습니다.
+> 서비스 본문에 `if`·임시 컬렉션이 남지 않는 것이 목표이며, 단순 위임 래퍼를 만들기 위한 규칙이 아닙니다.
+> 레퍼런스 구현은 `tenant/application/validator/`입니다. 다른 모듈은 순차 적용 예정입니다.
+
+### 11. 패키지별 규칙
 패키지별 세부 규칙은 각 모듈의 `CLAUDE.md`를 참고합니다.
 
-### 11. ErrorCode 컨벤션
+### 12. ErrorCode 컨벤션
 
 #### 분류
 | 분류 | 네이밍 패턴 | 예시 |

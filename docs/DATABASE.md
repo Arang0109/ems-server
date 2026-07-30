@@ -15,14 +15,13 @@ tenants (테넌트/고객사)
 │       └── stacks     (측정시설/굴뚝)     tenant_id, workplace_id
 │           ├── facilities        (배출시설)      tenant_id, stack_id
 │           └── preventions       (방지시설)      tenant_id, stack_id
-│               └── target_substances (측정대상물질) tenant_id, prevention_id
 ├── pollutants         (측정물질 마스터)   tenant_id
 ├── stack_pollutant    (시설별 측정물질)   tenant_id, stack_id, pollutant_id
 └── contract           (계약)              tenant_id, workplace_id
 ```
 
 **`tenant_id` 연관 방식 두 가지**
-- **JPA 연관(@ManyToOne → TenantEntity)**: `clients`, `workplaces`, `stacks`, `facilities`, `preventions`, `target_substances`, `pollutants`, `stack_pollutant` — 실제 FK(`fk_*_tenants`) + `ON DELETE CASCADE`.
+- **JPA 연관(@ManyToOne → TenantEntity)**: `clients`, `workplaces`, `stacks`, `facilities`, `preventions`, `pollutants`, `stack_pollutant` — 실제 FK(`fk_*_tenants`) + `ON DELETE CASCADE`.
 - **plain 컬럼(Long, FK 제약 없음)**: `users`, `contract` — `tenant_id`를 값으로만 보유(모듈 경계상 TenantEntity에 의존하지 않음). 애플리케이션이 정합성 보장.
 
 ---
@@ -182,27 +181,14 @@ tenants (테넌트/고객사)
 | tenant_id | BIGINT | NOT NULL, FK→tenants | `fk_preventions_tenants`, ON DELETE CASCADE |
 | stack_id | BIGINT | NOT NULL, FK→stacks | `fk_preventions_stacks`, ON DELETE CASCADE |
 | name | VARCHAR | NOT NULL | 시설명 |
+| capacity | DOUBLE | | 용량 |
+| target_name | VARCHAR | | 대상물질명 |
+| removal_efficiency | VARCHAR | | 제거효율 |
 | created_at / modified_at | DATETIME | | |
 
 - **UNIQUE** `uk_preventions_stack_name` (stack_id, name)
 - **INDEX** `idx_preventions_tenant_id` (tenant_id)
-- 자식 `target_substances`를 `@OneToMany(cascade=ALL, orphanRemoval=true)`로 보유.
-
----
-
-## target_substances — 측정대상물질
-
-| 컬럼 | 타입 | 제약 | 설명 |
-|------|------|------|------|
-| target_substance_id | BIGINT | PK, AUTO_INCREMENT | |
-| tenant_id | BIGINT | NOT NULL, FK→tenants | `fk_target_substances_tenants`, ON DELETE CASCADE |
-| prevention_id | BIGINT | NOT NULL, FK→preventions | `fk_target_substances_preventions`, ON DELETE CASCADE |
-| name | VARCHAR | NOT NULL | 물질명 |
-| removal_efficiency | DOUBLE | | 제거효율 |
-| created_at / modified_at | DATETIME | | |
-
-- **UNIQUE** `uk_target_substances_prevention_name` (prevention_id, name)
-- **INDEX** `idx_target_substances_tenant_id` (tenant_id)
+- 대상물질은 별도 테이블이 아니라 `target_name`·`removal_efficiency` 두 컬럼으로 방지시설에 직접 보유합니다(방지시설당 1건).
 
 ---
 
@@ -292,3 +278,4 @@ tenants (테넌트/고객사)
 2. **`contract.contract_amount_unit` ORDINAL 저장**: `@Enumerated(EnumType.STRING)` 부재. enum 순서 변경 시 데이터 깨짐 위험 → STRING 저장 권장.
 3. **Auditing 리스너 범위**: `@EntityListeners(AuditingEntityListener.class)`는 `stacks`, `users`에만 부착됨. 나머지 테넌트 테이블은 `created_at`/`modified_at`이 자동 세팅되지 않으므로, 필요 시 각 엔티티에 리스너를 추가하고 `@EnableJpaAuditing` 설정을 확인해야 합니다.
 4. **tenant_id 주입 경로**: 인증된 사용자의 `tenant_id`(`users.tenant_id`)를 `CustomUserDetails.tenantId`로 로드하여, 컨트롤러가 `@AuthenticationPrincipal`로 읽어 생성 커맨드에 주입합니다.
+5. **`target_substances` 테이블 수동 삭제 필요**: 측정대상물질은 `preventions.target_name`/`removal_efficiency`로 통합되어 엔티티가 제거됐지만, `ddl-auto: update`는 테이블/컬럼 삭제를 반영하지 않습니다. 기존 DB에 남아 있는 `target_substances` 테이블은 `DROP TABLE target_substances;`로 직접 정리해야 합니다.

@@ -3,14 +3,14 @@ package com.ensolution.ems.schedule.application.service;
 import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
 import com.ensolution.ems.platform.application.port.in.TenantQueryUseCase;
-import com.ensolution.ems.platform.application.port.in.TenantSummary;
+import com.ensolution.ems.platform.application.result.TenantSummary;
 import com.ensolution.ems.schedule.application.mapper.ScheduleSnapshotMapper;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
 import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
-import com.ensolution.ems.tenant.application.port.in.*;
+import com.ensolution.ems.client_management.application.port.in.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

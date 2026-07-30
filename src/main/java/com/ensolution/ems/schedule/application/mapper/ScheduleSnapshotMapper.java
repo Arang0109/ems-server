@@ -1,10 +1,10 @@
 package com.ensolution.ems.schedule.application.mapper;
 
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
-import com.ensolution.ems.platform.application.port.in.TenantSummary;
+import com.ensolution.ems.platform.application.result.TenantSummary;
 import com.ensolution.ems.schedule.domain.snapshot.*;
-import com.ensolution.ems.tenant.application.port.in.StackMeasurementSummary;
-import com.ensolution.ems.tenant.application.port.in.TeamSummary;
+import com.ensolution.ems.client_management.application.port.in.StackMeasurementSummary;
+import com.ensolution.ems.client_management.application.port.in.TeamSummary;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -33,8 +33,6 @@ public interface ScheduleSnapshotMapper {
 	FacilitySnapshot toFacilitySnapshot(StackMeasurementSummary.FacilityInfo info);
 
 	List<FacilitySnapshot> toFacilitySnapshots(List<StackMeasurementSummary.FacilityInfo> infos);
-
-	TargetSubstanceSnapshot toTargetSubstanceSnapshot(StackMeasurementSummary.TargetSubstanceInfo info);
 
 	PreventionSnapshot toPreventionSnapshot(StackMeasurementSummary.PreventionInfo info);
 

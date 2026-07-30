@@ -21,6 +21,13 @@ public enum ErrorCode {
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
   TEAM_MENTOR_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사수입니다."),
   TEAM_MENTEE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부사수입니다."),
+  DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 문서입니다."),
+  DOCUMENT_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 문서 버전입니다."),
+  DOCUMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 같은 이름의 문서가 존재합니다."),
+  DOCUMENT_FILE_EMPTY(HttpStatus.BAD_REQUEST, "빈 파일은 업로드할 수 없습니다."),
+  DOCUMENT_FILE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "문서의 실제 파일을 찾을 수 없습니다."),
+  STORAGE_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 저장에 실패했습니다."),
+  STORAGE_READ_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일을 읽지 못했습니다."),
 
   // 범용 HTTP 상태
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),

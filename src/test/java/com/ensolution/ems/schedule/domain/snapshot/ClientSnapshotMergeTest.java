@@ -22,7 +22,7 @@ class ClientSnapshotMergeTest {
 		new FacilitySnapshot(10L, "보일러", "100", null, null, "LNG", "가스", "Nm³");
 	private static final FacilitySnapshot DRYER =
 		new FacilitySnapshot(11L, "건조기", "50", null, null, "B-C", "유류", "L");
-	private static final PreventionSnapshot SCRUBBER = new PreventionSnapshot(20L, "흡수탑", 30.0, List.of());
+	private static final PreventionSnapshot SCRUBBER = new PreventionSnapshot(20L, "흡수탑", 30.0, "THC", "90");
 
 	/** 원장에서 조립된 완전한 스냅샷 트리. */
 	private static ClientSnapshot existing() {
