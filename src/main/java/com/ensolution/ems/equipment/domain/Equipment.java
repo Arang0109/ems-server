@@ -33,7 +33,7 @@ public class Equipment {
 	private LocalDate purchaseDate;
 	private String remark;
 
-	private Integer calibrationCycle;
+	private Integer calibrationCycle; // 월 단위.
 	private LocalDate lastCalibrationDate;
 
 	private EquipStatus status;
@@ -46,7 +46,8 @@ public class Equipment {
 	public static Equipment register(
 		Long tenantId, EquipType type, String managementNumber, String serialNumber, String modelName,
 		String equipmentName, String alias, BigDecimal price, String manufacturer, String originCountry,
-		LocalDate purchaseDate, String remark, Integer calibrationCycle, EquipmentSpec spec
+		LocalDate purchaseDate, String remark, Integer calibrationCycle, LocalDate lastCalibrationDate,
+		EquipmentSpec spec
 	) {
 		return Equipment.builder()
 			.tenantId(tenantId)
@@ -62,6 +63,7 @@ public class Equipment {
 			.purchaseDate(purchaseDate)
 			.remark(remark)
 			.calibrationCycle(calibrationCycle)
+			.lastCalibrationDate(lastCalibrationDate)
 			.status(EquipStatus.ACTIVE)
 			.spec(spec)
 			.build();
@@ -70,7 +72,7 @@ public class Equipment {
 	public Equipment update(
 		EquipType type, String managementNumber, String serialNumber, String modelName, String equipmentName,
 		String alias, BigDecimal price, String manufacturer, String originCountry, LocalDate purchaseDate,
-		String remark, Integer calibrationCycle, EquipmentSpec spec
+		String remark, Integer calibrationCycle, LocalDate lastCalibrationDate, EquipmentSpec spec
 	) {
 		return this.toBuilder()
 			.type(type != null ? type : this.type)
@@ -85,8 +87,20 @@ public class Equipment {
 			.purchaseDate(purchaseDate != null ? purchaseDate : this.purchaseDate)
 			.remark(keep(remark, this.remark))
 			.calibrationCycle(calibrationCycle != null ? calibrationCycle : this.calibrationCycle)
+			.lastCalibrationDate(lastCalibrationDate != null ? lastCalibrationDate : this.lastCalibrationDate)
 			.spec(spec != null ? spec : this.spec)
 			.build();
+	}
+
+	/**
+	 * 다음 교정 예정일(최종 교정일 + 교정주기). 최종 교정일이나 주기가 없으면 예정일을 특정할 수 없으므로 null을 반환한다.
+	 * 교정 기한 판단의 기준이므로 외부 의존이 없는 도메인 규칙으로 여기서 소유한다.
+	 */
+	public LocalDate nextCalibrationDate() {
+		if (lastCalibrationDate == null || calibrationCycle == null || calibrationCycle <= 0) {
+			return null;
+		}
+		return lastCalibrationDate.plusMonths(calibrationCycle);
 	}
 
 	public Equipment changeStatus(EquipStatus status) {

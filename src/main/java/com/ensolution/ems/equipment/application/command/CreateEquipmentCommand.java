@@ -20,6 +20,7 @@ public record CreateEquipmentCommand(
 	LocalDate purchaseDate,
 	String remark,
 	Integer calibrationCycle,
+	LocalDate lastCalibrationDate,
 	EquipmentSpec spec
 ) {
 }

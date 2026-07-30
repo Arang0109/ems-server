@@ -34,6 +34,7 @@ public record CreateEquipmentRequest(
 	String remark,
 
 	@Positive Integer calibrationCycle,
+	@PastOrPresent LocalDate lastCalibrationDate,
 
 	@JsonTypeInfo(
 		use = JsonTypeInfo.Id.NAME,

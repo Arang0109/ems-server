@@ -2,6 +2,8 @@ package com.ensolution.ems.equipment.application.service;
 
 import com.ensolution.ems.equipment.application.command.CreateEquipmentCommand;
 import com.ensolution.ems.equipment.application.command.UpdateEquipmentCommand;
+import com.ensolution.ems.equipment.application.mapper.CalibrationDueSummaryMapper;
+import com.ensolution.ems.equipment.application.port.in.CalibrationDueSummary;
 import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
 import com.ensolution.ems.equipment.application.port.out.EquipmentRepository;
@@ -11,6 +13,8 @@ import com.ensolution.ems.equipment.domain.Equipment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -18,6 +22,7 @@ import java.util.List;
 public class EquipmentService implements EquipmentQueryUseCase {
 
 	private final EquipmentRepository equipmentRepository;
+	private final CalibrationDueSummaryMapper calibrationDueSummaryMapper;
 
 	public Equipment createEquipment(CreateEquipmentCommand command) {
 		Equipment equipment = Equipment.register(
@@ -34,6 +39,7 @@ public class EquipmentService implements EquipmentQueryUseCase {
 			command.purchaseDate(),
 			command.remark(),
 			command.calibrationCycle(),
+			command.lastCalibrationDate(),
 			command.spec()
 		);
 		return equipmentRepository.save(equipment);
@@ -55,6 +61,7 @@ public class EquipmentService implements EquipmentQueryUseCase {
 			command.purchaseDate(),
 			command.remark(),
 			command.calibrationCycle(),
+			command.lastCalibrationDate(),
 			command.spec()
 		);
 		return equipmentRepository.save(updated);
@@ -97,5 +104,20 @@ public class EquipmentService implements EquipmentQueryUseCase {
 			equipment.getLastCalibrationDate(),
 			equipment.getSpec()
 		);
+	}
+
+	@Override
+	public List<CalibrationDueSummary> findCalibrationDueBefore(Long tenantId, LocalDate dueDate) {
+		return calibrationDueSummaryMapper.toCalibrationDueSummaries(
+			equipmentRepository.findAll(tenantId).stream()
+				.filter(equipment -> equipment.getStatus() == EquipStatus.ACTIVE)
+				.filter(equipment -> isDueBefore(equipment.nextCalibrationDate(), dueDate))
+				.sorted(Comparator.comparing(Equipment::nextCalibrationDate))
+				.toList()
+		);
+	}
+
+	private static boolean isDueBefore(LocalDate nextCalibrationDate, LocalDate dueDate) {
+		return nextCalibrationDate != null && !nextCalibrationDate.isAfter(dueDate);
 	}
 }

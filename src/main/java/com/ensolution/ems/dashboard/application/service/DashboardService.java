@@ -1,36 +1,64 @@
 package com.ensolution.ems.dashboard.application.service;
 
-import com.ensolution.ems.dashboard.application.command.DashboardOverview;
-import com.ensolution.ems.dashboard.application.command.MeasurementCountItem;
-import com.ensolution.ems.schedule.application.port.in.ScheduleStatisticsUseCase;
 import com.ensolution.ems.client_management.application.port.in.StackQueryUseCase;
 import com.ensolution.ems.client_management.application.port.in.WorkplaceQueryUseCase;
+import com.ensolution.ems.contract.application.port.in.ContractStatisticsUseCase;
+import com.ensolution.ems.dashboard.application.command.CalibrationDue;
+import com.ensolution.ems.dashboard.application.command.DashboardOverview;
+import com.ensolution.ems.dashboard.application.command.ExpiringContract;
+import com.ensolution.ems.dashboard.application.command.MeasurementCountItem;
+import com.ensolution.ems.dashboard.application.mapper.ContractPortMapper;
+import com.ensolution.ems.dashboard.application.mapper.EquipmentPortMapper;
+import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
+import com.ensolution.ems.schedule.application.port.in.ScheduleStatisticsUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
 /**
- * 대시보드 통계 조립 유스케이스. 자체 원장을 두지 않고 공급 모듈(tenant·schedule)의
+ * 대시보드 통계 조립 유스케이스. 자체 원장을 두지 않고 공급 모듈(client_management·contract·equipment·schedule)의
  * 인바운드 포트만 조합하는 순수 조회 서비스다(크로스모듈 접근은 port/in 경유).
  */
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
 
+	/** 완료일이 이 개월 수 이내로 남은 계약을 "만료 임박"으로 본다. */
+	private static final int EXPIRY_WITHIN_MONTHS = 2;
+
+	/** 교정 예정일이 이 개월 수 이내인 장비를 "교정 임박"으로 본다(기한이 지난 장비도 포함). */
+	private static final int CALIBRATION_WITHIN_MONTHS = 2;
+
 	private final WorkplaceQueryUseCase workplaceQueryUseCase;
 	private final StackQueryUseCase stackQueryUseCase;
 	private final ScheduleStatisticsUseCase scheduleStatisticsUseCase;
+	private final ContractStatisticsUseCase contractStatisticsUseCase;
+	private final EquipmentQueryUseCase equipmentQueryUseCase;
 
-	/** 상단 KPI 요약(사업장·측정시설 수, 총·이번달 측정 건수)을 조립한다. */
+	private final ContractPortMapper contractPortMapper;
+	private final EquipmentPortMapper equipmentPortMapper;
+
+	/** 상단 KPI 요약(사업장·계약·측정시설 수, 측정 건수, 만료 임박 계약, 교정 임박 장비)을 조립한다. */
+	@Transactional(readOnly = true)
 	public DashboardOverview getOverview(Long tenantId) {
+		LocalDate today = LocalDate.now();
+		YearMonth thisMonth = YearMonth.now();
+
 		return new DashboardOverview(
 			workplaceQueryUseCase.countWorkplaces(tenantId),
+			contractStatisticsUseCase.countContracts(tenantId),
 			stackQueryUseCase.countStacks(tenantId),
+
 			scheduleStatisticsUseCase.countCompleted(tenantId),
-			scheduleStatisticsUseCase.countCompletedInMonth(tenantId, YearMonth.now())
+			scheduleStatisticsUseCase.countCompletedInMonth(tenantId, thisMonth),
+			contractStatisticsUseCase.countContractsInMonth(tenantId, thisMonth),
+
+			expiringContracts(tenantId, today),
+			calibrationEquipments(tenantId, today)
 		);
 	}
 
@@ -40,5 +68,19 @@ public class DashboardService {
 		return scheduleStatisticsUseCase.monthlyCompletedCounts(tenantId, year).stream()
 			.map(monthly -> new MeasurementCountItem(monthly.month() + "월", monthly.count()))
 			.toList();
+	}
+
+	private List<ExpiringContract> expiringContracts(Long tenantId, LocalDate today) {
+		return contractPortMapper.toExpiringContracts(
+			contractStatisticsUseCase.findExpiringBetween(tenantId, today, today.plusMonths(EXPIRY_WITHIN_MONTHS)),
+			today
+		);
+	}
+
+	private List<CalibrationDue> calibrationEquipments(Long tenantId, LocalDate today) {
+		return equipmentPortMapper.toCalibrationDues(
+			equipmentQueryUseCase.findCalibrationDueBefore(tenantId, today.plusMonths(CALIBRATION_WITHIN_MONTHS)),
+			today
+		);
 	}
 }

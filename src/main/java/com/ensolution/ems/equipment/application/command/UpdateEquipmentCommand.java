@@ -19,6 +19,7 @@ public record UpdateEquipmentCommand(
 	LocalDate purchaseDate,
 	String remark,
 	Integer calibrationCycle,
+	LocalDate lastCalibrationDate,
 	EquipmentSpec spec
 ) {
 }
