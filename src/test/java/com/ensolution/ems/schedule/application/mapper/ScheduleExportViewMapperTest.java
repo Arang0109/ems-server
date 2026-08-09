@@ -1,6 +1,8 @@
 package com.ensolution.ems.schedule.application.mapper;
 
 import com.ensolution.ems.equipment.domain.EquipType;
+import com.ensolution.ems.equipment.domain.InspectionItem;
+import com.ensolution.ems.equipment.domain.InspectionType;
 import com.ensolution.ems.equipment.domain.PitotTubeType;
 import com.ensolution.ems.equipment.domain.spec.EquipmentSpec;
 import com.ensolution.ems.equipment.domain.spec.GasSamplerSpec;
@@ -10,6 +12,7 @@ import com.ensolution.ems.equipment.domain.spec.PitotTubeSpec;
 import com.ensolution.ems.global.common.enums.Orientation;
 import com.ensolution.ems.global.common.enums.Shape;
 import com.ensolution.ems.schedule.application.command.export.EquipmentExportView;
+import com.ensolution.ems.schedule.application.command.export.EquipmentInspectionExportView;
 import com.ensolution.ems.schedule.application.command.export.FacilityExportView;
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
@@ -44,9 +47,16 @@ class ScheduleExportViewMapperTest {
 	}
 
 	private EquipmentSnapshot equipment(String id, EquipType type, String managementNumber, EquipmentSpec spec) {
+		return equipment(id, type, managementNumber, spec, List.of(
+			new InspectionItem(InspectionType.CALIBRATION, true, 12, LocalDate.of(2025, 3, 1), null, true)));
+	}
+
+	private EquipmentSnapshot equipment(
+		String id, EquipType type, String managementNumber, EquipmentSpec spec, List<InspectionItem> inspections
+	) {
 		return new EquipmentSnapshot(
 			id, type, managementNumber, "SN-" + id, "모델-" + id, "장비-" + id, "별칭-" + id,
-			"제조사-" + id, 12, LocalDate.of(2025, 3, 1), spec);
+			"제조사-" + id, inspections, spec);
 	}
 
 	private TeamSnapshot team(String particleSamplerId, String gasSamplerId, String pitotTubeId, String nozzleId) {
@@ -85,6 +95,38 @@ class ScheduleExportViewMapperTest {
 		assertThat(view.getPitotTube().getModelName()).isEqualTo("모델-E3");
 		assertThat(view.getNozzle().getLastCalibrationDate()).isEqualTo(LocalDate.of(2025, 3, 1));
 		assertThat(view.getEquipments()).hasSize(4);
+	}
+
+	@Test
+	void 교정_항목에서_기존_템플릿용_교정_프로퍼티가_파생된다() {
+		EquipmentSnapshot sampler = equipment("E1", EquipType.PARTICLE_SAMPLER, "PS-001", null, List.of(
+			new InspectionItem(InspectionType.PRECISION_INSPECTION, true, 24, LocalDate.of(2024, 9, 1), null, true),
+			new InspectionItem(InspectionType.CALIBRATION, true, 12, LocalDate.of(2025, 3, 1), null, true)));
+
+		ScheduleExportView view = mapper.toExportView(snapshot(team("E1", null, null, null), List.of(sampler)));
+
+		EquipmentExportView particleSampler = view.getParticleSampler();
+		assertThat(particleSampler.getCalibrationCycle()).isEqualTo(12);
+		assertThat(particleSampler.getLastCalibrationDate()).isEqualTo(LocalDate.of(2025, 3, 1));
+		assertThat(particleSampler.getCalibrationDueDate()).isEqualTo(LocalDate.of(2026, 3, 1));
+		assertThat(particleSampler.getInspections())
+			.extracting(EquipmentInspectionExportView::getTypeLabel, EquipmentInspectionExportView::getNextDueDate)
+			.containsExactly(
+				tuple("정도검사", LocalDate.of(2026, 9, 1)),
+				tuple("교정", LocalDate.of(2026, 3, 1)));
+	}
+
+	@Test
+	void 검사_항목이_없는_구_스냅샷도_빈_목록으로_매핑된다() {
+		EquipmentSnapshot legacy = equipment("E1", EquipType.PARTICLE_SAMPLER, "PS-001", null, null);
+
+		ScheduleExportView view = mapper.toExportView(snapshot(team("E1", null, null, null), List.of(legacy)));
+
+		EquipmentExportView particleSampler = view.getParticleSampler();
+		assertThat(particleSampler.getInspections()).isEmpty();   // jx:each가 깨지지 않도록 null이 아닌 빈 리스트
+		assertThat(particleSampler.getCalibrationCycle()).isNull();
+		assertThat(particleSampler.getLastCalibrationDate()).isNull();
+		assertThat(particleSampler.getCalibrationDueDate()).isNull();
 	}
 
 	@Test

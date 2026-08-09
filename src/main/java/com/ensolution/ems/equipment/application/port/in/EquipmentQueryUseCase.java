@@ -12,8 +12,11 @@ public interface EquipmentQueryUseCase {
 	EquipmentSummary getEquipmentSummary(String equipmentId, Long tenantId);
 
 	/**
-	 * 다음 교정 예정일이 {@code dueDate} 이하인 사용 가능(ACTIVE) 장비를 임박한 순으로 반환한다.
-	 * 이미 교정 기한을 넘긴 장비도 포함하며, 예정일을 특정할 수 없는 장비(최종 교정일·주기 누락)는 제외한다.
+	 * 알림이 켜진 검사 항목 중 다음 예정일이 {@code dueDate} 이하인 건을 임박한 순으로 반환한다.
+	 * 사용 가능(ACTIVE) 장비만 대상이며, 이미 기한을 넘긴 항목도 포함한다.
+	 * 검사 대상이 아닌 종류와 예정일을 특정할 수 없는 항목(최종 수검일·주기 누락)은 제외한다.
+	 * <p>
+	 * 한 장비가 여러 검사에서 임박하면 항목별로 여러 건이 반환된다.
 	 */
-	List<CalibrationDueSummary> findCalibrationDueBefore(Long tenantId, LocalDate dueDate);
+	List<InspectionDueSummary> findInspectionDueBefore(Long tenantId, LocalDate dueDate);
 }

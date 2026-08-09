@@ -13,6 +13,6 @@ public record DashboardOverviewResponse(
 	long newContractCount, 						// 신규 계약 건수
 	
 	List<ExpiringContractResponse> expiringContracts, 	// 계약 만료 예정 리스트
-	List<CalibrationDueResponse> calibrationEquipments	// 교정 장비 알림
+	List<InspectionDueResponse> inspectionDueEquipments	// 검사 임박 장비 알림(장비-검사항목 단위)
 ) {
 }

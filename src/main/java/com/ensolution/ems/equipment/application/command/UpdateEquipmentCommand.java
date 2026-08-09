@@ -1,10 +1,12 @@
 package com.ensolution.ems.equipment.application.command;
 
 import com.ensolution.ems.equipment.domain.EquipType;
+import com.ensolution.ems.equipment.domain.InspectionItemChange;
 import com.ensolution.ems.equipment.domain.spec.EquipmentSpec;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public record UpdateEquipmentCommand(
 	EquipType type,
@@ -18,8 +20,7 @@ public record UpdateEquipmentCommand(
 	String originCountry,
 	LocalDate purchaseDate,
 	String remark,
-	Integer calibrationCycle,
-	LocalDate lastCalibrationDate,
+	List<InspectionItemChange> inspectionChanges,
 	EquipmentSpec spec
 ) {
 }

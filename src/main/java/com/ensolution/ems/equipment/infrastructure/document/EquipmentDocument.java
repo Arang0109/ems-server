@@ -2,6 +2,7 @@ package com.ensolution.ems.equipment.infrastructure.document;
 
 import com.ensolution.ems.equipment.domain.EquipStatus;
 import com.ensolution.ems.equipment.domain.EquipType;
+import com.ensolution.ems.equipment.domain.InspectionItem;
 import com.ensolution.ems.equipment.domain.spec.EquipmentSpec;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,6 +17,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Document("equipments")
 @Getter
@@ -44,8 +46,11 @@ public class EquipmentDocument {
 	private LocalDate purchaseDate;
 	private String remark;
 
-	private Integer calibrationCycle;
-	private LocalDate lastCalibrationDate;
+	/**
+	 * 검사 종류별 설정과 최신 상태. 도메인 {@link InspectionItem} 을 그대로 저장한다.
+	 * 단순 record라 다형성 판별자가 필요 없다.
+	 */
+	private List<InspectionItem> inspections;
 
 	private EquipStatus status;
 

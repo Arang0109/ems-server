@@ -31,7 +31,7 @@ public class EquipmentRepositoryAdapter implements EquipmentRepository {
 	public Equipment findById(String id, Long tenantId) {
 		return equipmentMongoRepository.findByIdAndTenantIdAndStatusNot(id, tenantId, EquipStatus.DELETED)
 			.map(mapper::toDomain)
-			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+			.orElseThrow(() -> new CustomException(ErrorCode.EQUIPMENT_NOT_FOUND));
 	}
 
 	@Override

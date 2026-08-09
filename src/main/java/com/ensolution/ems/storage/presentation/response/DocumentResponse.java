@@ -1,4 +1,4 @@
-package com.ensolution.ems.admin.presentation.document.response;
+package com.ensolution.ems.storage.presentation.response;
 
 import com.ensolution.ems.global.common.enums.DocumentCategory;
 

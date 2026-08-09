@@ -1,4 +1,4 @@
-package com.ensolution.ems.admin.presentation.document.request;
+package com.ensolution.ems.admin.presentation.request;
 
 import com.ensolution.ems.global.common.enums.DocumentCategory;
 import jakarta.validation.constraints.NotBlank;

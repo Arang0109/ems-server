@@ -3,9 +3,9 @@ package com.ensolution.ems.dashboard.application.service;
 import com.ensolution.ems.client_management.application.port.in.StackQueryUseCase;
 import com.ensolution.ems.client_management.application.port.in.WorkplaceQueryUseCase;
 import com.ensolution.ems.contract.application.port.in.ContractStatisticsUseCase;
-import com.ensolution.ems.dashboard.application.command.CalibrationDue;
 import com.ensolution.ems.dashboard.application.command.DashboardOverview;
 import com.ensolution.ems.dashboard.application.command.ExpiringContract;
+import com.ensolution.ems.dashboard.application.command.InspectionDue;
 import com.ensolution.ems.dashboard.application.command.MeasurementCountItem;
 import com.ensolution.ems.dashboard.application.mapper.ContractPortMapper;
 import com.ensolution.ems.dashboard.application.mapper.EquipmentPortMapper;
@@ -30,8 +30,8 @@ public class DashboardService {
 	/** 완료일이 이 개월 수 이내로 남은 계약을 "만료 임박"으로 본다. */
 	private static final int EXPIRY_WITHIN_MONTHS = 2;
 
-	/** 교정 예정일이 이 개월 수 이내인 장비를 "교정 임박"으로 본다(기한이 지난 장비도 포함). */
-	private static final int CALIBRATION_WITHIN_MONTHS = 2;
+	/** 검사 예정일이 이 개월 수 이내인 검사 항목을 "검사 임박"으로 본다(기한이 지난 항목도 포함). */
+	private static final int INSPECTION_WITHIN_MONTHS = 2;
 
 	private final WorkplaceQueryUseCase workplaceQueryUseCase;
 	private final StackQueryUseCase stackQueryUseCase;
@@ -42,7 +42,7 @@ public class DashboardService {
 	private final ContractPortMapper contractPortMapper;
 	private final EquipmentPortMapper equipmentPortMapper;
 
-	/** 상단 KPI 요약(사업장·계약·측정시설 수, 측정 건수, 만료 임박 계약, 교정 임박 장비)을 조립한다. */
+	/** 상단 KPI 요약(사업장·계약·측정시설 수, 측정 건수, 만료 임박 계약, 검사 임박 장비)을 조립한다. */
 	@Transactional(readOnly = true)
 	public DashboardOverview getOverview(Long tenantId) {
 		LocalDate today = LocalDate.now();
@@ -58,7 +58,7 @@ public class DashboardService {
 			contractStatisticsUseCase.countContractsInMonth(tenantId, thisMonth),
 
 			expiringContracts(tenantId, today),
-			calibrationEquipments(tenantId, today)
+			inspectionDueEquipments(tenantId, today)
 		);
 	}
 
@@ -77,9 +77,9 @@ public class DashboardService {
 		);
 	}
 
-	private List<CalibrationDue> calibrationEquipments(Long tenantId, LocalDate today) {
-		return equipmentPortMapper.toCalibrationDues(
-			equipmentQueryUseCase.findCalibrationDueBefore(tenantId, today.plusMonths(CALIBRATION_WITHIN_MONTHS)),
+	private List<InspectionDue> inspectionDueEquipments(Long tenantId, LocalDate today) {
+		return equipmentPortMapper.toInspectionDues(
+			equipmentQueryUseCase.findInspectionDueBefore(tenantId, today.plusMonths(INSPECTION_WITHIN_MONTHS)),
 			today
 		);
 	}

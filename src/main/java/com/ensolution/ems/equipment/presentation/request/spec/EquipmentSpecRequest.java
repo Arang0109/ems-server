@@ -7,5 +7,5 @@ package com.ensolution.ems.equipment.presentation.request.spec;
  */
 public sealed interface EquipmentSpecRequest
 	permits ParticleSamplerSpecRequest, GasSamplerSpecRequest, PitotTubeSpecRequest,
-	        NozzleSpecRequest, OtherSpecRequest {
+	GasAnalyzerSpecRequest, NozzleSpecRequest, OtherSpecRequest {
 }

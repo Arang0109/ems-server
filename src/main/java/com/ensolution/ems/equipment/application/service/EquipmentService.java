@@ -1,15 +1,18 @@
 package com.ensolution.ems.equipment.application.service;
 
 import com.ensolution.ems.equipment.application.command.CreateEquipmentCommand;
+import com.ensolution.ems.equipment.application.command.RecordInspectionCommand;
 import com.ensolution.ems.equipment.application.command.UpdateEquipmentCommand;
-import com.ensolution.ems.equipment.application.mapper.CalibrationDueSummaryMapper;
-import com.ensolution.ems.equipment.application.port.in.CalibrationDueSummary;
+import com.ensolution.ems.equipment.application.mapper.InspectionDueSummaryMapper;
 import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
+import com.ensolution.ems.equipment.application.port.in.InspectionDueSummary;
 import com.ensolution.ems.equipment.application.port.out.EquipmentRepository;
+import com.ensolution.ems.equipment.application.port.out.InspectionRecordRepository;
 import com.ensolution.ems.equipment.domain.EquipStatus;
 import com.ensolution.ems.equipment.domain.EquipType;
 import com.ensolution.ems.equipment.domain.Equipment;
+import com.ensolution.ems.equipment.domain.InspectionRecord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +25,8 @@ import java.util.List;
 public class EquipmentService implements EquipmentQueryUseCase {
 
 	private final EquipmentRepository equipmentRepository;
-	private final CalibrationDueSummaryMapper calibrationDueSummaryMapper;
+	private final InspectionRecordRepository inspectionRecordRepository;
+	private final InspectionDueSummaryMapper inspectionDueSummaryMapper;
 
 	public Equipment createEquipment(CreateEquipmentCommand command) {
 		Equipment equipment = Equipment.register(
@@ -38,8 +42,7 @@ public class EquipmentService implements EquipmentQueryUseCase {
 			command.originCountry(),
 			command.purchaseDate(),
 			command.remark(),
-			command.calibrationCycle(),
-			command.lastCalibrationDate(),
+			command.inspections(),
 			command.spec()
 		);
 		return equipmentRepository.save(equipment);
@@ -60,8 +63,7 @@ public class EquipmentService implements EquipmentQueryUseCase {
 			command.originCountry(),
 			command.purchaseDate(),
 			command.remark(),
-			command.calibrationCycle(),
-			command.lastCalibrationDate(),
+			command.inspectionChanges(),
 			command.spec()
 		);
 		return equipmentRepository.save(updated);
@@ -88,6 +90,41 @@ public class EquipmentService implements EquipmentQueryUseCase {
 		return equipmentRepository.findByType(type, tenantId);
 	}
 
+	/**
+	 * 검사 실시를 기록하고 장비의 해당 검사 항목 최종 수검일을 갱신한다.
+	 * <p>
+	 * MongoDB standalone에는 문서 간 트랜잭션이 없으므로 이력을 먼저 저장한다.
+	 * 중간에 실패하면 "이력은 남았고 수검일만 미반영" 상태가 되어 재입력 없이 복구할 수 있지만,
+	 * 반대 순서라면 근거 이력 없이 수검일만 미뤄진 장비가 남는다.
+	 */
+	public InspectionRecord recordInspection(RecordInspectionCommand command) {
+		Equipment equipment = equipmentRepository.findById(command.equipmentId(), command.tenantId());
+		// 이력을 남기기 전에 검사 대상인지 먼저 확인한다. 그러지 않으면 거부된 요청의 이력만 남는다.
+		equipment.requireInspectionEnabled(command.type());
+
+		InspectionRecord saved = inspectionRecordRepository.save(InspectionRecord.register(
+			command.tenantId(),
+			command.equipmentId(),
+			command.type(),
+			command.inspectedAt(),
+			command.validUntil(),
+			command.agency(),
+			command.certificateNumber(),
+			command.result(),
+			command.remark()
+		));
+
+		equipmentRepository.save(
+			equipment.recordInspection(command.type(), command.inspectedAt(), command.validUntil())
+		);
+		return saved;
+	}
+
+	public List<InspectionRecord> getInspectionRecords(String equipmentId, Long tenantId) {
+		equipmentRepository.findById(equipmentId, tenantId); // tenant 소유권 확인
+		return inspectionRecordRepository.findByEquipmentId(equipmentId, tenantId);
+	}
+
 	@Override
 	public EquipmentSummary getEquipmentSummary(String equipmentId, Long tenantId) {
 		Equipment equipment = equipmentRepository.findById(equipmentId, tenantId);
@@ -100,24 +137,18 @@ public class EquipmentService implements EquipmentQueryUseCase {
 			equipment.getEquipmentName(),
 			equipment.getAlias(),
 			equipment.getManufacturer(),
-			equipment.getCalibrationCycle(),
-			equipment.getLastCalibrationDate(),
+			equipment.getInspections(),
 			equipment.getSpec()
 		);
 	}
 
 	@Override
-	public List<CalibrationDueSummary> findCalibrationDueBefore(Long tenantId, LocalDate dueDate) {
-		return calibrationDueSummaryMapper.toCalibrationDueSummaries(
-			equipmentRepository.findAll(tenantId).stream()
-				.filter(equipment -> equipment.getStatus() == EquipStatus.ACTIVE)
-				.filter(equipment -> isDueBefore(equipment.nextCalibrationDate(), dueDate))
-				.sorted(Comparator.comparing(Equipment::nextCalibrationDate))
-				.toList()
-		);
-	}
-
-	private static boolean isDueBefore(LocalDate nextCalibrationDate, LocalDate dueDate) {
-		return nextCalibrationDate != null && !nextCalibrationDate.isAfter(dueDate);
+	public List<InspectionDueSummary> findInspectionDueBefore(Long tenantId, LocalDate dueDate) {
+		return equipmentRepository.findAll(tenantId).stream()
+			.filter(equipment -> equipment.getStatus() == EquipStatus.ACTIVE)
+			.flatMap(equipment -> equipment.notifiableItemsDueBefore(dueDate).stream()
+				.map(item -> inspectionDueSummaryMapper.toInspectionDueSummary(equipment, item)))
+			.sorted(Comparator.comparing(InspectionDueSummary::nextDueDate))
+			.toList();
 	}
 }

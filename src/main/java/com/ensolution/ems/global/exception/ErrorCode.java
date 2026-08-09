@@ -15,6 +15,8 @@ public enum ErrorCode {
   SCHEDULE_NOT_EDITABLE(HttpStatus.CONFLICT, "완료되었거나 취소된 측정계획은 수정할 수 없습니다."),
   SCHEDULE_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 상태 변경입니다."),
   SCHEDULE_EXPORT_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "엑셀 템플릿 처리에 실패했습니다. 템플릿의 jxls 문법을 확인해 주세요."),
+  EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 장비입니다."),
+  EQUIPMENT_INSPECTION_DISABLED(HttpStatus.BAD_REQUEST, "이 장비의 검사 대상이 아닌 검사 종류입니다."),
   ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 권한입니다."),
   TENANT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 사업자번호의 고객사가 존재합니다."),
   TENANT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 고객사입니다."),

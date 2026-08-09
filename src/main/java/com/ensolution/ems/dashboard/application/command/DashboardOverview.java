@@ -13,7 +13,7 @@ import java.util.List;
  * @param thisMonthMeasurementCount  이번 달 완료 측정 건수
  * @param newContractCount           이번 달 신규 계약 건수(계약일 기준)
  * @param expiringContracts          만료 임박 계약 목록(임박한 순)
- * @param calibrationEquipments      교정일 임박 장비 목록
+ * @param inspectionDueEquipments    검사 임박 장비 목록(장비-검사항목 단위, 임박한 순)
  */
 public record DashboardOverview(
 	long workplaceCount,
@@ -25,6 +25,6 @@ public record DashboardOverview(
 	long newContractCount,
 
 	List<ExpiringContract> expiringContracts,
-	List<CalibrationDue> calibrationEquipments
+	List<InspectionDue> inspectionDueEquipments
 ) {
 }
