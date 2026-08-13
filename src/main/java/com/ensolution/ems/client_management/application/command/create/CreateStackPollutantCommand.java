@@ -9,5 +9,6 @@ public record CreateStackPollutantCommand(
 	Long stackId,
 	Long pollutantId,
 	MeasurementCycle cycle,
-	BigDecimal allowance
+	BigDecimal allowance,
+	boolean oxygenApplicable
 ) {}

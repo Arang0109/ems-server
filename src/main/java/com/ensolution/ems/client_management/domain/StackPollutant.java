@@ -19,14 +19,16 @@ public class StackPollutant {
 	private Long pollutantId;
 	private MeasurementCycle cycle;
 	private BigDecimal allowance;
+	private boolean oxygenApplicable;
 
-	public static StackPollutant register(Long tenantId, Long stackId, Long pollutantId, MeasurementCycle cycle, BigDecimal allowance) {
+	public static StackPollutant register(Long tenantId, Long stackId, Long pollutantId, MeasurementCycle cycle, BigDecimal allowance, boolean oxygenApplicable) {
 		return StackPollutant.builder()
 			.tenantId(tenantId)
 			.stackId(stackId)
 			.pollutantId(pollutantId)
 			.cycle(cycle)
 			.allowance(allowance)
+			.oxygenApplicable(oxygenApplicable)
 			.build();
 	}
 }

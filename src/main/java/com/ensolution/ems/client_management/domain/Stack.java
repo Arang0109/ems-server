@@ -54,6 +54,8 @@ public class Stack {
 		MeasurementField field, String name, String semsNumber, Grade grade, String mainProduct, Integer standardOxygen,
 		Double height, Double horizontalLength, Double verticalLength, Shape shape, Orientation orientation
 	) {
+		Shape updatedShape = shape != null ? shape : this.shape;
+		
 		return this.toBuilder()
 			.field(field != null ? field : this.field)
 			.name(keep(name, this.name))
@@ -62,8 +64,16 @@ public class Stack {
 			.mainProduct(keep(mainProduct, this.mainProduct))
 			.standardOxygen(standardOxygen != null ? standardOxygen : this.standardOxygen)
 			.height(height != null ? height : this.height)
-			.horizontalLength(horizontalLength != null ? horizontalLength : this.height)
-			.verticalLength(verticalLength != null ? verticalLength : this.height)
+			.horizontalLength(
+				updatedShape == Shape.RECTANGULAR
+					? horizontalLength != null ? horizontalLength : this.horizontalLength
+					: null
+			)
+			.verticalLength(
+				updatedShape == Shape.RECTANGULAR
+					? verticalLength != null ? verticalLength : this.verticalLength
+					: null
+			)
 			.shape(shape != null ? shape : this.shape)
 			.orientation(orientation != null ? orientation : this.orientation)
 			.build();

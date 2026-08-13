@@ -19,5 +19,6 @@ public record SamplingItemSnapshot(
 	String equipment,
 	String testMethod,
 	MeasurementCycle cycle,
-	BigDecimal allowance
+	BigDecimal allowance,
+	boolean oxygenApplicable
 ) {}

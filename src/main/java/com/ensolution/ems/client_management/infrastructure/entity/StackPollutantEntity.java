@@ -72,6 +72,9 @@ public class StackPollutantEntity {
 	
 	private BigDecimal allowance;
 	
+	@Column(name = "oxygen_applicable")
+	private boolean oxygenApplicable;
+	
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

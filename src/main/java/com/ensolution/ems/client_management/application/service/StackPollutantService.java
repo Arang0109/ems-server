@@ -23,7 +23,9 @@ public class StackPollutantService {
 		stackPollutantValidator.requireNotRegistered(command.stackId(), command.pollutantId());
 
 		return stackPollutantRepository.save(
-			StackPollutant.register(command.tenantId(), command.stackId(), command.pollutantId(), command.cycle(), command.allowance()));
+			StackPollutant.register(
+				command.tenantId(), command.stackId(), command.pollutantId(),
+				command.cycle(), command.allowance(), command.oxygenApplicable()));
 	}
 
 	public List<StackPollutant> createStackPollutants(List<CreateStackPollutantCommand> commands) {

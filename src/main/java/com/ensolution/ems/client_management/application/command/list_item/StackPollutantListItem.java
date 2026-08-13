@@ -11,5 +11,6 @@ public record StackPollutantListItem(
 	String nameKr,
 	String nameEn,
 	MeasurementCycle cycle,
-	BigDecimal allowance
+	BigDecimal allowance,
+	boolean oxygenApplicable
 ) {}

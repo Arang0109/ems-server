@@ -12,5 +12,6 @@ public record UpdateStackPollutantRequest(
 	Long pollutantId,
 	@NotNull
 	MeasurementCycle cycle,
-	BigDecimal allowance
+	BigDecimal allowance,
+	boolean oxygenApplicable
 ) {}

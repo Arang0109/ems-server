@@ -68,7 +68,8 @@ public class StackSnapshotAssembler {
 					pollutant == null ? null : pollutant.getEquipment(),
 					pollutant == null ? null : pollutant.getTestMethod(),
 					sp.cycle(),
-					sp.allowance()
+					sp.allowance(),
+					sp.oxygenApplicable()
 				);
 			})
 			.toList();

@@ -7,5 +7,6 @@ public record StackPollutantResponse(
 	Long stackId,
 	Long pollutantId,
 	MeasurementCycle cycle,
-	String allowance
+	String allowance,
+	boolean oxygenApplicable
 ) {}

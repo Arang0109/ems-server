@@ -9,5 +9,6 @@ public record StackPollutantListResponse(
 	String nameKr,
 	String nameEn,
 	MeasurementCycle cycle,
-	String allowance
+	String allowance,
+	boolean oxygenApplicable
 ) {}
