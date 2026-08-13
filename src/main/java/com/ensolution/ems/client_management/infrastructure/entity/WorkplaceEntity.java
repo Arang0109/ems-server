@@ -61,6 +61,9 @@ public class WorkplaceEntity {
 	@Column(name = "biz_number", length = 10)
 	private String bizNumber;
 	
+	@Column(name = "business_category")
+	private String businessCategory;
+	
 	@Column(name = "road_address")
 	private String roadAddress;
 	

@@ -16,6 +16,7 @@ public class Workplace {
 	private Long clientId;
 	private String name;
 	private String bizNumber;
+	private String businessCategory;
 	private String roadAddress;
 	private String detailAddress;
 	private String zipcode;
@@ -28,6 +29,7 @@ public class Workplace {
 		Long clientId,
 		String name,
 		String bizNumber,
+		String businessCategory,
 		String roadAddress,
 		String detailAddress,
 		String zipcode,
@@ -40,6 +42,7 @@ public class Workplace {
 			.clientId(clientId)
 			.name(name)
 			.bizNumber(bizNumber)
+			.businessCategory(businessCategory)
 			.roadAddress(roadAddress)
 			.detailAddress(detailAddress)
 			.zipcode(zipcode)
@@ -52,6 +55,7 @@ public class Workplace {
 	public Workplace update(
 		String name,
 		String bizNumber,
+		String businessCategory,
 		String roadAddress,
 		String detailAddress,
 		String zipcode,
@@ -61,6 +65,7 @@ public class Workplace {
 		return this.toBuilder()
 			.name(keep(name, this.name))
 			.bizNumber(keep(bizNumber, this.bizNumber))
+			.businessCategory(keep(businessCategory, this.businessCategory))
 			.roadAddress(keep(roadAddress, this.roadAddress))
 			.detailAddress(keep(detailAddress, this.detailAddress))
 			.zipcode(keep(zipcode, this.zipcode))

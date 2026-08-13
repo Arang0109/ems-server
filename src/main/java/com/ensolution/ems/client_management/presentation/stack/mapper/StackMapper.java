@@ -38,7 +38,6 @@ public interface StackMapper {
 	@Mapping(target = "name", source = "stack.name")
 	@Mapping(target = "semsNumber", source = "stack.semsNumber")
 	@Mapping(target = "grade", source = "stack.grade")
-	@Mapping(target = "businessCategory", source = "stack.businessCategory")
 	@Mapping(target = "mainProduct", source = "stack.mainProduct")
 	@Mapping(target = "height", source = "stack.height")
 	@Mapping(target = "horizontalLength", source = "stack.horizontalLength")

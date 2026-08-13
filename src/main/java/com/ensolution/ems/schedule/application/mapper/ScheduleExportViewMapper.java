@@ -77,12 +77,12 @@ public class ScheduleExportViewMapper {
 
 			.workplaceName(workplace == null ? null : workplace.name())
 			.workplaceBizNumber(workplace == null ? null : workplace.bizNumber())
+			.businessCategory(workplace == null ? null : workplace.businessCategory())
 			.workplaceAddress(workplace == null ? null : address(workplace.roadAddress(), workplace.detailAddress()))
 			.workplaceGrade(workplace == null || workplace.grade() == null ? null : workplace.grade().getDesc())
 
 			.stackName(stack == null ? null : stack.name())
 			.semsNumber(stack == null ? null : stack.semsNumber())
-			.businessCategory(stack == null ? null : stack.businessCategory())
 			.mainProduct(stack == null ? null : stack.mainProduct())
 			.stackGrade(stack == null || stack.grade() == null ? null : stack.grade().getDesc())
 			.stackShape(stack == null ? null : shapeLabel(stack.shape()))

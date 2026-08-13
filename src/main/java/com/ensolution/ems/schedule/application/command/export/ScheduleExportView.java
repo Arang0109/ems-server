@@ -54,13 +54,13 @@ public class ScheduleExportView {
 	// 사업장
 	private final String workplaceName;
 	private final String workplaceBizNumber;
+	private final String businessCategory;
 	private final String workplaceAddress;
 	private final String workplaceGrade;
 
 	// 측정시설(굴뚝)
 	private final String stackName;
 	private final String semsNumber;
-	private final String businessCategory;
 	private final String mainProduct;
 	private final String stackGrade;
 	private final String stackShape;        // 원형/사각형

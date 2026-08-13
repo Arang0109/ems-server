@@ -5,6 +5,7 @@ import com.ensolution.ems.global.common.enums.Grade;
 public record UpdateWorkplaceCommand(
 	String name,
 	String bizNumber,
+	String businessCategory,
 	String roadAddress,
 	String detailAddress,
 	String zipcode,

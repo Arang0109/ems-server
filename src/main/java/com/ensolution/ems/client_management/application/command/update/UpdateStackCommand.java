@@ -10,7 +10,6 @@ public record UpdateStackCommand(
 	String name,
 	String semsNumber,
 	Grade grade,
-	String businessCategory,
 	String mainProduct,
 	Integer standardOxygen,
 	Double height,

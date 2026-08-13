@@ -14,7 +14,6 @@ public record StackResponse(
 	String name,
 	String semsNumber,
 	Grade grade,
-	String businessCategory,
 	String mainProduct,
 	String height,
 	String horizontalLength,

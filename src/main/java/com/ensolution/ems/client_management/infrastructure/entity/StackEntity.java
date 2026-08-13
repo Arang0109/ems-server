@@ -73,9 +73,6 @@ public class StackEntity {
 	@Enumerated(EnumType.STRING)
 	private Grade grade;
 
-	@Column(name = "business_category")
-	private String businessCategory;
-
 	@Column(name = "main_product")
 	private String mainProduct;
 	

@@ -15,6 +15,7 @@ public record CreateWorkplaceRequest(
 	String zipcode,
 	@Pattern(regexp = "^$|^\\d{10}$", message = "10자리의 사업자번호를 입력해주세요.")
 	String bizNumber,
+	String businessCategory,
 	String facilityManager,
 	String samplingWitness,
 	Grade grade

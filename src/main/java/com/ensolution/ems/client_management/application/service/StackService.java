@@ -40,7 +40,6 @@ public class StackService implements StackQueryUseCase {
 			name,
 			command.semsNumber(),
 			command.grade(),
-			command.businessCategory(),
 			command.mainProduct()
 		);
 		return stackRepository.save(newStack);
@@ -54,7 +53,6 @@ public class StackService implements StackQueryUseCase {
 			command.name(),
 			command.semsNumber(),
 			command.grade(),
-			command.businessCategory(),
 			command.mainProduct(),
 			command.standardOxygen(),
 			command.height(),

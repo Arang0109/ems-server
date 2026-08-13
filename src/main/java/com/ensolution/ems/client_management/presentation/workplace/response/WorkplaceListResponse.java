@@ -8,6 +8,7 @@ public record WorkplaceListResponse(
 	String clientName,
 	String workplaceName,
 	String bizNumber,
+	String businessCategory,
 	String roadAddress,
 	String detailAddress,
 	String zipcode,

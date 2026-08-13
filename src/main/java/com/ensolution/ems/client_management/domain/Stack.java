@@ -23,7 +23,6 @@ public class Stack {
 	private String name;
 	private String semsNumber;
 	private Grade grade;
-	private String businessCategory;
 	private String mainProduct;
 	private Integer standardOxygen;
 	private Double height;
@@ -35,7 +34,7 @@ public class Stack {
 	private LocalDateTime modifiedAt;
 
 	public static Stack register(
-		Long tenantId, Long workplaceId, MeasurementField field, String name, String semsNumber, Grade grade, String businessCategory, String mainProduct
+		Long tenantId, Long workplaceId, MeasurementField field, String name, String semsNumber, Grade grade, String mainProduct
 	) {
 		return Stack.builder()
 			.tenantId(tenantId)
@@ -44,13 +43,12 @@ public class Stack {
 			.name(name)
 			.semsNumber(semsNumber)
 			.grade(grade)
-			.businessCategory(businessCategory)
 			.mainProduct(mainProduct)
 			.build();
 	}
 
 	public Stack update(
-		MeasurementField field, String name, String semsNumber, Grade grade, String businessCategory, String mainProduct, Integer standardOxygen,
+		MeasurementField field, String name, String semsNumber, Grade grade, String mainProduct, Integer standardOxygen,
 		Double height, Double horizontalLength, Double verticalLength, Shape shape, Orientation orientation
 	) {
 		return this.toBuilder()
@@ -58,7 +56,6 @@ public class Stack {
 			.name(keep(name, this.name))
 			.semsNumber(keep(semsNumber, this.semsNumber))
 			.grade(grade != null ? grade : this.grade)
-			.businessCategory(keep(businessCategory, this.businessCategory))
 			.mainProduct(keep(mainProduct, this.mainProduct))
 			.standardOxygen(standardOxygen != null ? standardOxygen : this.standardOxygen)
 			.height(height != null ? height : this.height)

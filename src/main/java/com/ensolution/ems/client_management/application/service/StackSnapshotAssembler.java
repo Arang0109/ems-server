@@ -84,7 +84,7 @@ public class StackSnapshotAssembler {
 
 	private StackMeasurementSummary.WorkplaceInfo toWorkplaceInfo(Workplace workplace) {
 		return new StackMeasurementSummary.WorkplaceInfo(
-			workplace.getId(), workplace.getName(), workplace.getBizNumber(),
+			workplace.getId(), workplace.getName(), workplace.getBizNumber(), workplace.getBusinessCategory(),
 			workplace.getRoadAddress(), workplace.getDetailAddress(), workplace.getZipcode(),
 			workplace.getFacilityManager(), workplace.getSamplingWitness(), workplace.getGrade()
 		);
@@ -93,7 +93,7 @@ public class StackSnapshotAssembler {
 	private StackMeasurementSummary.StackInfo toStackInfo(Stack stack) {
 		return new StackMeasurementSummary.StackInfo(
 			stack.getId(), stack.getField(), stack.getName(), stack.getSemsNumber(), stack.getGrade(),
-			stack.getBusinessCategory(), stack.getMainProduct(), stack.getStandardOxygen(), stack.getHeight(),
+			stack.getMainProduct(), stack.getStandardOxygen(), stack.getHeight(),
 			stack.getHorizontalLength(), stack.getVerticalLength(), stack.getShape(), stack.getOrientation()
 		);
 	}

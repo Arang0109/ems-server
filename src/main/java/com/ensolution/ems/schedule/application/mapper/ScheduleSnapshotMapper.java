@@ -58,7 +58,7 @@ public interface ScheduleSnapshotMapper {
 		StackMeasurementSummary.WorkplaceInfo w = summary.workplace();
 		if (w == null) return null;
 		return new WorkplaceSnapshot(
-			w.workplaceId(), w.name(), w.bizNumber(),
+			w.workplaceId(), w.name(), w.bizNumber(), w.businessCategory(),
 			w.roadAddress(), w.detailAddress(), w.zipcode(), w.grade(),
 			toStackSnapshot(summary)
 		);
@@ -69,7 +69,7 @@ public interface ScheduleSnapshotMapper {
 		if (s == null) return null;
 		return new StackSnapshot(
 			s.stackId(), s.field(), s.name(), s.semsNumber(), s.grade(),
-			s.businessCategory(), s.mainProduct(), s.standardOxygen(),
+			s.mainProduct(), s.standardOxygen(),
 			s.height(), s.horizontalLength(), s.verticalLength(),
 			s.shape(), s.orientation(),
 			toFacilitySnapshots(summary.facilities()),

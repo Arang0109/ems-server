@@ -8,6 +8,7 @@ public record WorkplaceListItem(
 	String clientName,
 	String name,
 	String bizNumber,
+	String businessCategory,
 	String roadAddress,
 	String detailAddress,
 	String zipcode,

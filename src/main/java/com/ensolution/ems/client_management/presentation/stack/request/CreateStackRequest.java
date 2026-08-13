@@ -14,6 +14,5 @@ public record CreateStackRequest(
 	String name,
 	String semsNumber,
 	Grade grade,
-	String businessCategory,
 	String mainProduct
 ) {}

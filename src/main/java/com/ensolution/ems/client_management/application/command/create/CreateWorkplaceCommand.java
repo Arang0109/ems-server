@@ -10,6 +10,7 @@ public record CreateWorkplaceCommand(
 	String detailAddress,
 	String zipcode,
 	String bizNumber,
+	String businessCategory,
 	String facilityManager,
 	String samplingWitness,
 	Grade grade
