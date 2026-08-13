@@ -5,6 +5,7 @@ public record PreventionSnapshot(
 	Long preventionId,
 	String name,
 	Double capacity,
+	String unit,
 	String targetName,
 	String removalEfficiency
 ) {}

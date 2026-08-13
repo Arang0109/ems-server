@@ -110,6 +110,7 @@ public class StackSnapshotAssembler {
 			prevention.getId(),
 			prevention.getName(),
 			prevention.getCapacity(),
+			prevention.getUnit(),
 			prevention.getTargetName(),
 			prevention.getRemovalEfficiency()
 		);

@@ -5,6 +5,7 @@ public record PreventionResponse(
 	Long stackId,
 	String name,
 	Double capacity,
+	String unit,
 	String targetName,
 	String removalEfficiency
 ) {

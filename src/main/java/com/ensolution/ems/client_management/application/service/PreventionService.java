@@ -23,14 +23,14 @@ public class PreventionService {
 		stackRepository.findById(command.stackId(), command.tenantId());
 		return preventionRepository.save(
 			Prevention.register(
-				command.tenantId(), command.stackId(), command.name(), command.capacity(), command.targetName(), command.removalEfficiency())
+				command.tenantId(), command.stackId(), command.name(), command.capacity(), command.unit(), command.targetName(), command.removalEfficiency())
 		);
 	}
 
 	public Prevention updatePrevention(Long preventionId, Long tenantId, UpdatePreventionCommand command) {
 		Prevention prevention = preventionRepository.findById(preventionId, tenantId);
 		return preventionRepository.save(
-			prevention.update(command.name(), command.capacity(), command.targetName(), command.removalEfficiency()));
+			prevention.update(command.name(), command.capacity(), command.unit(), command.targetName(), command.removalEfficiency()));
 	}
 
 	public void deletePrevention(Long preventionId, Long tenantId) {

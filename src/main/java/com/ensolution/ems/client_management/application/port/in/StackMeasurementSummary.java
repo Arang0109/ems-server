@@ -78,6 +78,7 @@ public record StackMeasurementSummary(
 		Long preventionId,
 		String name,
 		Double capacity,
+		String unit,
 		String targetName,
 		String removalEfficiency
 	) {}

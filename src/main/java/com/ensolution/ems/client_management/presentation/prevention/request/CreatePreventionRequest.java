@@ -9,6 +9,7 @@ public record CreatePreventionRequest(
 	@NotBlank(message = "방지설비명은 필수 입력값입니다.")
 	String name,
 	Double capacity,
+	String unit,
 	String targetName,
 	String removalEfficiency
 ) {

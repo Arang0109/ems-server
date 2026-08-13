@@ -55,6 +55,7 @@ public class FacilityEntity {
 	private StackEntity stack;
 	
 	@Column(nullable = false) private String name;
+	
 	@Column(name = "fuel_usage") private String fuelUsage;
 	@Column(name = "product_output") private String productOutput;
 	@Column(name = "incineration_amount") private String incinerationAmount;

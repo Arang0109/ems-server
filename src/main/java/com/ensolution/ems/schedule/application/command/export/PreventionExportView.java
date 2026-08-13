@@ -16,6 +16,7 @@ public class PreventionExportView {
 
 	private final String name;                // 시설명
 	private final Double capacity;            // 용량
+	private final String unit;
 	private final String targetName;          // 대상물질명
 	private final String removalEfficiency;   // 제거효율
 }

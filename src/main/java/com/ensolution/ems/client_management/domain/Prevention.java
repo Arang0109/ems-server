@@ -15,17 +15,19 @@ public class Prevention {
 	private Long stackId;
 	private String name;
 	private Double capacity;
+	private String unit;
 	private String targetName;
 	private String removalEfficiency;
 
-	public static Prevention register(Long tenantId, Long stackId, String name, Double capacity, String targetName, String removalEfficiency) {
-		return Prevention.builder().tenantId(tenantId).stackId(stackId).name(name).capacity(capacity).targetName(targetName).removalEfficiency(removalEfficiency).build();
+	public static Prevention register(Long tenantId, Long stackId, String name, Double capacity, String unit, String targetName, String removalEfficiency) {
+		return Prevention.builder().tenantId(tenantId).stackId(stackId).name(name).capacity(capacity).unit(unit).targetName(targetName).removalEfficiency(removalEfficiency).build();
 	}
 
-	public Prevention update(String name, Double capacity, String targetName, String removalEfficiency) {
+	public Prevention update(String name, Double capacity, String unit, String targetName, String removalEfficiency) {
 		return this.toBuilder()
 			.name(keep(name, this.name))
 			.capacity(capacity != null ? capacity : this.capacity)
+			.unit(keep(unit, this.unit))
 			.targetName(keep(targetName, this.targetName))
 			.removalEfficiency(keep(removalEfficiency, this.removalEfficiency))
 			.build();

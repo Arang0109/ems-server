@@ -59,6 +59,7 @@ public class PreventionEntity {
 	
 	@Column
 	private Double capacity;
+	private String unit;
 	
 	@Column(name = "target_name")
 	private String targetName;

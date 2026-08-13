@@ -128,6 +128,7 @@ public class ScheduleExportViewMapper {
 			views.add(PreventionExportView.builder()
 				.name(prevention.name())
 				.capacity(prevention.capacity())
+				.unit(prevention.unit())
 				.targetName(prevention.targetName())
 				.removalEfficiency(prevention.removalEfficiency())
 				.build());
