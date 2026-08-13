@@ -7,6 +7,7 @@ import com.ensolution.ems.client_management.application.command.list_item.TeamLi
 import com.ensolution.ems.client_management.application.command.update.UpdateTeamCommand;
 import com.ensolution.ems.client_management.application.port.in.TeamQueryUseCase;
 import com.ensolution.ems.client_management.application.port.in.TeamSummary;
+import com.ensolution.ems.client_management.application.port.in.UserTeamSummary;
 import com.ensolution.ems.client_management.application.port.out.TeamRepository;
 import com.ensolution.ems.client_management.application.validator.TeamValidator;
 import com.ensolution.ems.client_management.domain.Team;
@@ -27,8 +28,11 @@ public class TeamService implements TeamQueryUseCase {
 
 	public TeamDetail createTeam(CreateTeamCommand command) {
 		teamValidator.requireUniqueName(command.name(), command.tenantId());
+		teamValidator.requireDistinctMembers(command.mentorUserId(), command.menteeUserId());
 		teamValidator.requireMemberInTenant(command.mentorUserId(), command.tenantId(), ErrorCode.TEAM_MENTOR_NOT_FOUND);
 		teamValidator.requireMemberInTenant(command.menteeUserId(), command.tenantId(), ErrorCode.TEAM_MENTEE_NOT_FOUND);
+		teamValidator.requireNotAssignedToOtherTeam(command.mentorUserId(), command.tenantId(), null);
+		teamValidator.requireNotAssignedToOtherTeam(command.menteeUserId(), command.tenantId(), null);
 
 		Team saved = teamRepository.save(Team.register(
 			command.tenantId(), command.name(), command.mentorUserId(), command.menteeUserId(),
@@ -42,15 +46,21 @@ public class TeamService implements TeamQueryUseCase {
 
 		if (command.mentorUserId() != null) {
 			teamValidator.requireMemberInTenant(command.mentorUserId(), tenantId, ErrorCode.TEAM_MENTOR_NOT_FOUND);
+			teamValidator.requireNotAssignedToOtherTeam(command.mentorUserId(), tenantId, id);
 		}
 		if (command.menteeUserId() != null) {
 			teamValidator.requireMemberInTenant(command.menteeUserId(), tenantId, ErrorCode.TEAM_MENTEE_NOT_FOUND);
+			teamValidator.requireNotAssignedToOtherTeam(command.menteeUserId(), tenantId, id);
 		}
 
-		Team saved = teamRepository.save(team.update(
+		Team updated = team.update(
 			id, command.name(), command.mentorUserId(), command.menteeUserId(),
 			command.particleSamplerId(), command.gasSamplerId(), command.pitotTubeId(), command.nozzleId()
-		));
+		);
+		// 부분 수정이므로 병합 후 값으로 검증한다(사수만 바꿔 기존 부사수와 겹치는 경우)
+		teamValidator.requireDistinctMembers(updated.getMentorUserId(), updated.getMenteeUserId());
+
+		Team saved = teamRepository.save(updated);
 		return teamAssembler.assemble(saved);
 	}
 
@@ -66,6 +76,15 @@ public class TeamService implements TeamQueryUseCase {
 	@Transactional(readOnly = true)
 	public TeamDetail getTeam(Long id, Long tenantId) {
 		return teamAssembler.assemble(teamRepository.findById(id, tenantId));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserTeamSummary getUserTeamSummary(Long userId, Long tenantId) {
+		return teamRepository.findAllByMemberUserId(userId, tenantId).stream()
+			.findFirst()
+			.map(team -> new UserTeamSummary(team.getId(), team.getName()))
+			.orElse(null);
 	}
 
 	@Override

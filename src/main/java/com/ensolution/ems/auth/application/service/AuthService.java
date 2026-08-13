@@ -6,6 +6,8 @@ import com.ensolution.ems.auth.application.command.SignUpCommand;
 import com.ensolution.ems.auth.application.port.in.UserCommandUseCase;
 import com.ensolution.ems.auth.application.port.in.CreateUserCommand;
 import com.ensolution.ems.auth.application.port.in.UpdateUserCommand;
+import com.ensolution.ems.client_management.application.port.in.TeamQueryUseCase;
+import com.ensolution.ems.client_management.application.port.in.UserTeamSummary;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.auth.domain.port.Authenticator;
@@ -29,6 +31,7 @@ public class AuthService implements UserCommandUseCase {
 	private final PasswordEncryptor passwordEncryptor;
 	private final Authenticator authenticator;
 	private final TokenIssuer tokenIssuer;
+	private final TeamQueryUseCase teamQueryUseCase;
 
 	public void createUser(CreateUserCommand command) {
 		register(
@@ -119,8 +122,13 @@ public class AuthService implements UserCommandUseCase {
 		AuthenticatedUser authentication = authenticator.authenticate(
 				command.username(), command.password()
 		);
-		
+
 		TokenResult tokenResult = tokenIssuer.issue(authentication);
+
+		// 소속 팀은 로그인 응답에만 필요하므로 인증 principal이 아닌 이 시점에서 1회 조회한다.
+		UserTeamSummary team = teamQueryUseCase.getUserTeamSummary(
+				authentication.userId(), authentication.tenantId()
+		);
 
 		return new SignInResult(
 				tokenResult.accessToken(),
@@ -129,6 +137,8 @@ public class AuthService implements UserCommandUseCase {
 				tokenResult.tenant(),
 				tokenResult.username(),
 				tokenResult.name(),
+				team == null ? null : team.teamId(),
+				team == null ? null : team.teamName(),
 				tokenResult.role(),
 				tokenResult.refreshTokenValidity()
 		);

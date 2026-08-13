@@ -47,4 +47,28 @@ public class TeamValidator {
 			throw new CustomException(notFound);
 		}
 	}
+
+	/**
+	 * 한 사용자는 하나의 팀에만 사수 또는 부사수로 배정될 수 있다.
+	 * 로그인 응답의 소속 팀이 유일하게 결정되도록 보장하는 규칙이다.
+	 *
+	 * @param excludeTeamId 수정 대상 팀. 자기 자신은 중복 배정으로 보지 않는다. 생성 시에는 {@code null}
+	 */
+	public void requireNotAssignedToOtherTeam(Long userId, Long tenantId, Long excludeTeamId) {
+		boolean assignedElsewhere = teamRepository.findAllByMemberUserId(userId, tenantId).stream()
+			.anyMatch(team -> !team.getId().equals(excludeTeamId));
+
+		if (assignedElsewhere) {
+			throw new CustomException(ErrorCode.TEAM_MEMBER_ALREADY_ASSIGNED);
+		}
+	}
+
+	/**
+	 * 같은 요청 안에서 사수와 부사수를 동일 사용자로 지정할 수 없다.
+	 */
+	public void requireDistinctMembers(Long mentorUserId, Long menteeUserId) {
+		if (mentorUserId != null && mentorUserId.equals(menteeUserId)) {
+			throw new CustomException(ErrorCode.TEAM_MEMBER_DUPLICATED);
+		}
+	}
 }

@@ -51,6 +51,12 @@ public class TeamRepositoryAdapter implements TeamRepository {
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<Team> findAllByMemberUserId(Long userId, Long tenantId) {
+		return mapper.toDomainList(jpaTeamRepository.findAllByMemberUserId(userId, tenantId));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean existsByNameAndTenantId(String name, Long tenantId) {
 		return jpaTeamRepository.existsByNameAndTenant_TenantId(name, tenantId);
 	}

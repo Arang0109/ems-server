@@ -23,6 +23,8 @@ public enum ErrorCode {
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
   TEAM_MENTOR_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사수입니다."),
   TEAM_MENTEE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부사수입니다."),
+  TEAM_MEMBER_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "이미 다른 팀에 배정된 사용자입니다."),
+  TEAM_MEMBER_DUPLICATED(HttpStatus.BAD_REQUEST, "사수와 부사수는 같은 사용자일 수 없습니다."),
   DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 문서입니다."),
   DOCUMENT_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 문서 버전입니다."),
   DOCUMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 같은 이름의 문서가 존재합니다."),
