@@ -39,6 +39,7 @@ public interface StackMapper {
 	@Mapping(target = "semsNumber", source = "stack.semsNumber")
 	@Mapping(target = "grade", source = "stack.grade")
 	@Mapping(target = "mainProduct", source = "stack.mainProduct")
+	@Mapping(target = "standardOxygen", source = "stack.standardOxygen")
 	@Mapping(target = "height", source = "stack.height")
 	@Mapping(target = "horizontalLength", source = "stack.horizontalLength")
 	@Mapping(target = "verticalLength", source = "stack.verticalLength")

@@ -34,7 +34,9 @@ public class Stack {
 	private LocalDateTime modifiedAt;
 
 	public static Stack register(
-		Long tenantId, Long workplaceId, MeasurementField field, String name, String semsNumber, Grade grade, String mainProduct
+		Long tenantId, Long workplaceId,
+		MeasurementField field, String name, String semsNumber,
+		Grade grade, String mainProduct, Integer standardOxygen
 	) {
 		return Stack.builder()
 			.tenantId(tenantId)
@@ -44,6 +46,7 @@ public class Stack {
 			.semsNumber(semsNumber)
 			.grade(grade)
 			.mainProduct(mainProduct)
+			.standardOxygen(standardOxygen)
 			.build();
 	}
 

@@ -10,6 +10,7 @@ public record CreateStackCommand(
 	String name,
 	String semsNumber,
 	Grade grade,
-	String mainProduct
+	String mainProduct,
+	Integer standardOxygen
 ) {
 }

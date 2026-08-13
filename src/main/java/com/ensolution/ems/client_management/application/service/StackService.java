@@ -40,7 +40,8 @@ public class StackService implements StackQueryUseCase {
 			name,
 			command.semsNumber(),
 			command.grade(),
-			command.mainProduct()
+			command.mainProduct(),
+			command.standardOxygen()
 		);
 		return stackRepository.save(newStack);
 	}

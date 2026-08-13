@@ -23,6 +23,7 @@ public record StackDetailResponse(
 	String verticalLength,
 	Shape shape,
 	Orientation orientation,
+	Integer standardOxygen,
 	LocalDateTime createdAt,
 	LocalDateTime modifiedAt,
 	
