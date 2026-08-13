@@ -1,9 +1,10 @@
 package com.ensolution.ems.equipment.application.port.in;
 
 import com.ensolution.ems.equipment.domain.EquipType;
+import com.ensolution.ems.equipment.domain.InspectionItem;
 import com.ensolution.ems.equipment.domain.spec.EquipmentSpec;
 
-import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 타 모듈(schedule 등)이 측정 시점 장비 스냅샷을 구성할 때 사용하는 장비 요약 VO.
@@ -18,7 +19,6 @@ public record EquipmentSummary(
 	String equipmentName,
 	String alias,
 	String manufacturer,
-	Integer calibrationCycle,
-	LocalDate lastCalibrationDate,
+	List<InspectionItem> inspections,
 	EquipmentSpec spec
 ) {}

@@ -7,6 +7,8 @@ public record SignInResult(
 		String tenant,
 		String username,
 		String name,
+		Long teamId,
+		String teamName,
 		String role,
 		long tokenValidity
 ) {

@@ -16,6 +16,22 @@ public interface TeamJpaRepository extends JpaRepository<TeamEntity, Long> {
 
 	List<TeamEntity> findAllByTenant_TenantId(Long tenantId);
 
+	/**
+	 * 사수 또는 부사수로 배정된 팀을 조회한다.
+	 * 1인 1팀이 원칙이나 기존 데이터에 중복 배정이 남아 있을 수 있으므로 단건이 아닌 목록으로 반환하고,
+	 * 호출부가 결정적으로 동작하도록 teamId 오름차순으로 정렬한다.
+	 */
+	@Query("""
+    select t from TeamEntity t
+    where t.tenant.tenantId = :tenantId
+      and (t.mentorUserId = :userId or t.menteeUserId = :userId)
+    order by t.teamId asc
+""")
+	List<TeamEntity> findAllByMemberUserId(
+		@Param("userId") Long userId,
+		@Param("tenantId") Long tenantId
+	);
+
 	@Modifying
 	@Query("""
     delete from TeamEntity t

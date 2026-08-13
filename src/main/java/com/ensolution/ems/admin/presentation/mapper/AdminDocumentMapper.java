@@ -1,9 +1,7 @@
-package com.ensolution.ems.admin.presentation.document.mapper;
+package com.ensolution.ems.admin.presentation.mapper;
 
-import com.ensolution.ems.admin.presentation.document.request.CreateDocumentRequest;
-import com.ensolution.ems.admin.presentation.document.request.UpdateDocumentRequest;
-import com.ensolution.ems.admin.presentation.document.response.DocumentResponse;
-import com.ensolution.ems.admin.presentation.document.response.DocumentVersionResponse;
+import com.ensolution.ems.admin.presentation.request.CreateDocumentRequest;
+import com.ensolution.ems.admin.presentation.request.UpdateDocumentRequest;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.storage.application.port.in.*;
@@ -13,15 +11,14 @@ import org.mapstruct.Mapping;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
- * admin의 요청·응답 DTO와 storage가 공개한 {@code port/in} 계약 사이의 변환을 담당한다.
+ * admin의 요청 DTO와 storage가 공개한 {@code port/in} 계약 사이의 변환을 담당한다.
  * {@code MultipartFile} → {@link UploadedFile} 변환도 여기서 끝내므로
  * Spring Web 타입이 application 계층으로 넘어가지 않는다.
  */
 @Mapper(componentModel = "spring", builder = @Builder)
-public interface DocumentMapper {
+public interface AdminDocumentMapper {
 
 	@Mapping(target = "name", source = "request.name")
 	@Mapping(target = "category", source = "request.category")
@@ -49,14 +46,6 @@ public interface DocumentMapper {
 	@Mapping(target = "documentId", source = "documentId")
 	@Mapping(target = "tenantId", source = "tenantId")
 	UpdateDocumentCommand toUpdateCommand(UpdateDocumentRequest request, Long documentId, Long tenantId);
-
-	DocumentResponse toResponse(DocumentSummary summary);
-
-	List<DocumentResponse> toResponses(List<DocumentSummary> summaries);
-
-	DocumentVersionResponse toVersionResponse(DocumentVersionSummary summary);
-
-	List<DocumentVersionResponse> toVersionResponses(List<DocumentVersionSummary> summaries);
 
 	default UploadedFile toUploadedFile(MultipartFile file) {
 		try {

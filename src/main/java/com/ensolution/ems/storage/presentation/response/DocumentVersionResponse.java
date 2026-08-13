@@ -1,4 +1,4 @@
-package com.ensolution.ems.admin.presentation.document.response;
+package com.ensolution.ems.storage.presentation.response;
 
 import java.time.LocalDateTime;
 

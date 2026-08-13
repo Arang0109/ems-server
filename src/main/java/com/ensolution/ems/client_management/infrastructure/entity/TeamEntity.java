@@ -30,6 +30,15 @@ import java.time.LocalDateTime;
 		@Index(
 			name = "idx_teams_tenant_id",
 			columnList = "tenant_id"
+		),
+		// 로그인 시 "이 사용자가 속한 팀" 역조회 및 1인 1팀 검증에 사용
+		@Index(
+			name = "idx_teams_mentor_user_id",
+			columnList = "mentor_user_id"
+		),
+		@Index(
+			name = "idx_teams_mentee_user_id",
+			columnList = "mentee_user_id"
 		)
 	}
 )

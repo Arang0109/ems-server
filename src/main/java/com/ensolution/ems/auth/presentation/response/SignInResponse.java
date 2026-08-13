@@ -5,5 +5,7 @@ public record SignInResponse (
 	String tenant,
 	String username,
 	String name,
+	Long teamId,
+	String teamName,
 	String role
 ) {}

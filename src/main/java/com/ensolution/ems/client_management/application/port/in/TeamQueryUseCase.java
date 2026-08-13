@@ -6,4 +6,10 @@ package com.ensolution.ems.client_management.application.port.in;
  */
 public interface TeamQueryUseCase {
 	TeamSummary getTeamSummary(Long teamId, Long tenantId);
+
+	/**
+	 * 사용자가 사수 또는 부사수로 배정된 팀을 조회한다.
+	 * 팀 미배정은 정상 상태이므로 예외를 던지지 않고 {@code null}을 반환한다.
+	 */
+	UserTeamSummary getUserTeamSummary(Long userId, Long tenantId);
 }

@@ -6,5 +6,5 @@ package com.ensolution.ems.equipment.domain.spec;
  * 영속(Mongo) 시에는 Spring Data MongoDB가 {@code _class} 판별자로 구현체를 복원합니다.
  */
 public sealed interface EquipmentSpec
-	permits ParticleSamplerSpec, GasSamplerSpec, PitotTubeSpec, NozzleSpec, OtherSpec {
+	permits ParticleSamplerSpec, GasSamplerSpec, GasAnalyzerSpec, PitotTubeSpec, NozzleSpec, OtherSpec {
 }

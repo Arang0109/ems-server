@@ -9,12 +9,13 @@ import com.ensolution.ems.equipment.presentation.request.spec.ParticleSamplerSpe
 import com.ensolution.ems.equipment.presentation.request.spec.PitotTubeSpecRequest;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public record UpdateEquipmentRequest(
 	EquipType type,
@@ -31,7 +32,8 @@ public record UpdateEquipmentRequest(
 	@PastOrPresent LocalDate purchaseDate,
 	String remark,
 
-	@Positive Integer calibrationCycle,
+	/** 전달한 검사 종류만 부분 갱신된다. 전달하지 않은 종류는 손대지 않는다. */
+	@Valid List<InspectionItemRequest> inspections,
 
 	@JsonTypeInfo(
 		use = JsonTypeInfo.Id.NAME,

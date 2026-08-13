@@ -27,8 +27,13 @@ public class EquipmentExportView {
 	private final String equipmentName;           // 장비명
 	private final String alias;                   // 별칭
 	private final String manufacturer;            // 제조사
+
+	// 교정 관련 값은 검사 항목(CALIBRATION)에서 파생한다.
+	// 엑셀 템플릿(.xlsx)은 저장소 밖에서 업로드되는 사용자 자산이라 서버 배포와 동시에 고칠 수 없으므로,
+	// 기존 템플릿이 참조하는 이 세 프로퍼티를 유지한다. 템플릿을 전부 교체한 뒤에야 제거할 수 있다.
 	private final Integer calibrationCycle;       // 교정 주기(개월)
 	private final LocalDate lastCalibrationDate;  // 최종 교정일
+	private final LocalDate calibrationDueDate;   // 다음 교정 예정일
 
 	// 유형별 사양
 	private final BigDecimal totalVolume;         // 채취기 총 용량 (입자상 채취기/가스 채취기/기타)
@@ -37,7 +42,8 @@ public class EquipmentExportView {
 	private final String pitotTubeType;           // 피토관 유형 코드
 	private final String pitotTubeTypeLabel;      // 피토관 유형 한글명
 
-	// 사양 목록 (jx:each 대상)
+	// 목록 (jx:each 대상)
+	private final List<EquipmentInspectionExportView> inspections; // 검사 항목 전체(정도검사·교정·일반시험)
 	private final List<PitotCoefficientExportView> coefficients;  // 피토관 계수표
 	private final List<BigDecimal> nozzleDiameters;               // 보유 노즐경 목록
 }

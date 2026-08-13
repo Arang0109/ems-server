@@ -1,11 +1,14 @@
 package com.ensolution.ems.schedule.application.mapper;
 
 import com.ensolution.ems.equipment.domain.EquipType;
+import com.ensolution.ems.equipment.domain.InspectionItem;
+import com.ensolution.ems.equipment.domain.InspectionType;
 import com.ensolution.ems.equipment.domain.PitotTubeType;
 import com.ensolution.ems.equipment.domain.spec.*;
 import com.ensolution.ems.global.common.enums.Orientation;
 import com.ensolution.ems.global.common.enums.Shape;
 import com.ensolution.ems.schedule.application.command.export.EquipmentExportView;
+import com.ensolution.ems.schedule.application.command.export.EquipmentInspectionExportView;
 import com.ensolution.ems.schedule.application.command.export.FacilityExportView;
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
@@ -171,6 +174,9 @@ public class ScheduleExportViewMapper {
 	private EquipmentExportView toEquipmentView(EquipmentSnapshot equipment) {
 		if (equipment == null) return null;
 
+		List<InspectionItem> inspections = equipment.inspections() == null ? List.of() : equipment.inspections();
+		InspectionItem calibration = findInspection(inspections, InspectionType.CALIBRATION);
+
 		EquipmentExportView.EquipmentExportViewBuilder builder = EquipmentExportView.builder()
 			.type(equipment.type() == null ? null : equipment.type().name())
 			.typeLabel(typeLabel(equipment.type()))
@@ -180,14 +186,40 @@ public class ScheduleExportViewMapper {
 			.equipmentName(equipment.equipmentName())
 			.alias(equipment.alias())
 			.manufacturer(equipment.manufacturer())
-			.calibrationCycle(equipment.calibrationCycle())
-			.lastCalibrationDate(equipment.lastCalibrationDate())
+			// 기존 템플릿이 참조하는 교정 프로퍼티는 CALIBRATION 항목에서 파생해 유지한다
+			.calibrationCycle(calibration == null ? null : calibration.cycleMonths())
+			.lastCalibrationDate(calibration == null ? null : calibration.lastInspectedAt())
+			.calibrationDueDate(calibration == null ? null : calibration.nextDueDate())
 			// 사양이 없거나 다른 유형이어도 목록은 비어있게 둔다(템플릿의 jx:each가 null에서 깨진다)
+			.inspections(toInspectionViews(inspections))
 			.coefficients(List.of())
 			.nozzleDiameters(List.of());
 
 		applySpec(builder, equipment.spec());
 		return builder.build();
+	}
+
+	private InspectionItem findInspection(List<InspectionItem> inspections, InspectionType type) {
+		for (InspectionItem item : inspections) {
+			if (item != null && item.type() == type) return item;
+		}
+		return null;
+	}
+
+	private List<EquipmentInspectionExportView> toInspectionViews(List<InspectionItem> inspections) {
+		List<EquipmentInspectionExportView> views = new ArrayList<>(inspections.size());
+		for (InspectionItem item : inspections) {
+			if (item == null || item.type() == null) continue;
+			views.add(EquipmentInspectionExportView.builder()
+				.type(item.type().name())
+				.typeLabel(item.type().getDesc())
+				.enabled(item.enabled())
+				.cycleMonths(item.cycleMonths())
+				.lastInspectedAt(item.lastInspectedAt())
+				.nextDueDate(item.nextDueDate())
+				.build());
+		}
+		return views;
 	}
 
 	/**
@@ -203,7 +235,8 @@ public class ScheduleExportViewMapper {
 				.orificeDeltaH(s.orificeDp())
 				.yd(s.yd());
 			case GasSamplerSpec s -> builder.totalVolume(s.totalVolume());
-			case OtherSpec s -> builder.totalVolume(s.totalVolume());
+			case GasAnalyzerSpec s -> builder.totalVolume(null);
+			case OtherSpec s -> builder.totalVolume(null);
 			case PitotTubeSpec s -> builder
 				.pitotTubeType(s.pitotTubeType() == null ? null : s.pitotTubeType().name())
 				.pitotTubeTypeLabel(pitotTubeTypeLabel(s.pitotTubeType()))
@@ -248,8 +281,9 @@ public class ScheduleExportViewMapper {
 	private String typeLabel(EquipType type) {
 		if (type == null) return null;
 		return switch (type) {
-			case PARTICLE_SAMPLER -> "입자상 채취기";
-			case GAS_SAMPLER -> "가스 채취기";
+			case PARTICLE_SAMPLER -> "입자상 시료채취장비";
+			case GAS_SAMPLER -> "가스상 시료채취장비";
+			case GAS_ANALYZER -> "배출가스 분석기";
 			case PITOT_TUBE -> "피토관";
 			case NOZZLE -> "노즐";
 			case OTHER -> "기타";
