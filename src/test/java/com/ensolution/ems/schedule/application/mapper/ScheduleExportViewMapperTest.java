@@ -71,8 +71,8 @@ class ScheduleExportViewMapperTest {
 	/** 배출·방지시설이 달린 측정시설 트리(의뢰기관 → 사업장 → 측정시설)를 품은 스냅샷. */
 	private ScheduleSnapshot snapshot(List<FacilitySnapshot> facilities, List<PreventionSnapshot> preventions) {
 		StackSnapshot stack = new StackSnapshot(1L, null, "1번 배출구", null, null, null, null,
-			null, null, null, null, null, null, facilities, preventions);
-		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, stack);
+			null, null, null, null, null, facilities, preventions);
+		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
 			null, null, workplace);
 		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, client, null, null, null);
@@ -89,7 +89,7 @@ class ScheduleExportViewMapperTest {
 		ScheduleExportView view = mapper.toExportView(snapshot(team("E1", "E2", "E3", "E4"), equipments));
 
 		assertThat(view.getParticleSampler().getManagementNumber()).isEqualTo("PS-001");
-		assertThat(view.getParticleSampler().getTypeLabel()).isEqualTo("입자상 채취기");
+		assertThat(view.getParticleSampler().getTypeLabel()).isEqualTo("입자상 시료채취장비");
 		assertThat(view.getParticleSampler().getType()).isEqualTo("PARTICLE_SAMPLER");
 		assertThat(view.getGasSampler().getManagementNumber()).isEqualTo("GS-001");
 		assertThat(view.getPitotTube().getModelName()).isEqualTo("모델-E3");
@@ -262,7 +262,7 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 방지시설의_대상물질과_제거효율이_뷰에_매핑된다() {
 		List<PreventionSnapshot> preventions = List.of(
-			new PreventionSnapshot(1L, "흡착탑", 50.0, "THC", "90"));
+			new PreventionSnapshot(1L, "흡착탑", 50.0, null, "THC", "90"));
 
 		ScheduleExportView view = mapper.toExportView(snapshot(null, preventions));
 
@@ -275,8 +275,8 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 방지시설_목록이_스냅샷_순서대로_매핑된다() {
 		List<PreventionSnapshot> preventions = List.of(
-			new PreventionSnapshot(1L, "흡착탑", 50.0, "THC", "90"),
-			new PreventionSnapshot(2L, "여과집진기", 30.0, "먼지", "95"));
+			new PreventionSnapshot(1L, "흡착탑", 50.0, null, "THC", "90"),
+			new PreventionSnapshot(2L, "여과집진기", 30.0, null, "먼지", "95"));
 
 		ScheduleExportView view = mapper.toExportView(snapshot(null, preventions));
 
@@ -289,7 +289,7 @@ class ScheduleExportViewMapperTest {
 
 	@Test
 	void 방지시설에_대상물질_정보가_없으면_null로_유지된다() {
-		List<PreventionSnapshot> preventions = List.of(new PreventionSnapshot(1L, "흡착탑", 50.0, null, null));
+		List<PreventionSnapshot> preventions = List.of(new PreventionSnapshot(1L, "흡착탑", 50.0, null, null, null));
 
 		ScheduleExportView view = mapper.toExportView(snapshot(null, preventions));
 
@@ -329,8 +329,8 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 측정시설의_SEMS번호와_형태_방향이_평탄화된다() {
 		StackSnapshot stack = new StackSnapshot(1L, null, "1번 배출구", "SEMS-001", null, null, null,
-			null, null, null, null, Shape.CIRCULAR, Orientation.VERTICAL, null, null);
-		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, stack);
+			null, null, null, Shape.CIRCULAR, Orientation.VERTICAL, null, null);
+		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
 			null, null, workplace);
 		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, client,

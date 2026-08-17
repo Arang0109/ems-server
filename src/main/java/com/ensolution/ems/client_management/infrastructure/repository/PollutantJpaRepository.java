@@ -13,11 +13,49 @@ import java.util.Optional;
 
 @Repository
 public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, Long> {
-	Optional<PollutantEntity> findByPollutantIdAndTenant_TenantId(Long pollutantId, Long tenantId);
 
-	List<PollutantEntity> findAllByTenant_TenantId(Long tenantId);
+	@Query("""
+    select p from PollutantEntity p
+    join fetch p.catalog
+    where p.pollutantId = :pollutantId
+      and p.tenant.tenantId = :tenantId
+""")
+	Optional<PollutantEntity> findByPollutantIdAndTenant_TenantId(
+		@Param("pollutantId") Long pollutantId,
+		@Param("tenantId") Long tenantId
+	);
 
-	List<PollutantEntity> findByFieldAndTenant_TenantId(MeasurementField field, Long tenantId);
+	@Query("""
+    select p from PollutantEntity p
+    join fetch p.catalog
+    where p.tenant.tenantId = :tenantId
+""")
+	List<PollutantEntity> findAllByTenant_TenantId(@Param("tenantId") Long tenantId);
+
+	/** 측정분야 필터. 측정분야는 카탈로그가 단일 진실 소스이므로 카탈로그 기준으로만 거른다. */
+	@Query("""
+    select p from PollutantEntity p
+    join fetch p.catalog c
+    where p.tenant.tenantId = :tenantId
+      and c.field = :field
+""")
+	List<PollutantEntity> findByFieldAndTenant_TenantId(
+		@Param("field") MeasurementField field,
+		@Param("tenantId") Long tenantId
+	);
+
+	@Query("""
+    select p from PollutantEntity p
+    join fetch p.catalog c
+    where p.tenant.tenantId = :tenantId
+      and c.catalogId = :catalogId
+""")
+	Optional<PollutantEntity> findByCatalogIdAndTenantId(
+		@Param("catalogId") Long catalogId,
+		@Param("tenantId") Long tenantId
+	);
+
+	boolean existsByCatalog_CatalogId(Long catalogId);
 
 	@Modifying
 	@Query("""
@@ -29,6 +67,4 @@ public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, L
 		@Param("pollutantId") Long pollutantId,
 		@Param("tenantId") Long tenantId
 	);
-
-	boolean existsByNameKrAndTenant_TenantId(String nameKr, Long tenantId);
 }

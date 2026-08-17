@@ -12,7 +12,7 @@ import java.util.List;
 @Repository
 public interface StackPollutantJpaRepository extends JpaRepository<StackPollutantEntity, Long> {
 
-	@Query("SELECT sp FROM StackPollutantEntity sp JOIN FETCH sp.pollutant WHERE sp.stack.id = :stackId AND sp.tenant.tenantId = :tenantId")
+	@Query("SELECT sp FROM StackPollutantEntity sp JOIN FETCH sp.pollutant p LEFT JOIN FETCH p.catalog WHERE sp.stack.id = :stackId AND sp.tenant.tenantId = :tenantId")
 	List<StackPollutantEntity> findByStackId(@Param("stackId") Long stackId, @Param("tenantId") Long tenantId);
 
 	@Modifying

@@ -1,10 +1,9 @@
-package com.ensolution.ems.client_management.application.service;
+package com.ensolution.ems.client_management.application.service.assembler;
 
 import com.ensolution.ems.client_management.application.command.detail.StackDetail;
 import com.ensolution.ems.client_management.application.command.list_item.StackPollutantListItem;
 import com.ensolution.ems.client_management.application.port.in.StackMeasurementSummary;
 import com.ensolution.ems.client_management.application.port.out.ClientRepository;
-import com.ensolution.ems.client_management.application.port.out.PollutantRepository;
 import com.ensolution.ems.client_management.application.port.out.StackPollutantRepository;
 import com.ensolution.ems.client_management.application.port.out.WorkplaceRepository;
 import com.ensolution.ems.client_management.domain.*;
@@ -13,8 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 측정 대상(측정시설)과 그 상·하위 트리를 조회 포트로 읽어 측정 시점 스냅샷 요약({@link StackMeasurementSummary})으로
@@ -29,7 +26,7 @@ public class StackSnapshotAssembler {
 	private final WorkplaceRepository workplaceRepository;
 	private final ClientRepository clientRepository;
 	private final StackPollutantRepository stackPollutantRepository;
-	private final PollutantRepository pollutantRepository;
+	private final PollutantCatalogAssembler pollutantCatalogAssembler;
 
 	public StackMeasurementSummary assemble(Long stackId, Long tenantId) {
 		StackDetail detail = stackDetailAssembler.assemble(stackId, tenantId);
@@ -47,12 +44,15 @@ public class StackSnapshotAssembler {
 		);
 	}
 
+	/**
+	 * 측정 시점의 측정항목을 조립한다. 표기명·장비·시험방법은 고객사가 보유한 값을,
+	 * code·측정분야·측정방법·형태는 카탈로그 투영값을 그대로 스냅샷에 남긴다.
+	 */
 	private List<StackMeasurementSummary.MeasurementItemInfo> assembleMeasurementItems(Long stackId, Long tenantId) {
 		List<StackPollutantListItem> stackPollutants = stackPollutantRepository.findByStackId(stackId, tenantId);
 		if (stackPollutants.isEmpty()) return List.of();
 
-		Map<Long, Pollutant> pollutantById = pollutantRepository.findAll(tenantId).stream()
-			.collect(Collectors.toMap(Pollutant::getId, Function.identity(), (a, b) -> a));
+		Map<Long, Pollutant> pollutantById = pollutantCatalogAssembler.pollutantById(tenantId);
 
 		return stackPollutants.stream()
 			.map(sp -> {
@@ -60,8 +60,9 @@ public class StackSnapshotAssembler {
 				return new StackMeasurementSummary.MeasurementItemInfo(
 					sp.id(),
 					sp.pollutantId(),
-					sp.nameKr(),
-					sp.nameEn(),
+					pollutant == null ? sp.code() : pollutant.getCode(),
+					pollutant == null ? sp.nameKr() : pollutant.getNameKr(),
+					pollutant == null ? sp.nameEn() : pollutant.getNameEn(),
 					pollutant == null ? null : pollutant.getField(),
 					pollutant == null ? null : pollutant.getMethod(),
 					pollutant == null ? null : pollutant.getPhase(),

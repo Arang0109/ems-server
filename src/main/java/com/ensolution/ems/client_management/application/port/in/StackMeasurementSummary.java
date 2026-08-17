@@ -83,9 +83,14 @@ public record StackMeasurementSummary(
 		String removalEfficiency
 	) {}
 
+	/**
+	 * @param code 측정물질 가이드 키(예: {@code NOX}). 모든 tenant에서 동일하므로 물질 판별에 쓴다.
+	 *             고객사는 가이드 밖의 물질을 만들 수 없으므로 항상 채워진다
+	 */
 	public record MeasurementItemInfo(
 		Long stackPollutantId,
 		Long pollutantId,
+		String code,
 		String nameKr,
 		String nameEn,
 		MeasurementField field,

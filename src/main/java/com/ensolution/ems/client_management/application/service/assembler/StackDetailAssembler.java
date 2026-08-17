@@ -1,4 +1,4 @@
-package com.ensolution.ems.client_management.application.service;
+package com.ensolution.ems.client_management.application.service.assembler;
 
 import com.ensolution.ems.client_management.application.command.detail.StackDetail;
 import com.ensolution.ems.client_management.application.port.out.FacilityRepository;

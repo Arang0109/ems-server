@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.application.port.out.PollutantRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.PollutantEntity;
 import com.ensolution.ems.client_management.infrastructure.mapper.PollutantEntityMapper;
+import com.ensolution.ems.client_management.infrastructure.repository.PollutantCatalogJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.PollutantJpaRepository;
 import com.ensolution.ems.platform.infrastructure.repository.TenantJpaRepository;
 import com.ensolution.ems.global.common.enums.MeasurementField;
@@ -21,6 +22,7 @@ import java.util.List;
 public class PollutantRepositoryAdapter implements PollutantRepository {
 
 	private final PollutantJpaRepository jpaPollutantRepository;
+	private final PollutantCatalogJpaRepository jpaPollutantCatalogRepository;
 	private final TenantJpaRepository jpaTenantRepository;
 	private final PollutantEntityMapper mapper;
 
@@ -32,6 +34,7 @@ public class PollutantRepositoryAdapter implements PollutantRepository {
 		}
 		PollutantEntity entity = mapper.toEntity(pollutant).toBuilder()
 			.tenant(jpaTenantRepository.getReferenceById(pollutant.getTenantId()))
+			.catalog(jpaPollutantCatalogRepository.getReferenceById(pollutant.getCatalogId()))
 			.build();
 		return mapper.toDomain(jpaPollutantRepository.save(entity));
 	}
@@ -51,8 +54,23 @@ public class PollutantRepositoryAdapter implements PollutantRepository {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public List<Pollutant> findByField(MeasurementField field, Long tenantId) {
 		return mapper.toDomainList(jpaPollutantRepository.findByFieldAndTenant_TenantId(field, tenantId));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Pollutant findByCatalogIdOrNull(Long catalogId, Long tenantId) {
+		return jpaPollutantRepository.findByCatalogIdAndTenantId(catalogId, tenantId)
+			.map(mapper::toDomain)
+			.orElse(null);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean existsByCatalogId(Long catalogId) {
+		return jpaPollutantRepository.existsByCatalog_CatalogId(catalogId);
 	}
 
 	@Override
@@ -62,11 +80,5 @@ public class PollutantRepositoryAdapter implements PollutantRepository {
 		if (deletedCount == 0) {
 			throw new CustomException(ErrorCode.NOT_FOUND);
 		}
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public boolean existsByNameKrAndTenantId(String nameKr, Long tenantId) {
-		return jpaPollutantRepository.existsByNameKrAndTenant_TenantId(nameKr, tenantId);
 	}
 }

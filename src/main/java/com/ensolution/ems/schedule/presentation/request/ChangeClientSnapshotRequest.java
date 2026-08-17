@@ -32,6 +32,8 @@ public record ChangeClientSnapshotRequest(
 	String tel,
 
 	@Schema(description = "사업장 스냅샷. 하위 측정시설(stack)까지 부분 수정되며, 배출·방지시설 목록은 전달하면 전체 교체합니다. "
-		+ "측정시설의 표준산소농도·굴뚝 형상·높이 등이 바뀌면 측정 시트가 재계산됩니다.")
+		+ "측정시설의 표준산소농도·굴뚝 형상·높이 등이 바뀌면 측정 시트가 재계산됩니다. "
+		+ "단 표준산소농도(stack.standardOxygen)는 '미적용'이 유효한 값이므로 전달값을 그대로 반영합니다 — "
+		+ "측정시설을 전달하면서 null을 주면 미적용으로 해제됩니다(측정시설 자체를 전달하지 않으면 변경되지 않습니다).")
 	WorkplaceSnapshot workplace
 ) {}

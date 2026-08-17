@@ -6,21 +6,25 @@ import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
 import com.ensolution.ems.schedule.application.service.ScheduleService;
 import com.ensolution.ems.schedule.presentation.mapper.ScheduleMapper;
+import com.ensolution.ems.schedule.domain.ScheduleStatusLog;
+import com.ensolution.ems.schedule.presentation.request.CancelScheduleRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
-import com.ensolution.ems.schedule.presentation.request.ChangeScheduleStatusRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
+import com.ensolution.ems.schedule.presentation.request.ReopenScheduleRequest;
 import com.ensolution.ems.schedule.presentation.request.SaveSheetsRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateBasicInfoRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.response.ScheduleListResponse;
 import com.ensolution.ems.schedule.presentation.response.ScheduleResponse;
+import com.ensolution.ems.schedule.presentation.response.ScheduleStatusLogResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,7 +47,7 @@ public class ScheduleController {
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		ScheduleDetail detail = scheduleService.createSchedule(
-			mapper.toCreateCommand(request, principal.getTenantId())
+			mapper.toCreateCommand(request, principal.getTenantId(), principal.getUserId())
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
@@ -99,17 +103,45 @@ public class ScheduleController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
-	@Operation(summary = "측정계획 상태 변경")
-	@PatchMapping("/{scheduleId}/status")
-	public ResponseEntity<ApiResponse<ScheduleResponse>> changeStatus(
+	@Operation(summary = "측정계획 완료 확정",
+		description = "분석 중인 측정계획을 완료로 확정합니다. 이후 수정·삭제가 잠기며 측정 건수 통계에 집계됩니다. "
+			+ "잘못 확정한 경우 관리자가 POST /api/schedules/{scheduleId}/reopen 으로 재개방할 수 있습니다.")
+	@PostMapping("/{scheduleId}/completion")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> complete(
 		@PathVariable Long scheduleId,
-		@Valid @RequestBody ChangeScheduleStatusRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
-		ScheduleDetail detail = scheduleService.changeStatus(
-			scheduleId, principal.getTenantId(), request.status()
+		ScheduleDetail detail = scheduleService.complete(
+			scheduleId, principal.getTenantId(), principal.getUserId()
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 취소",
+		description = "업무가 무산된 측정계획을 취소합니다. 취소 사유는 필수이며 상태 변경 이력에 기록됩니다. "
+			+ "취소된 계획은 목록에 남습니다 — 잘못 등록한 계획을 목록에서 감추려면 DELETE 를 사용합니다. "
+			+ "완료·취소된 계획은 다시 취소할 수 없습니다.")
+	@PostMapping("/{scheduleId}/cancellation")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> cancel(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody CancelScheduleRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = scheduleService.cancel(
+			scheduleId, principal.getTenantId(), principal.getUserId(), request.reason()
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 상태 변경 이력 조회",
+		description = "등록·자동 전이·완료·취소·재개방 이력을 시간순으로 반환합니다.")
+	@GetMapping("/{scheduleId}/status-logs")
+	public ResponseEntity<ApiResponse<List<ScheduleStatusLogResponse>>> getStatusLogs(
+		@PathVariable Long scheduleId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		List<ScheduleStatusLog> logs = scheduleService.getStatusLogs(scheduleId, principal.getTenantId());
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toStatusLogResponses(logs)));
 	}
 
 	@Operation(summary = "측정계획 측정장비 변경",
@@ -158,13 +190,57 @@ public class ScheduleController {
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
-	@Operation(summary = "측정계획 삭제", description = "메타와 세부 문서를 함께 삭제합니다.")
+	@Operation(summary = "측정계획 삭제",
+		description = "잘못 등록된 측정계획을 목록에서 감춥니다(soft delete). 실측 데이터가 없는 '측정 예정' 상태에서만 "
+			+ "가능하며, 측정에 착수한 계획은 POST /api/schedules/{scheduleId}/cancellation 으로 취소해야 합니다. "
+			+ "세부 문서는 복구를 위해 보존되며, 관리자가 POST /api/schedules/{scheduleId}/restore 로 되살릴 수 있습니다.")
 	@DeleteMapping("/{scheduleId}")
 	public ResponseEntity<ApiResponse<Void>> deleteSchedule(
 		@PathVariable Long scheduleId,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
-		scheduleService.deleteSchedule(scheduleId, principal.getTenantId());
+		scheduleService.deleteSchedule(scheduleId, principal.getTenantId(), principal.getUserId());
 		return ResponseEntity.ok().body(ApiResponse.success());
+	}
+
+	@Operation(summary = "측정계획 재개방",
+		description = "완료·취소된 측정계획을 되돌려 다시 작업할 수 있게 합니다. 재개방 사유는 필수이며 이력에 기록됩니다. "
+			+ "돌아가는 단계는 저장된 측정 데이터에서 재도출합니다 — 실측값이 있으면 측정 중, "
+			+ "시료접수일까지 있으면 분석 중입니다. 상태가 완료가 아니게 되므로 측정 건수 통계에서도 자동으로 빠집니다. "
+			+ "완료 건의 재개방은 관리자만 할 수 있고(403), 취소 건은 담당자도 되돌릴 수 있습니다.")
+	@PostMapping("/{scheduleId}/reopen")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> reopen(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody ReopenScheduleRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		// 권한이 리소스 상태에 따라 갈리므로 @PreAuthorize 가 아니라 도메인 규칙에서 판정한다.
+		ScheduleDetail detail = scheduleService.reopen(
+			scheduleId, principal.getTenantId(), principal.getUserId(),
+			request.reason(), principal.hasAdminPrivilege()
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "삭제된 측정계획 목록 조회 (관리자)")
+	@PreAuthorize("hasRole('ADMIN')")
+	@GetMapping("/deleted")
+	public ResponseEntity<ApiResponse<List<ScheduleListResponse>>> getDeletedScheduleList(
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		List<ScheduleListItem> items = scheduleService.getDeletedScheduleList(principal.getTenantId());
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toListResponses(items)));
+	}
+
+	@Operation(summary = "삭제된 측정계획 복구 (관리자)",
+		description = "감춰진 측정계획을 되살립니다. 삭제 시점의 상태를 그대로 회복합니다.")
+	@PreAuthorize("hasRole('ADMIN')")
+	@PostMapping("/{scheduleId}/restore")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> restore(
+		@PathVariable Long scheduleId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = scheduleService.restore(scheduleId, principal.getTenantId());
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
 }

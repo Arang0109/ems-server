@@ -7,6 +7,7 @@ import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEqui
 import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateBasicInfoCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
+import com.ensolution.ems.schedule.domain.ScheduleStatusLog;
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
@@ -14,6 +15,7 @@ import com.ensolution.ems.schedule.presentation.request.UpdateBasicInfoRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.response.ScheduleListResponse;
 import com.ensolution.ems.schedule.presentation.response.ScheduleResponse;
+import com.ensolution.ems.schedule.presentation.response.ScheduleStatusLogResponse;
 import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -27,7 +29,8 @@ import java.util.List;
 public interface ScheduleMapper {
 
 	@Mapping(target = "tenantId", source = "tenantId")
-	CreateScheduleCommand toCreateCommand(CreateScheduleRequest request, Long tenantId);
+	@Mapping(target = "registeredBy", source = "registeredBy")
+	CreateScheduleCommand toCreateCommand(CreateScheduleRequest request, Long tenantId, Long registeredBy);
 
 	UpdateScheduleCommand toUpdateCommand(UpdateScheduleRequest request);
 
@@ -52,4 +55,8 @@ public interface ScheduleMapper {
 	ScheduleResponse toResponse(ScheduleDetail detail);
 
 	List<ScheduleListResponse> toListResponses(List<ScheduleListItem> items);
+
+	ScheduleStatusLogResponse toStatusLogResponse(ScheduleStatusLog log);
+
+	List<ScheduleStatusLogResponse> toStatusLogResponses(List<ScheduleStatusLog> logs);
 }

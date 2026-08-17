@@ -12,7 +12,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -32,7 +31,7 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	@Override
 	@Transactional(readOnly = true)
 	public Schedule findById(Long id, Long tenantId) {
-		return scheduleJpaRepository.findByScheduleIdAndTenantId(id, tenantId)
+		return scheduleJpaRepository.findByScheduleIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
 			.map(mapper::toDomain)
 			.orElseThrow(() -> new CustomException(ErrorCode.SCHEDULE_NOT_FOUND));
 	}
@@ -40,20 +39,27 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	@Override
 	@Transactional(readOnly = true)
 	public List<Schedule> findAll(Long tenantId) {
-		return mapper.toDomains(scheduleJpaRepository.findAllByTenantId(tenantId));
+		return mapper.toDomains(scheduleJpaRepository.findAllByTenantIdAndDeletedAtIsNull(tenantId));
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public boolean existsByStackIdAndTeamIdAndMeasureDate(Long stackId, Long teamId, LocalDate sampledAt) {
-		return scheduleJpaRepository.existsByStackIdAndTeamIdAndSampledAt(stackId, teamId, sampledAt);
+	public boolean existsByStackIdAndTeamIdAndMeasureDate(Long tenantId, Long stackId, Long teamId, LocalDate sampledAt) {
+		return scheduleJpaRepository
+			.existsByTenantIdAndStackIdAndTeamIdAndSampledAtAndDeletedAtIsNull(tenantId, stackId, teamId, sampledAt);
 	}
 
 	@Override
-	public void deleteById(Long id, Long tenantId) {
-		int deletedCount = scheduleJpaRepository.deleteByScheduleIdAndTenantId(id, tenantId);
-		if (deletedCount == 0) {
-			throw new CustomException(ErrorCode.SCHEDULE_NOT_FOUND);
-		}
+	@Transactional(readOnly = true)
+	public Schedule findByIdIncludingDeleted(Long id, Long tenantId) {
+		return scheduleJpaRepository.findByScheduleIdAndTenantId(id, tenantId)
+			.map(mapper::toDomain)
+			.orElseThrow(() -> new CustomException(ErrorCode.SCHEDULE_NOT_FOUND));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<Schedule> findAllDeleted(Long tenantId) {
+		return mapper.toDomains(scheduleJpaRepository.findAllByTenantIdAndDeletedAtIsNotNull(tenantId));
 	}
 }

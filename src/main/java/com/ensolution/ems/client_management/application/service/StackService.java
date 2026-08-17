@@ -7,6 +7,8 @@ import com.ensolution.ems.client_management.application.command.update.UpdateSta
 import com.ensolution.ems.client_management.application.port.in.StackMeasurementSummary;
 import com.ensolution.ems.client_management.application.port.in.StackQueryUseCase;
 import com.ensolution.ems.client_management.application.port.out.StackRepository;
+import com.ensolution.ems.client_management.application.service.assembler.StackDetailAssembler;
+import com.ensolution.ems.client_management.application.service.assembler.StackSnapshotAssembler;
 import com.ensolution.ems.client_management.application.validator.StackValidator;
 import com.ensolution.ems.client_management.domain.Stack;
 import com.ensolution.ems.global.common.enums.MeasurementField;

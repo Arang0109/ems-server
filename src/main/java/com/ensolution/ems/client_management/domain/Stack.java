@@ -62,13 +62,9 @@ public class Stack {
 			.semsNumber(keep(semsNumber, this.semsNumber))
 			.grade(grade != null ? grade : this.grade)
 			.mainProduct(keep(mainProduct, this.mainProduct))
-			.standardOxygen(standardOxygen != null ? standardOxygen : this.standardOxygen)
+			.standardOxygen(standardOxygen)
 			.height(height != null ? height : this.height)
-			.horizontalLength(
-				updatedShape == Shape.RECTANGULAR
-					? horizontalLength != null ? horizontalLength : this.horizontalLength
-					: null
-			)
+			.horizontalLength(horizontalLength != null ? horizontalLength : this.horizontalLength)
 			.verticalLength(
 				updatedShape == Shape.RECTANGULAR
 					? verticalLength != null ? verticalLength : this.verticalLength

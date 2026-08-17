@@ -54,6 +54,11 @@ platform:
     system-tenant-name: ${PLATFORM_SYSTEM_TENANT_NAME:플랫폼}
     system-tenant-biz-number: ${PLATFORM_SYSTEM_TENANT_BIZ:0000000000}
 
+# 고객사에게 지원하는 측정물질 가이드. 카탈로그가 비어 있으면 물질 선택 자체가 불가능하므로 시드는 기본 활성이다.
+pollutant:
+  catalog:
+    seed-enabled: ${POLLUTANT_CATALOG_SEED_ENABLED:true}
+
 logging:
   level:
     root: INFO
