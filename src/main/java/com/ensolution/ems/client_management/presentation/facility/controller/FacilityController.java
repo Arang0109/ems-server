@@ -5,8 +5,10 @@ import com.ensolution.ems.client_management.domain.Facility;
 import com.ensolution.ems.client_management.presentation.facility.request.CreateFacilityRequest;
 import com.ensolution.ems.client_management.presentation.facility.mapper.FacilityMapper;
 import com.ensolution.ems.client_management.presentation.facility.response.FacilityResponse;
+import com.ensolution.ems.client_management.presentation.facility.request.ReorderFacilitiesRequest;
 import com.ensolution.ems.client_management.presentation.facility.request.UpdateFacilityRequest;
 import com.ensolution.ems.global.web.ApiResponse;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,7 +33,7 @@ public class FacilityController {
 	@Operation(summary = "배출 시설 등록")
 	@PostMapping
 	public ResponseEntity<ApiResponse<FacilityResponse>> createFacility(
-		@RequestBody CreateFacilityRequest request,
+		@Valid @RequestBody CreateFacilityRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		Facility facility = facilityService.createFacility(mapper.toCreateCommand(request, principal.getTenantId()));
@@ -64,11 +66,30 @@ public class FacilityController {
 	@PutMapping("/{facilityId}")
 	public ResponseEntity<ApiResponse<FacilityResponse>> updateFacility(
 		@PathVariable Long facilityId,
-		@RequestBody UpdateFacilityRequest request,
+		@Valid @RequestBody UpdateFacilityRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		Facility facility = facilityService.updateFacility(facilityId, principal.getTenantId(), mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(facility)));
+	}
+
+	/**
+	 * 리터럴 경로라 {@code PUT /{facilityId}} 보다 먼저 매칭된다 — 순서를 바꿔 놓지 말 것.
+	 */
+	@Operation(
+		summary = "배출 시설 순서 변경",
+		description = "orderedIds 는 이 측정지점의 배출 시설 전체여야 하며, 배열 순서가 곧 표시 순위입니다. "
+			+ "집합이 서버와 다르면 아무것도 저장하지 않고 거절합니다."
+	)
+	@PutMapping("/order")
+	public ResponseEntity<ApiResponse<List<FacilityResponse>>> reorderFacilities(
+		@Valid @RequestBody ReorderFacilitiesRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		List<Facility> facilities = facilityService.reorderFacilities(
+			mapper.toReorderCommand(request, principal.getTenantId())
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponses(facilities)));
 	}
 
 	@Operation(summary = "배출 시설 삭제")

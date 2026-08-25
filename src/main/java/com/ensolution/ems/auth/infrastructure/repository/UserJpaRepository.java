@@ -11,7 +11,11 @@ import java.util.Optional;
 public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
 	List<UserEntity> findAllByTenantId(Long tenantId);
 
+	Optional<UserEntity> findByUserIdAndTenantId(Long userId, Long tenantId);
+
 	Optional<UserEntity> findByUsername(String username);
-	
+
 	boolean existsByUsername(String username);
+
+	long deleteByUserIdAndTenantId(Long userId, Long tenantId);
 }

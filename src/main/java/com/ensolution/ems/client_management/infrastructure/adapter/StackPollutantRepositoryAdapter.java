@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.infrastructure.adapter;
 
 import com.ensolution.ems.client_management.application.command.list_item.StackPollutantListItem;
+import com.ensolution.ems.client_management.application.port.in.StackMeasurementItemSummary;
 import com.ensolution.ems.client_management.domain.StackPollutant;
 import com.ensolution.ems.client_management.application.port.out.StackPollutantRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.StackPollutantEntity;
@@ -41,6 +42,14 @@ public class StackPollutantRepositoryAdapter implements StackPollutantRepository
 
 	@Override
 	@Transactional(readOnly = true)
+	public StackPollutant findById(Long id, Long tenantId) {
+		return jpaStackPollutantRepository.findByStackPollutantIdAndTenant_TenantId(id, tenantId)
+			.map(mapper::toDomain)
+			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<StackPollutantListItem> findByStackId(Long stackId, Long tenantId) {
 		return mapper.toListItems(jpaStackPollutantRepository.findByStackId(stackId, tenantId));
 	}
@@ -58,5 +67,11 @@ public class StackPollutantRepositoryAdapter implements StackPollutantRepository
 	@Transactional(readOnly = true)
 	public boolean existsByStackIdAndPollutantId(Long stackId, Long pollutantId) {
 		return jpaStackPollutantRepository.existsByStack_StackIdAndPollutant_PollutantId(stackId, pollutantId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<StackMeasurementItemSummary> findMeasurementItems(Long tenantId, Long workplaceId, Long stackId) {
+		return jpaStackPollutantRepository.findMeasurementItems(tenantId, workplaceId, stackId);
 	}
 }

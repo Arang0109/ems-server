@@ -6,7 +6,7 @@ import com.ensolution.ems.contract.application.command.ContractListItem;
 import com.ensolution.ems.contract.application.command.CreateContractCommand;
 import com.ensolution.ems.contract.application.command.UpdateContractCommand;
 import com.ensolution.ems.contract.application.mapper.ContractSummaryMapper;
-import com.ensolution.ems.contract.application.port.ContractQueryUseCase;
+import com.ensolution.ems.contract.application.port.in.ContractQueryUseCase;
 import com.ensolution.ems.contract.application.port.in.ContractStatisticsUseCase;
 import com.ensolution.ems.contract.application.port.in.ExpiringContractSummary;
 import com.ensolution.ems.contract.domain.Contract;
@@ -33,31 +33,21 @@ public class ContractService implements ContractQueryUseCase, ContractStatistics
 	private final ContractSummaryMapper summaryMapper;
 
 	public ContractDetail createContract(CreateContractCommand command) {
-		if (!workplaceQueryUseCase.existsById(command.workplaceId())) {
+		if (!workplaceQueryUseCase.existsById(command.workplaceId(), command.tenantId())) {
 			throw new CustomException(ErrorCode.NOT_FOUND);
 		}
 
 		Contract saved = contractRepository.save(Contract.register(
-			command.tenantId(),
-			command.workplaceId(),
-			command.contractName(),
-			command.contractDate(),
-			command.startDate(),
-			command.completionDate(),
-			command.contractAmount(),
-			command.contractAmountUnit(),
-			command.vatIncluded(),
-			command.contractGuaranteeAmount(),
-			command.advancePaymentAmount(),
-			command.advancePaymentDueDate(),
-			command.delayPenaltyRate(),
-			command.remark()
+			command.tenantId(), command.workplaceId(), command.contractName(), command.contractDate(),
+			command.startDate(), command.completionDate(), command.contractAmount(), command.contractAmountUnit(),
+			command.vatIncluded(), command.contractGuaranteeAmount(), command.advancePaymentAmount(),
+			command.advancePaymentDueDate(), command.delayPenaltyRate(), command.remark()
 		));
 		return assembler.assemble(saved);
 	}
 
-	public ContractDetail updateContract(Long contractId, UpdateContractCommand command) {
-		Contract contract = contractRepository.findById(contractId);
+	public ContractDetail updateContract(Long contractId, Long tenantId, UpdateContractCommand command) {
+		Contract contract = contractRepository.findById(contractId, tenantId);
 		Contract saved = contractRepository.save(contract.update(
 			contractId,
 			command.contractName(),
@@ -76,8 +66,8 @@ public class ContractService implements ContractQueryUseCase, ContractStatistics
 		return assembler.assemble(saved);
 	}
 
-	public void deleteContract(Long contractId) {
-		contractRepository.deleteById(contractId);
+	public void deleteContract(Long contractId, Long tenantId) {
+		contractRepository.deleteById(contractId, tenantId);
 	}
 
 	@Override
@@ -86,15 +76,15 @@ public class ContractService implements ContractQueryUseCase, ContractStatistics
 	}
 
 	@Transactional(readOnly = true)
-	public ContractDetail getContract(Long contractId) {
-		return assembler.assemble(contractRepository.findById(contractId));
+	public ContractDetail getContract(Long contractId, Long tenantId) {
+		return assembler.assemble(contractRepository.findById(contractId, tenantId));
 	}
 
 	@Transactional(readOnly = true)
 	public List<ContractListItem> getContractList(Long workplaceId, Long tenantId) {
 		return workplaceId == null
 			? contractRepository.findAllByTenantId(tenantId)
-			: contractRepository.findByWorkplaceId(workplaceId);
+			: contractRepository.findByWorkplaceId(workplaceId, tenantId);
 	}
 
 	@Override

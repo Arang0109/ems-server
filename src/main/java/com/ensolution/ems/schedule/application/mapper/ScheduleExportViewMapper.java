@@ -12,7 +12,9 @@ import com.ensolution.ems.schedule.application.command.export.EquipmentInspectio
 import com.ensolution.ems.schedule.application.command.export.FacilityExportView;
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
+import com.ensolution.ems.schedule.application.command.export.SamplingItemExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
+import com.ensolution.ems.schedule.domain.analysis.AnalysisRecord;
 import com.ensolution.ems.schedule.domain.snapshot.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -20,12 +22,16 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 측정계획 스냅샷을 엑셀 템플릿용 뷰({@link ScheduleExportView})로 평탄화한다.
  * 입력값과 계산값을 모두 노출하며, 내부 도메인/스냅샷 구조와 템플릿 계약을 분리하는 경계 매퍼로서
  * 스냅샷 트리의 null 여부를 방어적으로 다룬다.
  * 측정 시트 변환은 {@link SheetExportViewMapper}에 위임한다.
+ * <p>
+ * 측정항목에는 실험분석정보(별도 컬렉션)의 실험실 입력값이 합류한다. 조회·결합은 조립부
+ * ({@code ScheduleExportAssembler})가 맡고 여기서는 <b>순수 변환만</b> 한다 — 포트를 주입받지 않는다.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,7 +39,12 @@ public class ScheduleExportViewMapper {
 
 	private final SheetExportViewMapper sheetExportViewMapper;
 
-	public ScheduleExportView toExportView(ScheduleSnapshot snapshot) {
+	/**
+	 * 스냅샷과 실험분석정보를 합쳐 내보내기 뷰를 만든다.
+	 *
+	 * @param analyses 측정물질(pollutantId)로 색인한 실험분석정보. null이면 분석 결과가 없는 것으로 다룬다
+	 */
+	public ScheduleExportView toExportView(ScheduleSnapshot snapshot, Map<Long, AnalysisRecord> analyses) {
 		BasicInfo info = snapshot.basicInfo();
 		TeamSnapshot team = snapshot.team();
 		TenantSnapshot tenant = snapshot.tenant();
@@ -93,6 +104,7 @@ public class ScheduleExportViewMapper {
 			.standardOxygen(stack == null ? null : stack.standardOxygen())
 			.facilities(toFacilityViews(facilities))
 			.preventions(preventionViews)
+			.items(toItemViews(snapshot.items(), analyses == null ? Map.of() : analyses))
 			.particleSampler(slot(equipments, team == null ? null : team.particleSamplerId(), EquipType.PARTICLE_SAMPLER))
 			.gasSampler(slot(equipments, team == null ? null : team.gasSamplerId(), EquipType.GAS_SAMPLER))
 			.pitotTube(slot(equipments, team == null ? null : team.pitotTubeId(), EquipType.PITOT_TUBE))
@@ -131,6 +143,44 @@ public class ScheduleExportViewMapper {
 				.unit(prevention.unit())
 				.targetName(prevention.targetName())
 				.removalEfficiency(prevention.removalEfficiency())
+				.build());
+		}
+		return views;
+	}
+
+	/**
+	 * 측정항목 뷰 목록. <b>스냅샷에 저장된 순서를 그대로 유지한다</b> — 그 순서가 곧 성적서의 표기 순서이고,
+	 * 템플릿은 {@code ${items[0].name}} 처럼 인덱스로 칸을 지목한다(기록부 한 장에 실리는 항목 수가 정해져 있다).
+	 * 다른 목록과 마찬가지로 null이면 빈 리스트를 돌려준다(템플릿의 jx:each가 null에서 깨진다).
+	 * <p>
+	 * 실험분석정보는 {@code pollutantId}로 붙인다. <b>분석 결과가 없어도 항목은 목록에 남긴다</b> —
+	 * 성적서의 칸 배치는 항목 순서가 정하므로, 미분석 항목을 빼면 뒤 항목들이 앞칸으로 밀려 버린다.
+	 */
+	private List<SamplingItemExportView> toItemViews(
+		List<SamplingItemSnapshot> items, Map<Long, AnalysisRecord> analyses) {
+
+		if (items == null) return List.of();
+		List<SamplingItemExportView> views = new ArrayList<>(items.size());
+		for (SamplingItemSnapshot item : items) {
+			if (item == null) continue;
+			AnalysisRecord analysis = item.pollutantId() == null ? null : analyses.get(item.pollutantId());
+			views.add(SamplingItemExportView.builder()
+				.name(item.nameKr())
+				.nameEn(item.nameEn())
+				.code(item.code())
+				.cycle(item.cycle() == null ? null : item.cycle().name())
+				// 허용기준·산소보정은 분석 기록에도 사본이 있으나 스냅샷 값을 쓴다(출처를 한쪽으로 고정)
+				.allowance(item.allowance())
+				.oxygenApplicable(item.oxygenApplicable())
+				.equipment(item.equipment())
+				.testMethod(item.testMethod())
+				// 아직 작성되지 않은 항목은 실험실 입력값·채취시간이 모두 null로 남는다
+				.samplingStartedAt(analysis == null ? null : analysis.getSamplingStartedAt())
+				.samplingEndedAt(analysis == null ? null : analysis.getSamplingEndedAt())
+				.analysisValue(analysis == null ? null : analysis.getAnalysisValue())
+				.unit(analysis == null ? null : analysis.getUnit())
+				.analysisMethod(analysis == null ? null : analysis.getAnalysisMethod())
+				.analysisEquipment(analysis == null ? null : analysis.getAnalysisEquipment())
 				.build());
 		}
 		return views;
@@ -305,5 +355,9 @@ public class ScheduleExportViewMapper {
 		if (road == null) return detail;
 		if (detail == null) return road;
 		return road + " " + detail;
+	}
+	
+	private String nullCheck(String value) {
+		return value == null ? "=" : value;
 	}
 }

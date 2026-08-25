@@ -21,9 +21,11 @@ import java.util.zip.ZipOutputStream;
 /**
  * jxls-poi 기반 엑셀 렌더러. 업로드된 템플릿에 측정계획 뷰를 채운다.
  * <ul>
- *   <li>성적서({@link #render}): {@code plan}(측정계획 뷰)과 {@code sheets}(측정 시트 목록 전체)를 노출해 단일 파일을 만든다.</li>
+ *   <li>성적서({@link #render}): {@code plan}(측정계획 뷰)과 {@code sheets}(측정 시트 목록 전체),
+ *       {@code items}(측정항목 목록)를 노출해 단일 파일을 만든다.</li>
  *   <li>채취기록부({@link #renderSamplingRecordsZip}): 시트마다 {@code plan}(원장 데이터)과 {@code sheet}(해당 시트),
- *       그리고 시트의 측정 영역별 하위 뷰를 최상위 변수로 함께 노출해 시트별 파일을 만든 뒤 하나의 ZIP으로 묶는다.</li>
+ *       시트의 측정 영역별 하위 뷰, {@code items}(측정항목 목록)를 최상위 변수로 함께 노출해
+ *       시트별 파일을 만든 뒤 하나의 ZIP으로 묶는다.</li>
  * </ul>
  * 두 경우 모두 노출 변수만 컨텍스트에 담아, 표현식이 노출 데이터 밖으로 벗어나지 못하도록 제한한다.
  */
@@ -37,6 +39,7 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 			Map<String, Object> model = new HashMap<>();
 			model.put("plan", data);
 			model.put("sheets", data.getSheets());
+			model.put("items", data.getItems());
 			return fill(template, model);
 		} catch (Exception e) {
 			log.warn("엑셀 템플릿 렌더링 실패", e);
@@ -77,6 +80,9 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 	 * 시트의 측정 영역별 하위 뷰와 반복 목록을 최상위 변수로도 노출한다.
 	 * 템플릿이 {@code ${sheet.moisture.ratio}} 대신 {@code ${moisture.ratio}}로 짧게 쓸 수 있게 하기 위함이며,
 	 * 하위 뷰는 매퍼가 항상 채우므로({@link SheetExportView} 참고) 여기서 null 검사는 필요하지 않다.
+	 * <p>
+	 * 측정항목({@code items})은 시트가 아니라 계획에 딸린 값이지만, 기록부 서식도 측정항목 칸을 가지므로
+	 * 성적서와 같은 이름으로 함께 노출한다.
 	 */
 	private Map<String, Object> samplingRecordModel(ScheduleExportView data, SheetExportView sheet) {
 		Map<String, Object> model = new HashMap<>();
@@ -89,6 +95,7 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 		model.put("particle", sheet.getParticle());
 		model.put("points", sheet.getPoints());
 		model.put("samples", sheet.getSamples());
+		model.put("items", data.getItems());
 		return model;
 	}
 

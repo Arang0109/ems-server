@@ -16,6 +16,7 @@ public interface WorkplaceJpaRepository extends JpaRepository<WorkplaceEntity, L
 	boolean existsByNameAndClient_ClientId (String name, Long clientId);
 
 	Optional<WorkplaceEntity> findByWorkplaceIdAndTenant_TenantId(Long workplaceId, Long tenantId);
+	boolean existsByWorkplaceIdAndTenant_TenantId(Long workplaceId, Long tenantId);
 	List<WorkplaceEntity> findByClient_ClientIdAndTenant_TenantId(Long clientId, Long tenantId);
 	List<WorkplaceEntity> findAllByTenant_TenantId(Long tenantId);
 

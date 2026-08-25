@@ -31,15 +31,16 @@ public class ContractRepositoryAdapter implements ContractRepository {
 	}
 
 	@Override
-	public Contract findById(Long id) {
-		return jpaContractRepository.findById(id)
+	public Contract findById(Long id, Long tenantId) {
+		return jpaContractRepository.findByContractIdAndTenantId(id, tenantId)
 			.map(mapper::toDomain)
 			.orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 	}
 
 	@Override
-	public List<ContractListItem> findByWorkplaceId(Long workplaceId) {
-		return contractListItemMapper.toListItems(jpaContractTableViewRepository.findByWorkplaceId(workplaceId));
+	public List<ContractListItem> findByWorkplaceId(Long workplaceId, Long tenantId) {
+		return contractListItemMapper.toListItems(
+			jpaContractTableViewRepository.findByWorkplaceIdAndTenantId(workplaceId, tenantId));
 	}
 
 	@Override
@@ -48,8 +49,10 @@ public class ContractRepositoryAdapter implements ContractRepository {
 	}
 
 	@Override
-	public void deleteById(Long id) {
-		jpaContractRepository.deleteById(id);
+	public void deleteById(Long id, Long tenantId) {
+		if (jpaContractRepository.deleteByContractIdAndTenantId(id, tenantId) == 0) {
+			throw new CustomException(ErrorCode.NOT_FOUND);
+		}
 	}
 	
 	@Override

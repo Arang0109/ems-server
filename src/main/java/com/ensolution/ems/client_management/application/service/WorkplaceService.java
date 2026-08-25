@@ -96,8 +96,8 @@ public class WorkplaceService implements WorkplaceQueryUseCase {
 
 	@Override
 	@Transactional(readOnly = true)
-	public boolean existsById(Long workplaceId) {
-		return workplaceRepository.existsById(workplaceId);
+	public boolean existsById(Long workplaceId, Long tenantId) {
+		return workplaceRepository.existsById(workplaceId, tenantId);
 	}
 
 	@Override

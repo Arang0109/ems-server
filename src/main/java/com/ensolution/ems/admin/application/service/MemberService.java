@@ -31,13 +31,13 @@ public class MemberService {
 		userCommandUseCase.updateUser(memberPortMapper.toUpdateUserCommand(command));
 	}
 
-	public void deleteMember(Long id) {
-		userCommandUseCase.deleteUser(id);
+	public void deleteMember(Long id, Long tenantId) {
+		userCommandUseCase.deleteUser(id, tenantId);
 	}
 
 	@Transactional(readOnly = true)
-	public Member getMember(Long id) {
-		return memberPortMapper.toMember(userQueryUseCase.getUser(id));
+	public Member getMember(Long id, Long tenantId) {
+		return memberPortMapper.toMember(userQueryUseCase.getUser(id, tenantId));
 	}
 
 	@Transactional(readOnly = true)

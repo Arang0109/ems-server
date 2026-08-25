@@ -29,9 +29,9 @@ public class TeamAssembler {
 			team.getId(),
 			team.getName(),
 			team.getMentorUserId(),
-			resolveName(team.getMentorUserId()),
+			resolveName(team.getMentorUserId(), team.getTenantId()),
 			team.getMenteeUserId(),
-			resolveName(team.getMenteeUserId()),
+			resolveName(team.getMenteeUserId(), team.getTenantId()),
 			team.getParticleSamplerId(),
 			team.getGasSamplerId(),
 			team.getPitotTubeId(),
@@ -59,10 +59,10 @@ public class TeamAssembler {
 			.toList();
 	}
 
-	private String resolveName(Long userId) {
+	private String resolveName(Long userId, Long tenantId) {
 		if (userId == null) return null;
 		try {
-			return userQueryUseCase.getUser(userId).name();
+			return userQueryUseCase.getUser(userId, tenantId).name();
 		} catch (CustomException e) {
 			return null;
 		}

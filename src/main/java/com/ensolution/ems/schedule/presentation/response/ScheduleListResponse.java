@@ -6,10 +6,7 @@ import com.ensolution.ems.schedule.domain.ScheduleStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * 측정계획 목록 응답 아이템.
- * {@code deletedAt}·{@code deletedBy}는 삭제된 계획 목록(GET /api/schedules/deleted)에서만 채워진다.
- */
+/** 측정계획 목록 응답 아이템. */
 public record ScheduleListResponse(
 	Long id,
 	Long stackId,
@@ -22,7 +19,5 @@ public record ScheduleListResponse(
 	String clientName,
 	String stackName,
 	String teamName,
-	LocalDateTime createdAt,
-	LocalDateTime deletedAt,
-	Long deletedBy
+	LocalDateTime createdAt
 ) {}

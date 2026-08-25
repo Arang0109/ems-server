@@ -20,10 +20,11 @@ public class Facility {
 	private String fuelInput;          // 원료 투입량
 	private String fuelType;           // 연료·원료 종류
 	private String unit;               // 사용량·생산량에 적용되는 단위
+	private Integer sortOrder;         // 측정지점 안에서의 표시 순서 (성적서에 상위 몇 개만 쓰이므로 업무상 의미가 있다)
 
 	public static Facility register(
 		Long tenantId, Long stackId, String name, String fuelUsage, String productOutput,
-		String incinerationAmount, String fuelInput, String fuelType, String unit) {
+		String incinerationAmount, String fuelInput, String fuelType, String unit, Integer sortOrder) {
 		return Facility.builder()
 			.tenantId(tenantId)
 			.stackId(stackId)
@@ -34,6 +35,7 @@ public class Facility {
 			.fuelInput(fuelInput)
 			.fuelType(fuelType)
 			.unit(unit)
+			.sortOrder(sortOrder)
 			.build();
 	}
 
@@ -41,17 +43,23 @@ public class Facility {
 		String name, String fuelUsage, String productOutput,
 		String incinerationAmount, String fuelInput, String fuelType, String unit) {
 		return this.toBuilder()
-			.name(keep(name, this.name))
-			.fuelUsage(keep(fuelUsage, this.fuelUsage))
-			.productOutput(keep(productOutput, this.productOutput))
-			.incinerationAmount(keep(incinerationAmount, this.incinerationAmount))
-			.fuelInput(keep(fuelInput, this.fuelInput))
-			.fuelType(keep(fuelType, this.fuelType))
-			.unit(keep(unit, this.unit))
+			.name(name)
+			.fuelUsage(fuelUsage)
+			.productOutput(productOutput)
+			.incinerationAmount(incinerationAmount)
+			.fuelInput(fuelInput)
+			.fuelType(fuelType)
+			.unit(unit)
 			.build();
 	}
 
-	private static String keep(String value, String original) {
-			return value == null || value.isBlank() ? original : value;
+	/**
+	 * 표시 순서만 바꾼다.
+	 * <p>
+	 * {@code update()} 는 sortOrder 를 받지 않는다 — 시설 정보 수정과 순서 변경은 별개의 행위이고,
+	 * {@code toBuilder()} 가 기존 순서를 그대로 물려주므로 정보 수정으로 순서가 흐트러지지 않는다.
+	 */
+	public Facility reorder(Integer sortOrder) {
+		return this.toBuilder().sortOrder(sortOrder).build();
 	}
 }

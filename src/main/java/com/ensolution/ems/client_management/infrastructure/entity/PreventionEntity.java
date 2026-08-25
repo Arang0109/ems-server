@@ -27,6 +27,11 @@ import java.time.LocalDateTime;
 		@Index(
 			name = "idx_preventions_tenant_id",
 			columnList = "tenant_id"
+		),
+		// 목록 조회가 stack_id 로 걸러 sort_order 로 정렬하므로 두 컬럼을 함께 묶는다
+		@Index(
+			name = "idx_preventions_stack_sort",
+			columnList = "stack_id, sort_order"
 		)
 	}
 )
@@ -66,7 +71,11 @@ public class PreventionEntity {
 	
 	@Column(name = "removal_efficiency")
 	private String removalEfficiency;
-	
+
+	/** 측정지점 안에서의 표시 순서. nullable 이므로 정렬 시 반드시 tie-breaker 를 동반한다. */
+	@Column(name = "sort_order")
+	private Integer sortOrder;
+
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;

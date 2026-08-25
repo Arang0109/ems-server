@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -43,6 +44,11 @@ public class ScheduleDocument {
 	private List<EquipmentSnapshot> equipments;
 	private List<SamplingItemSnapshot> items;
 	private List<MeasurementSheet> sheets;
+
+	// 낙관적 락. 읽어온 version으로 저장해야 하므로 도메인 스냅샷이 값을 왕복시킨다.
+	// null이면 Spring Data가 신규 문서로 판정해 insert하고 0을 부여한다.
+	@Version
+	private Long version;
 
 	@CreatedDate
 	private LocalDateTime createdAt;

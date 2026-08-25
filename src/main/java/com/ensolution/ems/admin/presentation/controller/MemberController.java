@@ -31,7 +31,7 @@ public class MemberController {
 	
 	@Operation(summary = "회원 등록")
 	@PostMapping()
-	public ResponseEntity<ApiResponse<MemberResponse>> createMember(
+	public ResponseEntity<ApiResponse<Void>> createMember(
 		@Valid @RequestBody CreateMemberRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
@@ -52,29 +52,32 @@ public class MemberController {
 	@Operation(summary = "회원 단건 조회")
 	@GetMapping("/{id}")
 	public ResponseEntity<ApiResponse<MemberResponse>> getMember(
-		@PathVariable Long id
+		@PathVariable Long id,
+		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			memberMapper.toResponse(memberService.getMember(id))
+			memberMapper.toResponse(memberService.getMember(id, principal.getTenantId()))
 		));
 	}
 
 	@Operation(summary = "회원 수정")
 	@PutMapping("/{id}")
-	public ResponseEntity<ApiResponse<MemberResponse>> updateMember(
+	public ResponseEntity<ApiResponse<Void>> updateMember(
 		@PathVariable Long id,
-		@Valid @RequestBody UpdateMemberRequest request
+		@Valid @RequestBody UpdateMemberRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
 	) {
-		memberService.updateMember(memberMapper.toUpdateMemberCommand(request, id));
+		memberService.updateMember(memberMapper.toUpdateMemberCommand(request, id, principal.getTenantId()));
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 
 	@Operation(summary = "회원 삭제")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse<Void>> deleteMember(
-		@PathVariable Long id
+		@PathVariable Long id,
+		@AuthenticationPrincipal CustomUserDetails principal
 	) {
-		memberService.deleteMember(id);
+		memberService.deleteMember(id, principal.getTenantId());
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 }

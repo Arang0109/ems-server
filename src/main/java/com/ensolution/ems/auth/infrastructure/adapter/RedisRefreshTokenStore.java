@@ -1,6 +1,6 @@
 package com.ensolution.ems.auth.infrastructure.adapter;
 
-import com.ensolution.ems.auth.application.port.RefreshTokenStore;
+import com.ensolution.ems.auth.application.port.out.RefreshTokenStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;

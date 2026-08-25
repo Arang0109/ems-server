@@ -53,8 +53,11 @@ public class ContractController {
 
 	@Operation(summary = "계약 상세 조회")
 	@GetMapping("/{contractId}")
-	public ResponseEntity<ApiResponse<ContractResponse>> getContract(@PathVariable Long contractId) {
-		ContractDetail detail = contractService.getContract(contractId);
+	public ResponseEntity<ApiResponse<ContractResponse>> getContract(
+		@PathVariable Long contractId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ContractDetail detail = contractService.getContract(contractId, principal.getTenantId());
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
@@ -62,16 +65,21 @@ public class ContractController {
 	@PutMapping("/{contractId}")
 	public ResponseEntity<ApiResponse<ContractResponse>> updateContract(
 		@PathVariable Long contractId,
-		@RequestBody UpdateContractRequest request
+		@RequestBody UpdateContractRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
 	) {
-		ContractDetail detail = contractService.updateContract(contractId, mapper.toUpdateCommand(request));
+		ContractDetail detail = contractService.updateContract(
+			contractId, principal.getTenantId(), mapper.toUpdateCommand(request));
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(detail)));
 	}
 
 	@Operation(summary = "계약 삭제")
 	@DeleteMapping("/{contractId}")
-	public ResponseEntity<ApiResponse<Void>> deleteContract(@PathVariable Long contractId) {
-		contractService.deleteContract(contractId);
+	public ResponseEntity<ApiResponse<Void>> deleteContract(
+		@PathVariable Long contractId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		contractService.deleteContract(contractId, principal.getTenantId());
 		return ResponseEntity.ok(ApiResponse.success());
 	}
 }

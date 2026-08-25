@@ -4,8 +4,10 @@ import com.ensolution.ems.client_management.application.command.create.CreateSta
 import com.ensolution.ems.client_management.application.command.detail.StackDetail;
 import com.ensolution.ems.client_management.application.command.list_item.StackListItem;
 import com.ensolution.ems.client_management.application.command.update.UpdateStackCommand;
+import com.ensolution.ems.client_management.application.port.in.StackMeasurementItemSummary;
 import com.ensolution.ems.client_management.application.port.in.StackMeasurementSummary;
 import com.ensolution.ems.client_management.application.port.in.StackQueryUseCase;
+import com.ensolution.ems.client_management.application.port.out.StackPollutantRepository;
 import com.ensolution.ems.client_management.application.port.out.StackRepository;
 import com.ensolution.ems.client_management.application.service.assembler.StackDetailAssembler;
 import com.ensolution.ems.client_management.application.service.assembler.StackSnapshotAssembler;
@@ -24,6 +26,7 @@ import java.util.List;
 public class StackService implements StackQueryUseCase {
 
 	private final StackRepository stackRepository;
+	private final StackPollutantRepository stackPollutantRepository;
 	private final StackValidator stackValidator;
 	private final StackDetailAssembler stackDetailAssembler;
 	private final StackSnapshotAssembler stackSnapshotAssembler;
@@ -90,5 +93,11 @@ public class StackService implements StackQueryUseCase {
 	@Transactional(readOnly = true)
 	public long countStacks(Long tenantId) {
 		return stackRepository.findAll(tenantId).size();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<StackMeasurementItemSummary> findMeasurementItems(Long tenantId, Long workplaceId, Long stackId) {
+		return stackPollutantRepository.findMeasurementItems(tenantId, workplaceId, stackId);
 	}
 }

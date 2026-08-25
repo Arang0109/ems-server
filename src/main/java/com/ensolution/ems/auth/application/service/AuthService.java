@@ -2,7 +2,6 @@ package com.ensolution.ems.auth.application.service;
 
 import com.ensolution.ems.auth.application.command.SignInCommand;
 import com.ensolution.ems.auth.application.command.SignInResult;
-import com.ensolution.ems.auth.application.command.SignUpCommand;
 import com.ensolution.ems.auth.application.port.in.UserCommandUseCase;
 import com.ensolution.ems.auth.application.port.in.CreateUserCommand;
 import com.ensolution.ems.auth.application.port.in.UpdateUserCommand;
@@ -10,9 +9,9 @@ import com.ensolution.ems.client_management.application.port.in.TeamQueryUseCase
 import com.ensolution.ems.client_management.application.port.in.UserTeamSummary;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
+import com.ensolution.ems.auth.application.validator.UserValidator;
 import com.ensolution.ems.auth.domain.port.Authenticator;
 import com.ensolution.ems.auth.domain.port.PasswordEncryptor;
-import com.ensolution.ems.auth.domain.port.RoleRepository;
 import com.ensolution.ems.auth.domain.port.TokenIssuer;
 import com.ensolution.ems.auth.domain.AuthenticatedUser;
 import com.ensolution.ems.auth.domain.TokenResult;
@@ -27,13 +26,31 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class AuthService implements UserCommandUseCase {
 	private final UserRepository userRepository;
-	private final RoleRepository roleRepository;
 	private final PasswordEncryptor passwordEncryptor;
 	private final Authenticator authenticator;
 	private final TokenIssuer tokenIssuer;
 	private final TeamQueryUseCase teamQueryUseCase;
+	private final UserValidator userValidator;
 
 	public void createUser(CreateUserCommand command) {
+		userValidator.requireAssignableRole(command.roleId());
+		register(
+			command.tenantId(),
+			command.roleId(),
+			command.username(),
+			command.password(),
+			command.name(),
+			command.department(),
+			command.email(),
+			command.tel()
+		);
+	}
+
+	/**
+	 * 부트스트랩 전용 운영자 계정 생성. 역할 부여 제한을 적용하지 않는 유일한 경로다.
+	 * roleId는 부트스트랩이 {@code ensureRole}로 직접 확보한 값이라 존재가 보장된다.
+	 */
+	public void createPlatformAdmin(CreateUserCommand command) {
 		register(
 			command.tenantId(),
 			command.roleId(),
@@ -47,13 +64,11 @@ public class AuthService implements UserCommandUseCase {
 	}
 
 	public void updateUser(UpdateUserCommand command) {
-		User user = userRepository.findById(command.userId())
+		User user = userRepository.findById(command.userId(), command.tenantId())
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-		// 존재하지 않는 roleId면 ROLE_NOT_FOUND 예외
-		if (command.roleId() != null) {
-			roleRepository.findById(command.roleId());
-		}
+		// 존재하지 않는 역할이면 ROLE_NOT_FOUND, PLATFORM_ADMIN이면 ROLE_NOT_ASSIGNABLE
+		userValidator.requireAssignableRole(command.roleId());
 
 		User updated = user.update(
 			command.roleId(),
@@ -66,23 +81,10 @@ public class AuthService implements UserCommandUseCase {
 		userRepository.save(updated);
 	}
 
-	public void deleteUser(Long userId) {
-		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-		userRepository.deleteById(user.getId());
-	}
-
-	public void signUp(SignUpCommand command) {
-		register(
-			command.tenantId(),
-			command.roleId(),
-			command.username(),
-			command.password(),
-			command.name(),
-			command.department(),
-			command.email(),
-			command.tel()
-		);
+	public void deleteUser(Long userId, Long tenantId) {
+		if (!userRepository.deleteById(userId, tenantId)) {
+			throw new CustomException(ErrorCode.USER_NOT_FOUND);
+		}
 	}
 
 	private void register(
@@ -99,9 +101,7 @@ public class AuthService implements UserCommandUseCase {
 			throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
 		}
 
-		// 존재하지 않는 roleId면 ROLE_NOT_FOUND 예외
-		roleRepository.findById(roleId);
-
+		// 역할 존재·부여 가능 여부는 호출부(createUser)의 UserValidator가 이미 확인했다.
 		String encodedPassword = passwordEncryptor.encode(rawPassword);
 
 		User user = User.signUp(

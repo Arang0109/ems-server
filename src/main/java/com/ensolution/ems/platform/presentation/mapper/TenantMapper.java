@@ -2,7 +2,7 @@ package com.ensolution.ems.platform.presentation.mapper;
 
 import com.ensolution.ems.platform.application.command.ProvisionTenantCommand;
 import com.ensolution.ems.platform.application.command.TenantAdminCommand;
-import com.ensolution.ems.platform.application.result.TenantListItem;
+import com.ensolution.ems.platform.application.command.TenantListItem;
 import com.ensolution.ems.platform.domain.Tenant;
 import com.ensolution.ems.platform.presentation.request.ProvisionTenantRequest;
 import com.ensolution.ems.platform.presentation.request.TenantAdminRequest;

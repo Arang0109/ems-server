@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.application.service.PreventionServic
 import com.ensolution.ems.client_management.domain.Prevention;
 import com.ensolution.ems.client_management.presentation.prevention.mapper.PreventionMapper;
 import com.ensolution.ems.client_management.presentation.prevention.request.CreatePreventionRequest;
+import com.ensolution.ems.client_management.presentation.prevention.request.ReorderPreventionsRequest;
 import com.ensolution.ems.client_management.presentation.prevention.request.UpdatePreventionRequest;
 import com.ensolution.ems.client_management.presentation.prevention.response.PreventionResponse;
 import com.ensolution.ems.global.web.ApiResponse;
@@ -65,11 +66,30 @@ public class PreventionController {
 	@PutMapping("/{preventionId}")
 	public ResponseEntity<ApiResponse<PreventionResponse>> updatePrevention(
 		@PathVariable Long preventionId,
-		@RequestBody UpdatePreventionRequest request,
+		@Valid @RequestBody UpdatePreventionRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		Prevention prevention = preventionService.updatePrevention(preventionId, principal.getTenantId(), mapper.toUpdateCommand(request));
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(prevention)));
+	}
+
+	/**
+	 * 리터럴 경로라 {@code PUT /{preventionId}} 보다 먼저 매칭된다 — 순서를 바꿔 놓지 말 것.
+	 */
+	@Operation(
+		summary = "방지설비 순서 변경",
+		description = "orderedIds 는 이 측정지점의 방지설비 전체여야 하며, 배열 순서가 곧 표시 순위입니다. "
+			+ "집합이 서버와 다르면 아무것도 저장하지 않고 거절합니다."
+	)
+	@PutMapping("/order")
+	public ResponseEntity<ApiResponse<List<PreventionResponse>>> reorderPreventions(
+		@Valid @RequestBody ReorderPreventionsRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		List<Prevention> preventions = preventionService.reorderPreventions(
+			mapper.toReorderCommand(request, principal.getTenantId())
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponses(preventions)));
 	}
 
 	@Operation(summary = "방지설비 삭제")

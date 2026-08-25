@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface ContractTableViewJpaRepository extends JpaRepository<ContractTableViewEntity, Long> {
 	List<ContractTableViewEntity> findByTenantId(Long tenantId);
-	List<ContractTableViewEntity> findByWorkplaceId(Long workplaceId);
+	List<ContractTableViewEntity> findByWorkplaceIdAndTenantId(Long workplaceId, Long tenantId);
 }

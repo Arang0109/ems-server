@@ -1,10 +1,10 @@
 package com.ensolution.ems.client_management.presentation.pollutant.mapper;
 
 import com.ensolution.ems.client_management.application.command.create.CreatePollutantCommand;
-import com.ensolution.ems.client_management.application.command.list_item.PollutantListItem;
 import com.ensolution.ems.client_management.application.command.update.UpdatePollutantCommand;
 import com.ensolution.ems.client_management.domain.Pollutant;
-import com.ensolution.ems.client_management.presentation.pollutant.response.PollutantListResponse;
+import com.ensolution.ems.client_management.domain.PollutantCatalog;
+import com.ensolution.ems.client_management.presentation.pollutant.response.PollutantCandidateResponse;
 import com.ensolution.ems.client_management.presentation.pollutant.response.PollutantResponse;
 import com.ensolution.ems.client_management.presentation.pollutant.request.CreatePollutantRequest;
 import com.ensolution.ems.client_management.presentation.pollutant.request.UpdatePollutantRequest;
@@ -26,7 +26,10 @@ public interface PollutantMapper {
 
 	PollutantResponse toResponse(Pollutant pollutant);
 
-	PollutantListResponse toListResponse(PollutantListItem item);
+	List<PollutantResponse> toResponses(List<Pollutant> pollutants);
 
-	List<PollutantListResponse> toListResponses(List<PollutantListItem> items);
+	@Mapping(target = "catalogId", source = "id")
+	PollutantCandidateResponse toCandidateResponse(PollutantCatalog catalog);
+
+	List<PollutantCandidateResponse> toCandidateResponses(List<PollutantCatalog> catalogs);
 }

@@ -1,7 +1,5 @@
 package com.ensolution.ems.platform.domain;
 
-import com.ensolution.ems.global.common.enums.SubscriptionPlan;
-import com.ensolution.ems.global.common.enums.TenantStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

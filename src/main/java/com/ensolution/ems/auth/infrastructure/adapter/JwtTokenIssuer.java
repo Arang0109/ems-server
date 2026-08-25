@@ -24,7 +24,7 @@ public class JwtTokenIssuer implements TokenIssuer {
 		String tenant = user.tenant();
 		String role = user.role();
 
-		String accessToken = jwtTokenProvider.createAccessToken(username, tenant, role);
+		String accessToken = issueAccessToken(user);
 		String refreshToken = jwtTokenProvider.createRefreshToken(username);
 
 		return new TokenResult(
@@ -37,5 +37,10 @@ public class JwtTokenIssuer implements TokenIssuer {
 			role,
 			jwtProperties.refreshTokenValidity()
 		);
+	}
+
+	@Override
+	public String issueAccessToken(AuthenticatedUser user) {
+		return jwtTokenProvider.createAccessToken(user.username(), user.tenant(), user.role());
 	}
 }

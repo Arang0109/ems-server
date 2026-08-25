@@ -2,6 +2,7 @@ package com.ensolution.ems.auth.application.port.in;
 
 public record UpdateUserCommand(
 	Long userId,
+	Long tenantId,
 	Long roleId,
 	String name,
 	String department,

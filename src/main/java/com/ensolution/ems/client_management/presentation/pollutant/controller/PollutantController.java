@@ -4,7 +4,7 @@ import com.ensolution.ems.client_management.application.service.PollutantService
 import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.presentation.pollutant.request.CreatePollutantRequest;
 import com.ensolution.ems.client_management.presentation.pollutant.mapper.PollutantMapper;
-import com.ensolution.ems.client_management.presentation.pollutant.response.PollutantListResponse;
+import com.ensolution.ems.client_management.presentation.pollutant.response.PollutantCandidateResponse;
 import com.ensolution.ems.client_management.presentation.pollutant.response.PollutantResponse;
 import com.ensolution.ems.client_management.presentation.pollutant.request.UpdatePollutantRequest;
 import com.ensolution.ems.global.common.enums.MeasurementField;
@@ -35,6 +35,7 @@ public class PollutantController {
 		summary = "측정물질 등록",
 		description = """
 			지원 물질 가이드에서 `catalogId`로 물질을 채택합니다. 가이드에 없는 물질은 등록할 수 없습니다.
+			채택 가능한 항목은 `GET /api/pollutants/candidates`로 조회합니다.
 			`nameKr`을 비워 두면 가이드의 표준 국문명이 복사되며, 이후 표기명·시험장비·시험방법은 고객사가 관리합니다.
 			측정분야·측정방법·형태는 가이드가 정하므로 요청에 담지 않습니다.
 			""")
@@ -48,26 +49,39 @@ public class PollutantController {
 	}
 
 	@Operation(
-		summary = "선택 가능한 측정물질 목록 조회",
+		summary = "측정물질 목록 조회",
 		description = """
-			지원 물질 가이드와 이 고객사가 채택한 측정물질을 합쳐 돌려줍니다.
-			각 항목의 `source`는 다음을 뜻합니다.
-			- `CATALOG`: 가이드에 있으나 아직 채택하지 않음 (`pollutantId`와 고객사 입력값이 null)
-			- `REGISTERED`: 채택해 보유 중
+			이 고객사가 채택해 관리 중인 측정물질만 돌려줍니다. 가이드에만 있고 아직 채택하지 않은 항목은
+			포함되지 않습니다 — 채택 후보는 `GET /api/pollutants/candidates`로 조회하세요.
 
 			`code`는 모든 고객사에서 동일하므로 특정 물질을 판별할 때 사용합니다.
-			단 code는 측정분야 안에서만 유일합니다(대기 납·수질 납이 모두 `PB`). 측정물질을 지목해
-			채택할 때는 `catalogId`를 사용하세요.
-			`includeCatalog=false`를 주면 이 고객사가 채택한 것만 조회합니다.
+			단 code는 측정분야 안에서만 유일합니다(대기 납·수질 납이 모두 `PB`).
 			""")
 	@GetMapping
-	public ResponseEntity<ApiResponse<List<PollutantListResponse>>> getPollutantList(
+	public ResponseEntity<ApiResponse<List<PollutantResponse>>> getPollutantList(
 		@RequestParam(required = false) MeasurementField field,
-		@RequestParam(defaultValue = "true") boolean includeCatalog,
 		@AuthenticationPrincipal CustomUserDetails principal
-		) {
-		return ResponseEntity.ok(ApiResponse.success(mapper.toListResponses(
-			pollutantService.getPollutantList(field, principal.getTenantId(), includeCatalog))));
+	) {
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponses(
+			pollutantService.getPollutantList(field, principal.getTenantId()))));
+	}
+
+	@Operation(
+		summary = "채택 가능한 측정물질 후보 조회",
+		description = """
+			지원 물질 가이드 중 이 고객사가 **아직 채택하지 않은** 항목만 돌려줍니다.
+			측정물질 등록 화면에서 목록을 띄우고 `catalogId`로 선택해 `POST /api/pollutants`를 호출하세요.
+			이미 채택한 항목과 폐지된 항목은 후보에서 빠집니다.
+
+			영문명·시험장비·시험방법은 가이드가 보유하지 않습니다. 채택한 뒤 고객사가 직접 입력하는 값입니다.
+			""")
+	@GetMapping("/candidates")
+	public ResponseEntity<ApiResponse<List<PollutantCandidateResponse>>> getPollutantCandidates(
+		@RequestParam(required = false) MeasurementField field,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		return ResponseEntity.ok(ApiResponse.success(mapper.toCandidateResponses(
+			pollutantService.getPollutantCandidates(field, principal.getTenantId()))));
 	}
 
 	@Operation(

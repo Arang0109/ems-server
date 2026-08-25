@@ -11,6 +11,12 @@ public interface DocumentCommandUseCase {
 
 	void updateDocument(UpdateDocumentCommand command);
 
+	/**
+	 * 버전 하나를 파일까지 함께 삭제한다. 마지막 남은 한 개는 삭제할 수 없다.
+	 * 최신 버전을 삭제하면 문서의 최신 버전 번호는 남은 버전 중 최대 번호로 내려간다.
+	 */
+	void deleteVersion(Long documentId, int versionNo, Long tenantId);
+
 	/** 문서와 그에 속한 모든 버전을 파일까지 함께 삭제한다. */
 	void deleteDocument(Long documentId, Long tenantId);
 }

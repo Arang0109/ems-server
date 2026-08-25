@@ -70,7 +70,7 @@ public class PlatformAdminInitializer implements ApplicationRunner {
 			log.info("[bootstrap] 운영자 계정('{}')이 이미 존재하여 생성을 건너뜁니다.", username);
 			return;
 		}
-		userCommandUseCase.createUser(new CreateUserCommand(
+		userCommandUseCase.createPlatformAdmin(new CreateUserCommand(
 			systemTenantId,
 			platformAdminRoleId,
 			username,

@@ -1,6 +1,7 @@
 package com.ensolution.ems.global.security.config;
 
 import com.ensolution.ems.global.security.filter.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -65,10 +66,13 @@ public class SecurityConfig {
         
         .authorizeHttpRequests
           ((authorize) -> authorize
+            // SSE 등 비동기 응답의 ASYNC 재디스패치와 ERROR 디스패치는 최초 REQUEST에서 이미 인가를 통과했다.
+            // 이때 SecurityContext는 비어 있으므로 다시 인가하면 Access Denied가 된다.
+            .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
             .requestMatchers("/api/platform/**").hasRole("PLATFORM_ADMIN")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
+            // 공개 회원가입은 제공하지 않는다. 회원 생성은 /api/admin/members(ADMIN 전용)가 담당한다.
             .requestMatchers(
-                "/api/auth/sign-up",
               "/api/auth/sign-in",
                 "/api/auth/refresh",
               "/swagger-ui.html",
@@ -90,9 +94,11 @@ public class SecurityConfig {
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(List.of(
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://54.180.112.112:3000"
+			"http://localhost:5173",
+			"http://127.0.0.1:5173",
+			"http://54.180.112.112:3000",
+			"https://env-bridge.co.kr",
+			"https://www.env-bridge.co.kr"
     ));
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));

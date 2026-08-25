@@ -25,10 +25,12 @@ public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, L
 		@Param("tenantId") Long tenantId
 	);
 
+	/** 정렬 근거인 sortOrder는 카탈로그가 소유하므로 이미 조인해 온 카탈로그로 정렬한다. */
 	@Query("""
     select p from PollutantEntity p
-    join fetch p.catalog
+    join fetch p.catalog c
     where p.tenant.tenantId = :tenantId
+    order by c.sortOrder asc, p.nameKr asc
 """)
 	List<PollutantEntity> findAllByTenant_TenantId(@Param("tenantId") Long tenantId);
 
@@ -38,6 +40,7 @@ public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, L
     join fetch p.catalog c
     where p.tenant.tenantId = :tenantId
       and c.field = :field
+    order by c.sortOrder asc, p.nameKr asc
 """)
 	List<PollutantEntity> findByFieldAndTenant_TenantId(
 		@Param("field") MeasurementField field,

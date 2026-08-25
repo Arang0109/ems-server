@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.application.service;
 
 import com.ensolution.ems.client_management.application.command.create.CreatePollutantCommand;
-import com.ensolution.ems.client_management.application.command.list_item.PollutantListItem;
 import com.ensolution.ems.client_management.application.command.update.UpdatePollutantCommand;
 import com.ensolution.ems.client_management.application.service.assembler.PollutantCatalogAssembler;
 import com.ensolution.ems.client_management.domain.Pollutant;
@@ -53,18 +52,21 @@ public class PollutantService {
 		pollutantRepository.deleteById(id, tenantId);
 	}
 
+	/** 이 고객사가 채택해 보유 중인 측정물질. 가이드 순서(sortOrder)로 정렬해 돌려준다. */
+	@Transactional(readOnly = true)
+	public List<Pollutant> getPollutantList(MeasurementField field, Long tenantId) {
+		return field == null
+			? pollutantRepository.findAll(tenantId)
+			: pollutantRepository.findByField(field, tenantId);
+	}
+
 	/**
-	 * 선택 가능한 측정물질 목록.
-	 *
-	 * @param includeCatalog true면 아직 채택하지 않은 가이드 항목까지 포함한다(기본).
-	 *                       false면 이 tenant가 채택한 것만 돌려준다
+	 * 아직 채택하지 않은 가이드 항목. 측정물질 등록 화면의 선택 후보다.
+	 * 이미 채택한 항목과 폐지된 항목은 후보에서 빠진다.
 	 */
 	@Transactional(readOnly = true)
-	public List<PollutantListItem> getPollutantList(MeasurementField field, Long tenantId, boolean includeCatalog) {
-		List<PollutantListItem> items = pollutantCatalogAssembler.assembleSelectable(tenantId, field);
-		if (includeCatalog) return items;
-
-		return items.stream().filter(item -> item.pollutantId() != null).toList();
+	public List<PollutantCatalog> getPollutantCandidates(MeasurementField field, Long tenantId) {
+		return pollutantCatalogAssembler.assembleCandidates(tenantId, field);
 	}
 
 	/**

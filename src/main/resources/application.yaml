@@ -8,6 +8,13 @@ spring:
       max-file-size: 20MB
       max-request-size: 20MB
 
+  # @Scheduled 실행 풀. 기본값이 1이라 SSE 하트비트가 죽은 소켓에서 블로킹되면
+  # 주기 작업 전체가 멈춘다. 여유를 둬 한 구독의 지연이 전파되지 않게 한다.
+  task:
+    scheduling:
+      pool:
+        size: 4
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ems}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
@@ -35,6 +42,14 @@ spring:
 ems:
   storage:
     local-root: ${STORAGE_LOCAL_ROOT:./data/storage}
+
+# Refresh Token 쿠키 전송 정책. HTTP로 접속하는 개발 서버에 secure 쿠키를 내려보내면
+# 브라우저가 저장하지 않아 재발급이 실패한다. 프론트·API가 같은 오리진(nginx)이라 Lax로 충분하며,
+# HTTPS 도메인으로 서비스할 때만 COOKIE_SECURE=true / COOKIE_SAME_SITE=None 으로 올린다.
+app:
+  cookie:
+    secure: ${COOKIE_SECURE:false}
+    same-site: ${COOKIE_SAME_SITE:Lax}
 
 jwt:
   secret: ${JWT_SECRET}

@@ -7,10 +7,6 @@ import com.ensolution.ems.contract.domain.Contract;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/**
- * Contract 도메인에 사업장·업체 요약 정보를 결합해 {@link ContractDetail}로 조립한다.
- * 조립 책임을 서비스에서 분리하여 create/update/get 각 유스케이스가 재사용한다.
- */
 @Component
 @RequiredArgsConstructor
 public class ContractDetailAssembler {

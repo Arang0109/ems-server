@@ -61,6 +61,17 @@ public class Document {
 			.build();
 	}
 
+	/**
+	 * 최신 버전 번호를 지정한 값으로 되돌린 사본을 반환한다.
+	 * 최신 버전이 삭제되어 남은 버전 중 최대 번호로 내려야 할 때 쓴다.
+	 * (버전이 모두 사라진 경우는 0)
+	 */
+	public Document withLatestVersionNo(int latestVersionNo) {
+		return this.toBuilder()
+			.latestVersionNo(latestVersionNo)
+			.build();
+	}
+
 	private static String keep(String value, String original) {
 		return value == null || value.isBlank() ? original : value;
 	}

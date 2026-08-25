@@ -23,7 +23,7 @@ class TeamServiceTest {
 	/** 소속 팀 조회는 사수·부사수 이름 조립을 하지 않는다. 호출되면 테스트가 실패하도록 미구현으로 둔다. */
 	private static final UserQueryUseCase UNUSED_USER_QUERY = new UserQueryUseCase() {
 		@Override
-		public UserSummary getUser(Long userId) {
+		public UserSummary getUser(Long userId, Long tenantId) {
 			throw new UnsupportedOperationException();
 		}
 

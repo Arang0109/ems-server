@@ -12,6 +12,6 @@ public interface WorkplaceRepository {
 	List<WorkplaceListItem> findAll(Long tenantId);
 	void deleteById(Long id, Long tenantId);
 
-	boolean existsById(Long workplaceId);
+	boolean existsById(Long workplaceId, Long tenantId);
 	boolean existsByNameAndClientId(String name, Long clientId);
 }

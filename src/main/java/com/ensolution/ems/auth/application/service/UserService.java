@@ -23,8 +23,8 @@ public class UserService implements UserQueryUseCase {
 	private final RoleRepository roleRepository;
 
 	@Override
-	public UserSummary getUser(Long userId) {
-		User user = userRepository.findById(userId)
+	public UserSummary getUser(Long userId, Long tenantId) {
+		User user = userRepository.findById(userId, tenantId)
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 		return toSummary(user);
 	}

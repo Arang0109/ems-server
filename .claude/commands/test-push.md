@@ -65,7 +65,7 @@ git reset HEAD -- .env.production
 PowerShell 환경에서 Co-Authored-By 태그를 포함해 커밋합니다. 백틱(`` ` ``)으로 줄바꿈을 표현하세요:
 
 ```powershell
-git commit -m "<커밋 메시지>`n`nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git commit -m "<커밋 메시지>`n`nCo-Authored-By: <현재 세션의 모델명> <noreply@anthropic.com>"
 ```
 
 ---

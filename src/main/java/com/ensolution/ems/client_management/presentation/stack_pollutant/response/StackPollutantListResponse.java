@@ -3,7 +3,7 @@ package com.ensolution.ems.client_management.presentation.stack_pollutant.respon
 import com.ensolution.ems.global.common.enums.MeasurementCycle;
 
 /**
- * @param code 모든 고객사에서 동일한 전역 측정물질 키(예: {@code NOX}). 고객사 자체 물질이면 null
+ * @param code 모든 고객사에서 동일한 전역 측정물질 키(예: {@code NOX}). 가이드 투영값이므로 항상 채워진다
  */
 public record StackPollutantListResponse(
 	Long id,

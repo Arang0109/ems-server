@@ -33,17 +33,13 @@ public class TeamValidator {
 	 * 사수·부사수 user가 존재하고 요청 tenant 소속인지 검증한다.
 	 * 미존재·타 tenant 모두 동일한 도메인 NOT_FOUND로 은닉한다(멀티테넌시 규칙).
 	 * <p>
-	 * {@code UserQueryUseCase}에 비예외 존재 확인 메서드가 없어 미존재를 예외로 판정한다.
-	 * auth 모듈에 존재 확인용 조회가 추가되면 비예외 경로로 정리한다.
+	 * tenant 대조는 {@code UserQueryUseCase.getUser(userId, tenantId)}가 수행한다.
+	 * 여기서는 auth의 USER_NOT_FOUND를 팀 문맥의 사수·부사수 NOT_FOUND로 바꿔 던지기만 한다.
 	 */
 	public void requireMemberInTenant(Long userId, Long tenantId, ErrorCode notFound) {
-		UserSummary user;
 		try {
-			user = userQueryUseCase.getUser(userId);
+			userQueryUseCase.getUser(userId, tenantId);
 		} catch (CustomException e) {
-			throw new CustomException(notFound);
-		}
-		if (!tenantId.equals(user.tenantId())) {
 			throw new CustomException(notFound);
 		}
 	}

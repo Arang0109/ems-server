@@ -2,8 +2,10 @@ package com.ensolution.ems.client_management.presentation.stack_pollutant.mapper
 
 import com.ensolution.ems.client_management.application.command.create.CreateStackPollutantCommand;
 import com.ensolution.ems.client_management.application.command.list_item.StackPollutantListItem;
+import com.ensolution.ems.client_management.application.command.update.UpdateStackPollutantCommand;
 import com.ensolution.ems.client_management.domain.StackPollutant;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.request.CreateStackPollutantRequest;
+import com.ensolution.ems.client_management.presentation.stack_pollutant.request.UpdateStackPollutantRequest;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.response.StackPollutantResponse;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.response.StackPollutantListResponse;
 import org.mapstruct.Builder;
@@ -23,6 +25,8 @@ public interface StackPollutantMapper {
 	default List<CreateStackPollutantCommand> toCreateCommands(List<CreateStackPollutantRequest> requests, Long tenantId) {
 		return requests.stream().map(request -> toCreateCommand(request, tenantId)).toList();
 	}
+
+	UpdateStackPollutantCommand toUpdateCommand(UpdateStackPollutantRequest request);
 
 	StackPollutantResponse toResponse(StackPollutant stackPollutant);
 	List<StackPollutantResponse> toResponses(List<StackPollutant> stackPollutants);

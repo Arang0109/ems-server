@@ -3,21 +3,25 @@ package com.ensolution.ems.schedule.application.service;
 import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
 import com.ensolution.ems.platform.application.port.in.TenantQueryUseCase;
-import com.ensolution.ems.platform.application.result.TenantSummary;
+import com.ensolution.ems.platform.application.port.in.TenantSummary;
 import com.ensolution.ems.schedule.application.mapper.ScheduleSnapshotMapper;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
 import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.SamplingItemSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
 import com.ensolution.ems.client_management.application.port.in.*;
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -66,16 +70,64 @@ public class ScheduleSnapshotAssembler {
 			snapshotMapper.toClientSnapshot(stackSummary),
 			snapshotMapper.toEquipmentSnapshots(equipmentSummaries),
 			snapshotMapper.toItemSnapshots(selectedItems),
-			List.of()
+			List.of(),
+			null,      // version·createdAt은 저장 시 인프라(Spring Data)가 채운다.
+			null
 		);
 	}
 
-	/** 시설의 측정항목 중 요청으로 선택된 측정물질(pollutantId)에 해당하는 항목만 남긴다. */
+	/**
+	 * 시설의 측정항목 중 요청으로 선택된 측정물질(pollutantId)에 해당하는 항목만 남긴다.
+	 * <p>
+	 * <b>요청 순서를 그대로 따른다.</b> 측정항목의 순서는 성적서의 표기 순서이고, 템플릿이
+	 * {@code ${items[0].name}} 처럼 인덱스로 칸을 지목하므로 순서가 결정적이어야 한다.
+	 * 원장 조회 순서를 따르면 정렬이 보장되지 않고, 항목 교체 경로({@link #resolveItems})와도
+	 * 규칙이 어긋난다. 선택된 물질이 원장에 없으면 조용히 빠진다(생성 시점의 기존 동작).
+	 */
 	private List<StackMeasurementSummary.MeasurementItemInfo> filterByPollutantIds(
 		List<StackMeasurementSummary.MeasurementItemInfo> items, List<Long> pollutantIds) {
-		Set<Long> selected = new HashSet<>(pollutantIds);
-		return items.stream()
-			.filter(item -> selected.contains(item.pollutantId()))
+		Map<Long, StackMeasurementSummary.MeasurementItemInfo> available = items.stream()
+			.collect(Collectors.toMap(
+				StackMeasurementSummary.MeasurementItemInfo::pollutantId, Function.identity(), (a, b) -> a));
+
+		return pollutantIds.stream()
+			.filter(Objects::nonNull)
+			.distinct()
+			.map(available::get)
+			.filter(Objects::nonNull)
+			.toList();
+	}
+
+	/**
+	 * 선택된 측정물질로 측정항목 스냅샷 목록을 다시 만든다(측정항목 교체 시 사용).
+	 * <p>
+	 * 이미 계획에 들어 있던 항목은 <b>기존 스냅샷 값을 그대로 유지</b>한다 — 측정 시점의 허용기준으로
+	 * 이미 시트를 채웠을 수 있어, 원장이 그 뒤 바뀌었다고 덮어쓰면 기록이 흔들린다.
+	 * 새로 추가된 항목만 측정시설 원장에서 조회해 조립하며, 원장에 없는 물질은 거부한다.
+	 */
+	public List<SamplingItemSnapshot> resolveItems(
+		Schedule meta, List<Long> pollutantIds, List<SamplingItemSnapshot> current) {
+
+		Map<Long, SamplingItemSnapshot> kept = current == null ? Map.of() : current.stream()
+			.collect(Collectors.toMap(SamplingItemSnapshot::pollutantId, Function.identity(), (a, b) -> a));
+
+		StackMeasurementSummary stackSummary =
+			stackQueryUseCase.getMeasurementTargetSummary(meta.getStackId(), meta.getTenantId());
+		Map<Long, StackMeasurementSummary.MeasurementItemInfo> available = stackSummary.measurementItems().stream()
+			.collect(Collectors.toMap(
+				StackMeasurementSummary.MeasurementItemInfo::pollutantId, Function.identity(), (a, b) -> a));
+
+		return pollutantIds.stream()
+			.filter(Objects::nonNull)
+			.distinct()
+			.map(pollutantId -> {
+				SamplingItemSnapshot existing = kept.get(pollutantId);
+				if (existing != null) return existing;
+
+				StackMeasurementSummary.MeasurementItemInfo info = available.get(pollutantId);
+				if (info == null) throw new CustomException(ErrorCode.SCHEDULE_ITEM_NOT_IN_STACK);
+				return snapshotMapper.toItemSnapshot(info);
+			})
 			.toList();
 	}
 

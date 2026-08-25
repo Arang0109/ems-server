@@ -20,6 +20,15 @@ public interface DocumentVersionJpaRepository extends JpaRepository<DocumentVers
 	@Query("select v.storageKey from DocumentVersionEntity v where v.document.documentId = :documentId")
 	List<String> findStorageKeysByDocumentId(@Param("documentId") Long documentId);
 
+	long countByDocument_DocumentId(Long documentId);
+
+	@Query("select coalesce(max(v.versionNo), 0) from DocumentVersionEntity v where v.document.documentId = :documentId")
+	int findMaxVersionNoByDocumentId(@Param("documentId") Long documentId);
+
+	@Modifying
+	@Query("delete from DocumentVersionEntity v where v.document.documentId = :documentId and v.versionNo = :versionNo")
+	int deleteByDocumentIdAndVersionNo(@Param("documentId") Long documentId, @Param("versionNo") int versionNo);
+
 	@Modifying
 	@Query("delete from DocumentVersionEntity v where v.document.documentId = :documentId")
 	int deleteAllByDocumentId(@Param("documentId") Long documentId);

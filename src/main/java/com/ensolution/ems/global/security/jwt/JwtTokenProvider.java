@@ -16,6 +16,7 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -63,6 +64,20 @@ public class JwtTokenProvider {
     UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
     
     return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+  }
+  
+  /**
+   * 토큰의 주체(username)를 읽습니다. 서명 불일치·만료·형식 오류는 모두 빈 값입니다.
+   * <p>
+   * {@link #validateToken(String)} 후 다시 파싱하면 검증을 두 번 하게 되므로,
+   * "유효하면 누구인지"가 필요한 곳에서는 이 메서드 하나만 씁니다.
+   */
+  public Optional<String> parseUsername(String token) {
+    try {
+      return Optional.ofNullable(parseClaims(token).getSubject());
+    } catch (JwtException | IllegalArgumentException e) {
+      return Optional.empty();
+    }
   }
   
   public boolean validateToken(String token) {

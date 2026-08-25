@@ -74,6 +74,10 @@ public class ScheduleExportView {
 	private final List<FacilityExportView> facilities;
 	private final List<PreventionExportView> preventions;
 
+	// 측정항목 (jx:each 대상 / 인덱스 지목 대상)
+	// 목록의 순서가 곧 성적서 표기 순서다 — 템플릿은 ${items[0].name} 처럼 인덱스로 칸을 지목한다.
+	private final List<SamplingItemExportView> items;
+
 	// 측정 장비 (팀 슬롯별 단건 참조)
 	private final EquipmentExportView particleSampler;  // 입자상 채취기
 	private final EquipmentExportView gasSampler;       // 가스 채취기

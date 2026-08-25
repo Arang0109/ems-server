@@ -36,7 +36,7 @@ class ScheduleProgressTest {
 
 	private static ScheduleSnapshot snapshotWith(BasicInfo basicInfo, List<MeasurementSheet> sheets) {
 		return new ScheduleSnapshot("1", 1L, 10L, ScheduleStatus.SCHEDULED,
-			basicInfo, null, null, null, null, null, sheets);
+			basicInfo, null, null, null, null, null, sheets, null, null);
 	}
 
 	private static BasicInfo basicInfo(LocalTime samplingStartedAt, LocalDate receivedAt) {
@@ -173,12 +173,12 @@ class ScheduleProgressTest {
 		@Test
 		@DisplayName("완료된 계획은 어떤 입력이 들어와도 전진하지 않는다")
 		void ignoresCompleted() {
-			Schedule meta = metaWith(ScheduleStatus.COMPLETED);
+			Schedule meta = metaWith(ScheduleStatus.REPORT_COMPLETED);
 			ScheduleSnapshot snapshot = snapshotWith(
 				basicInfo(LocalTime.of(9, 30), LocalDate.of(2026, 5, 2)), List.of(sheetWithMeasuredValue()));
 
 			assertThat(ScheduleProgress.advance(meta, snapshot).getStatus())
-				.isEqualTo(ScheduleStatus.COMPLETED);
+				.isEqualTo(ScheduleStatus.REPORT_COMPLETED);
 		}
 
 		@Test

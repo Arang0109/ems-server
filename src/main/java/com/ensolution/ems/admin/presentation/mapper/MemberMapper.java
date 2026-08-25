@@ -21,5 +21,5 @@ public interface MemberMapper {
 	
 	CreateMemberCommand toCreateMemberCommand(CreateMemberRequest request, Long tenantId);
 
-	UpdateMemberCommand toUpdateMemberCommand(UpdateMemberRequest request, Long id);
+	UpdateMemberCommand toUpdateMemberCommand(UpdateMemberRequest request, Long id, Long tenantId);
 }

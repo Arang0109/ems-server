@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.application.service.StackPollutantSe
 import com.ensolution.ems.client_management.domain.StackPollutant;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.mapper.StackPollutantMapper;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.request.CreateStackPollutantRequest;
+import com.ensolution.ems.client_management.presentation.stack_pollutant.request.UpdateStackPollutantRequest;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.response.StackPollutantResponse;
 import com.ensolution.ems.client_management.presentation.stack_pollutant.response.StackPollutantListResponse;
 import com.ensolution.ems.global.web.ApiResponse;
@@ -32,7 +33,9 @@ public class StackPollutantController {
 	private final StackPollutantService stackPollutantService;
 	private final StackPollutantMapper mapper;
 
-	@Operation(summary = "시설별 측정물질 등록")
+	@Operation(summary = "시설별 측정물질 등록",
+		description = "이 고객사가 채택해 보유 중인 `pollutantId`만 등록할 수 있습니다. "
+			+ "아직 채택하지 않은 가이드 항목은 `POST /api/pollutants`로 먼저 채택하세요.")
 	@PostMapping
 	public ResponseEntity<ApiResponse<StackPollutantResponse>> registerPollutant(
 		@Valid @RequestBody CreateStackPollutantRequest request,
@@ -62,6 +65,20 @@ public class StackPollutantController {
 		return ResponseEntity.ok(ApiResponse.success(
 			mapper.toListResponses(stackPollutantService.getStackPollutantList(stackId, principal.getTenantId()))
 		));
+	}
+
+	@Operation(summary = "시설별 측정물질 수정",
+		description = "측정 조건(측정주기·허용기준·산소보정)만 수정합니다. "
+			+ "물질 자체를 바꾸려면 삭제 후 다시 등록하세요.")
+	@PutMapping("/{id}")
+	public ResponseEntity<ApiResponse<StackPollutantResponse>> updateStackPollutant(
+		@PathVariable Long id,
+		@Valid @RequestBody UpdateStackPollutantRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		StackPollutant stackPollutant = stackPollutantService.updateStackPollutant(
+			id, principal.getTenantId(), mapper.toUpdateCommand(request));
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(stackPollutant)));
 	}
 
 	@Operation(summary = "시설별 측정물질 삭제")

@@ -1,7 +1,7 @@
 package com.ensolution.ems.platform.infrastructure.entity;
 
-import com.ensolution.ems.global.common.enums.SubscriptionPlan;
-import com.ensolution.ems.global.common.enums.TenantStatus;
+import com.ensolution.ems.platform.domain.SubscriptionPlan;
+import com.ensolution.ems.platform.domain.TenantStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;

@@ -46,11 +46,11 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `ClientService` | `createClient`, `getClient`, `getClientList`, `updateClient`, `deleteClient` |
 | `WorkplaceService` | `createWorkplace`, `getWorkplace`, `getWorkplaceList(clientId)`, `updateWorkplace`, `deleteWorkplace` |
 | `StackService` | `createStack`, `getStackList(workplaceId)`, `getStackDetail(stackId)`, `updateStack`, `deleteStack` |
-| `FacilityService` | `createFacility`, `getFacility`, `getFacilityList(stackId)`, `updateFacility`, `deleteFacility` |
-| `PreventionService` | `createPrevention`, `getPrevention`, `getPreventionList(stackId)`, `updatePrevention`, `deletePrevention` |
+| `FacilityService` | `createFacility`, `getFacility`, `getFacilityList(stackId)`, `updateFacility`, `reorderFacilities`, `deleteFacility`. 등록 시 `max(sortOrder)+10`을 부여해 목록 맨 뒤에 붙인다 |
+| `PreventionService` | `createPrevention`, `getPrevention`, `getPreventionList(stackId)`, `updatePrevention`, `reorderPreventions`, `deletePrevention`. 등록 시 `max(sortOrder)+10`을 부여해 목록 맨 뒤에 붙인다 |
 | `PollutantCatalogService` | 운영자용 가이드 CRUD + `deactivateCatalog`/`activateCatalog`, 시드용 멱등 `ensureCatalog`. tenant 범위를 다루지 않는다 |
-| `PollutantService` | `createPollutant`(가이드 항목 채택), `getPollutant`, `getPollutantList(field, includeCatalog)`, `updatePollutant`(고객사 소유값만), `deletePollutant`. 목록은 `PollutantCatalogAssembler`에 위임 |
-| `StackPollutantService` | `createStackPollutant`, `getStackPollutantList(stackId)`, `removeStackPollutant`. 등록 시 `PollutantMaterializer`로 측정물질 참조를 먼저 해석한다 |
+| `PollutantService` | `createPollutant`(가이드 항목 채택), `getPollutant`, `getPollutantList(field)`(채택분만), `getPollutantCandidates(field)`(미채택 가이드 항목), `updatePollutant`(고객사 소유값만), `deletePollutant`. 후보 목록만 `PollutantCatalogAssembler`에 위임 |
+| `StackPollutantService` | `createStackPollutant`, `createStackPollutants`(일괄), `getStackPollutantList(stackId)`, `removeStackPollutant`. **등록 대상은 이미 채택한 `pollutantId`만** — 등록 과정에서 측정물질을 만들지 않는다 |
 | `TeamService` | `createTeam`, `getTeam`, `getTeamList`, `updateTeam`, `deleteTeam`. 사수·부사수 user 검증은 `TeamValidator`에 위임(아래 참고). 장비 id는 검증 없이 저장 |
 
 ### 검증 (Validator)
@@ -66,44 +66,60 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | | `requireCatalogNotLinked(catalogId, tenantId)` | 한 tenant는 같은 가이드 항목을 두 번 채택할 수 없음 |
 | `PollutantCatalogValidator` | `requireUniqueCode(field, code)` | 가이드 키는 측정분야 안에서 유일 |
 | | `requireNotReferenced(catalogId)` | 참조 중인 카탈로그 삭제 차단(폐지는 `active=false`로) |
-| `StackPollutantValidator` | `requireNotRegistered(stackId, pollutantId)` | 같은 시설에 같은 물질 중복 등록 불가 |
+| `StackPollutantValidator` | `requirePollutantOwned(pollutantId, tenantId)` | 등록 대상이 이 tenant가 채택한 물질인지 확인. 미존재·타 tenant 모두 `NOT_FOUND`로 은닉 |
+| | `requirePollutantsOwned(commands, tenantId)` | 일괄 등록용. 이 tenant의 측정물질을 **한 번만 읽어** 대조한다(항목별 조회 금지) |
+| | `requireNotRegistered(stackId, pollutantId)` | 같은 시설에 같은 물질 중복 등록 불가 |
 | | `requireNoDuplicatesInBatch(commands)` | 일괄 등록 요청 내부의 자기 중복 차단(부분 저장 방지) |
 | `TeamValidator` | `requireUniqueName(name, tenantId)` | 팀명은 tenant 내 유일 |
 | | `requireMemberInTenant(userId, tenantId, notFound)` | 사수·부사수 user가 존재하고 해당 tenant 소속인지 `auth`의 `UserQueryUseCase`로 확인. 미존재·타 tenant 모두 `TEAM_MENTOR_NOT_FOUND`/`TEAM_MENTEE_NOT_FOUND`로 은닉 |
+| `FacilityValidator` | `requireExactOrder(current, orderedIds)` | 순서 변경 요청이 그 측정지점의 배출시설 집합과 정확히 일치해야 함(중복·누락·미지의 id 거부). 서비스가 이미 읽은 목록을 받아 대조하므로 포트를 주입받지 않는다 |
+| `PreventionValidator` | `requireExactOrder(current, orderedIds)` | 방지시설에 대해 위와 동일 |
 
 - **Validator가 다루지 않는 것**: 단건 존재·소유권 검증은 그대로 Adapter의 `findById(id, tenantId)` + `NOT_FOUND`가 담당합니다(아래 "tenant 소유권 격리" 참고). 형식·필수값은 Request DTO의 Bean Validation이 담당합니다.
   - 예) 측정물질 채택의 `catalogId` **필수**는 `CreatePollutantRequest`의 `@NotNull`이, **존재 여부**는
     `PollutantCatalogRepository.findById()`의 `POLLUTANT_CATALOG_NOT_FOUND`가 맡습니다. Validator는 폐지 여부만 봅니다.
+  - 단 **다른 애그리거트를 참조하는 검증은 Validator가 맡습니다.** `StackPollutantValidator.requirePollutantOwned`가
+    그 예로, 등록하려는 `pollutantId`가 이 tenant의 측정물질인지 확인합니다. 자기 애그리거트 단건을 읽는 것이 아니라
+    참조 대상의 존재·소속을 보는 규칙이므로, 서비스 본문에 조건식을 남기지 않도록 Validator에 둡니다.
 - Validator는 port/out과 타 모듈 port/in만 주입받고 `@Transactional`을 갖지 않습니다.
 - 중복 체크 파라미터에 tenant를 넣는 기준은 아래 "tenant 소유권 격리"의 `existsBy...` 규칙과 동일합니다.
 
-### 트리 조립 (Detail Assembler)
+### 조립 (Assembler)
+
+조립 협력자는 `application/service/assembler/`에 둡니다. 전부 `@Component`이며 `@Transactional`을 갖지 않습니다.
+(`TeamAssembler`만 아직 `service/` 직하에 있으며 이관 예정입니다.)
+
 - `StackDetailAssembler` — Stack과 하위 aggregate(Facility·Prevention)를 각 Outbound Port로 읽어
   `StackDetail`로 조립합니다. 트리 조립 책임을 서비스·도메인 모델에서 분리한 `@Component`입니다.
 - `StackService.getStackDetail()`이 이 Assembler에 위임합니다.
 - **카탈로그 속성 투영은 Assembler가 아니라 `PollutantEntityMapper`가 담당합니다.** `toDomain()`이 `code`·`field`·
   `method`·`phase`를 `catalog.*`에서 매핑하므로, 측정물질을 읽는 모든 경로가 한 곳에서 같은 값을 얻습니다.
   덕분에 도메인에 병합 로직이 없고 조회 경로에서 카탈로그를 다시 읽지 않습니다.
-- `PollutantCatalogAssembler` — 가이드와 이 tenant의 **채택 현황**을 합쳐 선택 목록을 만듭니다. 값을 병합하지는 않습니다
-  (표기값은 `Pollutant`가 소유하고, 카탈로그 속성은 위 매퍼가 이미 채웠습니다). 조회는 소스당 1회씩 총 2회로 고정하고
-  `Map`으로 in-memory 조인합니다(항목별 조회 금지).
-  - `findAllActive`가 아니라 `findAll`로 폐지 항목까지 한 번에 읽습니다. 좁혀 읽으면 "폐지됐지만 이미 쓰는 항목"을
-    건건이 다시 읽어야 해서 N+1이 됩니다.
+- `PollutantCatalogAssembler` — 가이드와 이 tenant의 **채택 현황**을 대조해 `assembleCandidates()`로 **아직 채택하지 않은 항목**을
+  뽑습니다. 값을 병합하지는 않습니다(표기값은 `Pollutant`가 소유하고, 카탈로그 속성은 위 매퍼가 이미 채웠습니다).
+  조회는 소스당 1회씩 총 2회로 고정하고 `Set`으로 in-memory 대조합니다(항목별 조회 금지).
+  - 후보는 `findAllActive`로 읽습니다. 폐지 항목은 새로 채택할 수 없으므로 후보에서 뺍니다 — 이미 채택해 쓰고 있는
+    폐지 물질은 채택분 목록(`getPollutantList`)이 계속 보여 줍니다.
   - `pollutantById(tenantId)`는 카탈로그를 읽지 않으므로 조회 1회입니다.
-- `PollutantMaterializer` — 클라이언트가 가이드 항목(`catalogId`)을 고르면 해당 tenant의 `Pollutant` 행을 확보해
-  `pollutantId`를 확정합니다(멱등). Validator가 아닌 별도 `@Component`인 이유는 쓰기 부작용이 있어
-  `require*()`(void/throw) 계약과 맞지 않기 때문입니다.
-  - **참조는 code가 아니라 id로 받습니다** — code는 측정분야 안에서만 유일해 단독으로는 물질이 특정되지 않습니다.
-    클라이언트는 선택 목록 응답에서 `catalogId`를 이미 받습니다.
-  - 새로 만드는 행은 `nameKr`만 카탈로그에서 복사하고 나머지 고객사 소유값은 비워 둡니다.
-    `field`·`method`·`phase`는 컬럼이 아니라 조인으로 따라가므로 법령 개정이 그대로 반영됩니다.
-  - `requireSelectable`은 **기존 행 재사용 분기 뒤**에 호출합니다. 그래야 이미 쓰던 폐지 물질을 계속 등록할 수 있습니다.
 - `TeamAssembler` — Team 도메인에 타 모듈(`auth`)의 사수·부사수 **이름**을 결합해 `TeamDetail`/`TeamListItem`으로 조립합니다.
   users는 별도 모듈이라 JPA 조인 불가 → `UserQueryUseCase`(인바운드 포트)로 채웁니다. 목록은 `getUserList(tenantId)` 1회 + `Map`으로 N+1을 회피합니다.
+- `StackSnapshotAssembler` — 측정시설 트리를 타 모듈 공개용 `StackMeasurementSummary`로 조립합니다.
+  `schedule`이 측정 시점 스냅샷을 만들 때 이 경로로 원장을 읽습니다. 조회 결과를 그대로 복사해 가므로
+  이후 원장이 바뀌어도 과거 회차의 성적서는 흔들리지 않습니다.
 
 ### 외부 공개 (Inbound Port)
-- `WorkplaceService implements WorkplaceQueryUseCase` — 다른 모듈(contract 등)이 사업장 존재 확인·요약 조회 시
-  사용하는 인바운드 계약. `application/port/in/`에 위치합니다.
+
+`application/port/in/`에 UseCase와 공개 VO를 함께 둡니다.
+
+| 공개 계약 | 구현체 | 소비 모듈 |
+|---|---|---|
+| `WorkplaceQueryUseCase` | `WorkplaceService` | `contract`(사업장 존재 확인·요약), `schedule` |
+| `StackQueryUseCase` | `StackService` | `schedule`(측정 시점 시설·측정항목 스냅샷) |
+| `TeamQueryUseCase` | `TeamService` | `schedule`(측정 팀 스냅샷) |
+
+공개 VO — `ContractSummary` · `StackMeasurementSummary` · `StackMeasurementItemSummary` · `TeamSummary` · `UserTeamSummary`
+
+> 공개 계약을 넓힐 때는 **호출자가 실제로 필요한 것만** 추가합니다(ISP). Repository 전체를 노출하지 않습니다.
 
 ---
 
@@ -122,8 +138,11 @@ Outbound Port는 `application/port/out/`에 둡니다. (`domain/port/`가 아님
 - `application/port/out/ClientRepository` — `save()`, `findById(id, tenantId)`, `findAll(tenantId)`, `existsByName()`, `deleteById(id, tenantId)`
 - `application/port/out/WorkplaceRepository` — `save()`, `findById(id, tenantId)`, `findByClientId(clientId, tenantId)`, `findAll(tenantId)`, `existsByNameAndClientId()`, `existsById()`, `deleteById(id, tenantId)`
 - `application/port/out/StackRepository` — `save()`, `findById(id, tenantId)`, `findByWorkplaceId(workplaceId, tenantId)`, `findAll(tenantId)`, `findFieldsByWorkplaceIds(ids, tenantId)`, `existsByNameAndWorkplaceIdAndField()`, `deleteById(id, tenantId)`
-- `application/port/out/FacilityRepository` — `save()`, `findById(id, tenantId)`, `findByStackId(stackId, tenantId)`, `deleteById(id, tenantId)`
-- `application/port/out/PreventionRepository` — `save()`, `findById(id, tenantId)`, `findByStackId(stackId, tenantId)`, `deleteById(id, tenantId)`
+- `application/port/out/FacilityRepository` — `save()`, `saveAll()`, `findById(id, tenantId)`, `findByStackId(stackId, tenantId)`, `findMaxSortOrder(stackId, tenantId)`, `deleteById(id, tenantId)`
+- `application/port/out/PreventionRepository` — `save()`, `saveAll()`, `findById(id, tenantId)`, `findByStackId(stackId, tenantId)`, `findMaxSortOrder(stackId, tenantId)`, `deleteById(id, tenantId)`
+
+> `findByStackId`는 `sort_order` 오름차순으로 정렬해 돌려줍니다(tie-breaker는 PK). **배열 순서가 곧 표시 순위**이며,
+> 이 정렬은 `StackDetailAssembler`를 거쳐 측정계획 스냅샷·엑셀 성적서의 시설 나열 순서까지 그대로 전파됩니다.
 - `application/port/out/PollutantCatalogRepository` — `save()`, `findById(id)`, `findByFieldAndCode(field, code)`, `findAll(field)`, `findAllActive(field)`, `existsByFieldAndCode(field, code)`. **전역 마스터이므로 tenantId 파라미터가 없습니다** — 이 모듈의 유일한 예외입니다.
   - code 조회에 `field`를 함께 받는 이유는 code의 유일 범위가 측정분야이기 때문입니다(위 "전역 마스터" 참고).
 - `application/port/out/PollutantRepository` — `save()`, `findById(id, tenantId)`, `findByField(field, tenantId)`, `findAll(tenantId)`, `findByCatalogIdOrNull(catalogId, tenantId)`, `existsByCatalogId(catalogId)`, `deleteById(id, tenantId)`
@@ -166,14 +185,16 @@ Outbound Port는 `application/port/out/`에 둡니다. (`domain/port/`가 아님
 Spring Data Repository를 직접 주입하지 않고 `application/port/out`만 씁니다.
 
 ### tenant 소유권 격리 (멀티테넌시)
-모든 aggregate는 로그인 사용자의 tenant 범위 안에서만 조회/수정/삭제됩니다. (위 "전역 마스터" 예외 제외)
 
-- tenantId는 **오직 `@AuthenticationPrincipal CustomUserDetails`의 `principal.getTenantId()`**에서만 얻습니다. path/header/body로 받지 않습니다.
-- Controller는 read/update/delete에서 `principal.getTenantId()`를 Service로 전달만 하고, 검증 분기(if)는 두지 않습니다.
-- Service는 `(id, tenantId)`를 Port에 전달합니다. update는 반드시 `findById(id, tenantId)`로 소유권을 검증한 뒤 `save()` 합니다. create는 부모 aggregate 존재 검증도 `findById(parentId, command.tenantId())`로 tenant 범위에서 수행합니다.
-- Adapter/JpaRepository는 WHERE 절에 `tenant_id`를 포함(`findByXxxIdAndTenant_TenantId`, `findAllByTenant_TenantId`)해 다른 tenant 행을 애초에 읽지 못하게 합니다. 삭제는 `deleteByXxxIdAndTenantId`로 원자 삭제 후 `deletedCount == 0`이면 `NOT_FOUND`.
-- 소유권 불일치는 **404 `NOT_FOUND`**로 처리합니다(403이 아님 — 리소스 존재 자체를 은닉).
-- 중복체크(`existsBy...`) 중 부모ID를 포함하는 것(`existsByNameAndClientId` 등)은 부모ID가 이미 tenant에 종속되므로 tenant 파라미터를 두지 않습니다. 부모 없는 전역 유일 체크는 tenant를 포함합니다(`existsByNameKrAndTenantId`).
+**전역 규칙입니다 — 루트 `CLAUDE.md` 규칙 13을 따릅니다.** 이 모듈이 그 레퍼런스 구현이며,
+규칙 본문의 예시(`findByXxxIdAndTenant_TenantId`, `deleteByXxxIdAndTenantId`)는 여기서 나왔습니다.
+
+이 모듈에만 해당하는 것:
+
+- `PollutantCatalog`는 **이 모듈 유일의 tenant 비종속 애그리거트**입니다(위 "전역 마스터" 참고).
+  `pollutant_catalog`에는 `tenant_id`도 `TenantEntity` 연관도 없으므로 조회에 tenant 조건을 걸지 않는 것이 정상입니다.
+- 중복체크 파라미터 예시 — 부모ID를 포함하는 `existsByNameAndClientId`는 부모가 이미 tenant에 종속되므로
+  tenant를 받지 않고, 부모 없는 전역 유일 체크(`existsByNameAndTenantId`)는 받습니다.
 
 ### presentation 구조
 - 애그리거트별 서브패키지로 그룹핑하고, 그 안에서 `controller/request/response/mapper`로 중첩합니다.

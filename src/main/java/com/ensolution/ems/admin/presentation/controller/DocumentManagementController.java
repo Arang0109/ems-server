@@ -77,6 +77,17 @@ public class DocumentManagementController {
 		return ResponseEntity.ok().body(ApiResponse.success());
 	}
 
+	@Operation(summary = "버전 삭제", description = "버전 하나를 파일까지 함께 삭제합니다. 마지막 남은 버전은 삭제할 수 없습니다.")
+	@DeleteMapping("/{id}/versions/{versionNo}")
+	public ResponseEntity<ApiResponse<Void>> deleteVersion(
+		@PathVariable Long id,
+		@PathVariable int versionNo,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		documentCommandUseCase.deleteVersion(id, versionNo, principal.getTenantId());
+		return ResponseEntity.ok().body(ApiResponse.success());
+	}
+
 	@Operation(summary = "문서 삭제", description = "문서와 그에 속한 모든 버전을 파일까지 함께 삭제합니다.")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse<Void>> deleteDocument(

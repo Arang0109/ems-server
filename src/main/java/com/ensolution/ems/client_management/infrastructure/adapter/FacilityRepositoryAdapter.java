@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -44,6 +47,44 @@ public class FacilityRepositoryAdapter implements FacilityRepository {
 		return mapper.toDomain(jpaFacilityRepository.save(entity));
 	}
 
+	/**
+	 * 순서 일괄 반영.
+	 * <p>
+	 * {@code save()} 를 건별로 반복하지 않는다 — 그 경로는 도메인으로부터 엔티티를 통째로 다시 만들어
+	 * merge 하므로 조회도 N 번이고, 도메인이 모르는 컬럼이 생기면 곧바로 유실 경로가 된다.
+	 * 여기서는 측정지점 단위로 한 번만 읽어 <b>기존 엔티티에서 sortOrder 만 갈아끼운다.</b>
+	 */
+	@Override
+	public List<Facility> saveAll(List<Facility> facilities) {
+		if (facilities.isEmpty()) {
+			return List.of();
+		}
+
+		Facility first = facilities.getFirst();
+		Map<Long, FacilityEntity> byId = jpaFacilityRepository
+			.findByStack_StackIdAndTenant_TenantIdOrderBySortOrderAscFacilityIdAsc(first.getStackId(), first.getTenantId())
+			.stream()
+			.collect(Collectors.toMap(FacilityEntity::getFacilityId, Function.identity()));
+
+		List<FacilityEntity> updates = facilities.stream()
+			.map(facility -> {
+				FacilityEntity existing = byId.get(facility.getId());
+				if (existing == null) {
+					throw new CustomException(ErrorCode.NOT_FOUND);
+				}
+				return existing.toBuilder().sortOrder(facility.getSortOrder()).build();
+			})
+			.toList();
+
+		return mapper.toDomainList(jpaFacilityRepository.saveAll(updates));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Integer findMaxSortOrder(Long stackId, Long tenantId) {
+		return jpaFacilityRepository.findMaxSortOrder(stackId, tenantId);
+	}
+
 	@Override
 	@Transactional(readOnly = true)
 	public Facility findById(Long id, Long tenantId) {
@@ -55,7 +96,9 @@ public class FacilityRepositoryAdapter implements FacilityRepository {
 	@Override
 	@Transactional(readOnly = true)
 	public List<Facility> findByStackId(Long stackId, Long tenantId) {
-		return mapper.toDomainList(jpaFacilityRepository.findByStack_StackIdAndTenant_TenantId(stackId, tenantId));
+		return mapper.toDomainList(
+			jpaFacilityRepository.findByStack_StackIdAndTenant_TenantIdOrderBySortOrderAscFacilityIdAsc(stackId, tenantId)
+		);
 	}
 
 	@Override

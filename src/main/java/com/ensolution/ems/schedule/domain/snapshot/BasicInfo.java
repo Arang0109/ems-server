@@ -8,12 +8,6 @@ import java.time.LocalTime;
 import static com.ensolution.ems.schedule.domain.snapshot.SnapshotMerge.keep;
 import static com.ensolution.ems.schedule.domain.snapshot.SnapshotMerge.keepText;
 
-/**
- * 측정계획 기본 정보 스냅샷. 메타데이터의 사본과 성적서 발행 단계 입력값을 함께 보관하며,
- * 문서 단독 조회 시 표시에 사용한다.
- * 담당자 4인(배출시설관리자·시료채취입회자·시료분석검사자·기술책임자)은 측정계획마다 달라지는 값이므로
- * 원장(의뢰기관)이 아니라 이 스냅샷이 보유한다.
- */
 public record BasicInfo(
 	String referenceNumber,							// 내부 식별 코드
 
@@ -58,11 +52,6 @@ public record BasicInfo(
 			schedulePurpose);
 	}
 
-	/**
-	 * 메타(Schedule)에서 파생되는 필드만 갱신한 새 기본 정보를 반환한다.
-	 * 담당자·접수/분석/발행일자·채취 시작/종료 시각은 측정·성적서 발행 단계에서 채워지는 값이므로
-	 * 메타 수정으로 유실되지 않게 기존 값을 유지한다.
-	 */
 	public BasicInfo applyMeta(String referenceNumber, LocalDate sampledAt,
 	                           MeasurementField measurementField, String schedulePurpose) {
 		return new BasicInfo(
@@ -82,7 +71,7 @@ public record BasicInfo(
 	}
 
 	/**
-	 * 측정·성적서 발행 단계 입력값(담당자·일자·채취 시각)을 부분 갱신한 새 기본 정보를 반환한다.
+	 * 계측정·성적서 발행 단 입력값(담당자·일자·채취 시각)을 부분 갱신한 새 기본 정보를 반환한다.
 	 * null(문자열은 공백 포함)인 필드는 기존 값을 유지하며, 메타에서 파생되는 필드
 	 * (referenceNumber·sampledAt·measurementField·schedulePurpose)는 변경하지 않는다
 	 * (해당 필드는 메타 수정 경로에서 {@link #applyMeta}로 갱신된다).

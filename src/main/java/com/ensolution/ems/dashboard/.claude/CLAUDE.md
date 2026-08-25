@@ -9,7 +9,7 @@
 - 공급 모듈의 `port/in` VO → 대시보드 VO 변환은 **인터모듈 매퍼** `application/mapper/`에 둡니다(`ContractPortMapper`, `EquipmentPortMapper`). 표시용 파생값(잔여일수 등)은 이 계층에서 계산합니다.
 
 ## 통계 정의 (도메인 규칙)
-- **"측정 건수" = `ScheduleStatus.COMPLETED` 상태만** 집계합니다(진행중·CANCELED 제외). 이 규칙은 데이터 소유 모듈인 `schedule`이 `ScheduleStatisticsUseCase`로 소유합니다.
+- **"측정 건수" = `ScheduleStatus.REPORT_COMPLETED` 상태만** 집계합니다(진행중·CANCELED 제외). 이 규칙은 데이터 소유 모듈인 `schedule`이 `ScheduleStatisticsUseCase`로 소유합니다.
 - **기준 날짜 = `Schedule.measureDate`**(측정 실시/예정일). `createdAt` 아님.
 - **월별 추이 = 당해 연도 1~12월 고정**, 데이터 없는 달은 `count: 0`.
 - `thisMonthMeasurementCount` = measureDate가 이번 달이면서 COMPLETED인 건수(`YearMonth.now()`).

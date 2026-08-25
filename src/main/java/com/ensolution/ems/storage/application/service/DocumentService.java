@@ -61,6 +61,28 @@ public class DocumentService implements DocumentCommandUseCase, DocumentQueryUse
 	}
 
 	@Override
+	public void deleteVersion(Long documentId, int versionNo, Long tenantId) {
+		Document document = documentRepository.findById(documentId, tenantId);
+
+		// 버전이 하나도 남지 않으면 문서가 다운로드 불가 상태로 남으므로 마지막 한 개는 남긴다.
+		if (documentVersionRepository.countByDocumentId(documentId) <= 1) {
+			throw new CustomException(ErrorCode.DOCUMENT_LAST_VERSION_NOT_DELETABLE);
+		}
+
+		DocumentVersion version = documentVersionRepository.findByDocumentIdAndVersionNo(documentId, versionNo);
+		documentVersionRepository.deleteByDocumentIdAndVersionNo(documentId, versionNo);
+
+		// 최신 버전을 지운 경우에만 최신 번호를 남은 버전 중 최대값으로 내린다.
+		if (document.getLatestVersionNo() == versionNo) {
+			documentRepository.save(
+				document.withLatestVersionNo(documentVersionRepository.findMaxVersionNoByDocumentId(documentId))
+			);
+		}
+
+		fileStorageClient.delete(version.getStorageKey());
+	}
+
+	@Override
 	public void deleteDocument(Long documentId, Long tenantId) {
 		documentRepository.findById(documentId, tenantId);
 

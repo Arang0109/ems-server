@@ -30,8 +30,8 @@ public class UserRepositoryAdapter implements UserRepository {
 	}
 	
 	@Override
-	public Optional<User> findById(Long id) {
-		return repository.findById(id)
+	public Optional<User> findById(Long id, Long tenantId) {
+		return repository.findByUserIdAndTenantId(id, tenantId)
 				.map(mapper::toDomain);
 	}
 	
@@ -52,7 +52,7 @@ public class UserRepositoryAdapter implements UserRepository {
 	}
 
 	@Override
-	public void deleteById(Long id) {
-		repository.deleteById(id);
+	public boolean deleteById(Long id, Long tenantId) {
+		return repository.deleteByUserIdAndTenantId(id, tenantId) > 0;
 	}
 }

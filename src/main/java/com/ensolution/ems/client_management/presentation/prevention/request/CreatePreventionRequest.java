@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 public record CreatePreventionRequest(
 	@NotNull
 	Long stackId,
-	@NotBlank(message = "방지설비명은 필수 입력값입니다.")
+	@NotBlank(message = "방지시설명은 필수 입력값입니다.")
 	String name,
 	Double capacity,
 	String unit,

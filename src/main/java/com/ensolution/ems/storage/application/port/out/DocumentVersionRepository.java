@@ -22,5 +22,12 @@ public interface DocumentVersionRepository {
 	/** 문서 삭제 시 실물 파일을 지우기 위한 저장소 키 목록. */
 	List<String> findStorageKeysByDocumentId(Long documentId);
 
+	long countByDocumentId(Long documentId);
+
+	/** 남아 있는 버전 중 가장 큰 번호. 버전이 없으면 0. */
+	int findMaxVersionNoByDocumentId(Long documentId);
+
+	void deleteByDocumentIdAndVersionNo(Long documentId, int versionNo);
+
 	void deleteAllByDocumentId(Long documentId);
 }

@@ -88,7 +88,25 @@
   - **단위가 장비가 아니라 장비-검사항목입니다.** 한 장비가 여러 검사에서 임박하면 항목 수만큼 여러 건이 나옵니다.
   - 알림 대상(`notifiable()`)이면서 ACTIVE인 장비만, 예정일 오름차순. 기한 초과 항목도 포함합니다.
   - 잔여일수 같은 표시용 파생값은 담지 않습니다. 기준일을 아는 소비 모듈(`dashboard`)이 계산합니다.
-- 도메인 타입(`EquipType`, `InspectionType`, `InspectionItem`, `EquipmentSpec`)을 port/in에 그대로 노출합니다.
+### 공유 커널 — 도메인 타입 직접 노출
+
+이 모듈은 도메인 타입을 `port/in`에 **그대로** 노출하며, 소비 모듈이 직접 import 하는 것을 허용합니다
+(루트 `CLAUDE.md` 규칙 1의 공유 커널 조항). 포트 시그니처에 이미 드러난 타입을 소비 모듈마다 다시 감싸면
+변환 계층만 늘고 얻는 것이 없기 때문입니다.
+
+**공개 범위** — 아래 타입과 그 하위 구체 타입까지입니다. 여기 없는 타입은 노출 대상이 아닙니다.
+
+| 타입 | 소비 모듈 | 용도 |
+|---|---|---|
+| `EquipType` | schedule | 스냅샷 장비 유형, 성적서 출력 |
+| `InspectionType` | schedule, dashboard | 검사 종류 |
+| `InspectionItem` | schedule | 스냅샷 검사 이력 |
+| `EquipmentSpec` (sealed) | schedule | 스냅샷 장비 사양. Spring Data MongoDB가 `_class` 판별자로 구현체를 복원합니다 |
+| `EquipmentSpec` 하위 구체 타입 — `NozzleSpec`·`PitotTubeSpec`·`ParticleSamplerSpec` 등 | schedule | 측정 시트 계산 입력(노즐경·피토관 계수·오리피스 보정계수). 계산식이 사양의 **구체 값**을 직접 읽어야 하므로 sealed 상위 타입만으로는 부족합니다 |
+
+- **역방향 참조는 금지입니다** — 이 모듈이 `schedule`·`dashboard`를 알아서는 안 됩니다.
+- `EquipmentSpec` 계층의 클래스명·패키지를 바꾸면 **Mongo `_class` 판별자 값이 바뀌어 기존 문서를 못 읽습니다.**
+  변경 시 `docs/migration/`에 백필 스크립트가 필요합니다(루트 규칙 15).
 
 ## 엔드포인트
 - `POST /api/equipments` 등록 — `inspections`를 생략하면 유형별 기본 세트가 주입됩니다.

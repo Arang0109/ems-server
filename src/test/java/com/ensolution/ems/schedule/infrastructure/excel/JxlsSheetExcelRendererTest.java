@@ -7,6 +7,7 @@ import com.ensolution.ems.schedule.application.command.export.FlowExportView;
 import com.ensolution.ems.schedule.application.command.export.MoistureExportView;
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PointExportView;
+import com.ensolution.ems.schedule.application.command.export.SamplingItemExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
 import com.ensolution.ems.schedule.application.command.export.SheetExportView;
 import com.ensolution.ems.schedule.application.command.export.WeatherExportView;
@@ -407,5 +408,126 @@ class JxlsSheetExcelRendererTest {
 			.isInstanceOf(CustomException.class)
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.SCHEDULE_EXPORT_FAILED);
+	}
+
+	// ---- 측정항목(items) 인덱스 바인딩 ----
+	// 기록부 서식은 한 장에 실리는 항목 수가 정해져 있어(대기측정기록부 4개) 템플릿이 시트마다
+	// ${items[0]}~${items[3]}, ${items[4]}~${items[7]} 처럼 인덱스로 칸을 지목한다.
+
+	private ScheduleExportView itemsView(String... names) {
+		List<SamplingItemExportView> items = new ArrayList<>();
+		for (String name : names) {
+			items.add(SamplingItemExportView.builder()
+				.name(name).allowance(new BigDecimal("50")).build());
+		}
+		return ScheduleExportView.builder()
+			.referenceNumber("REF-123")
+			.items(items)
+			.sheets(List.of(SheetExportView.builder().category("먼지").build()))
+			.build();
+	}
+
+	// 기록부 두 장을 흉내낸 템플릿: 1행에 items[0]~items[1], 2행에 items[2]~items[3]
+	private byte[] itemIndexTemplate() throws Exception {
+		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			XSSFSheet s = wb.createSheet("Report");
+			XSSFCell a1 = s.createRow(0).createCell(0);
+			a1.setCellValue("[${items[0].name}][${items[1].name}]");
+			s.createRow(1).createCell(0).setCellValue("[${items[2].name}][${items[3].name}]");
+			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
+			wb.write(out);
+			return out.toByteArray();
+		}
+	}
+
+	@Test
+	void 측정항목이_인덱스로_바인딩된다() throws Exception {
+		byte[] rendered = renderer.render(itemIndexTemplate(), itemsView("먼지", "질소산화물", "황산화물", "일산화탄소"));
+
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
+			Sheet s = wb.getSheetAt(0);
+			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][질소산화물]");
+			assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("[황산화물][일산화탄소]");
+		}
+	}
+
+	@Test
+	void 항목_수를_넘는_인덱스는_빈칸으로_남는다() throws Exception {
+		// 양식에는 기록부 시트를 최대 장수만큼 미리 만들어 두므로 남는 칸이 반드시 생긴다.
+		// 렌더러가 withExceptionThrower()로 동작하므로, 범위를 벗어난 인덱스가 예외를 내면 여기서 실패한다.
+		byte[] template = itemIndexTemplate();
+		ScheduleExportView view = itemsView("먼지", "질소산화물");
+
+		assertThatCode(() -> renderer.render(template, view)).doesNotThrowAnyException();
+
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderer.render(template, view)))) {
+			Sheet s = wb.getSheetAt(0);
+			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][질소산화물]");
+			assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("[][]");
+		}
+	}
+
+	// 분석값 칸을 가진 템플릿: 항목명 옆에 실험실 입력값·단위를 함께 찍는다
+	private byte[] analysisTemplate() throws Exception {
+		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			XSSFSheet s = wb.createSheet("Report");
+			XSSFCell a1 = s.createRow(0).createCell(0);
+			a1.setCellValue("[${items[0].name}][${items[0].analysisValue}][${items[0].unit}]");
+			s.createRow(1).createCell(0)
+				.setCellValue("[${items[1].name}][${items[1].analysisValue}][${items[1].analysisEquipment}]");
+			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
+			wb.write(out);
+			return out.toByteArray();
+		}
+	}
+
+	@Test
+	void 실험실_분석값이_템플릿에_찍힌다() throws Exception {
+		ScheduleExportView view = ScheduleExportView.builder()
+			.referenceNumber("REF-123")
+			.items(List.of(
+				SamplingItemExportView.builder()
+					.name("먼지").analysisValue(new BigDecimal("12.5")).unit("mg/Sm3")
+					.analysisEquipment("분석장비-1").build(),
+				SamplingItemExportView.builder()
+					.name("질소산화물").analysisValue(new BigDecimal("30")).unit("ppm")
+					.analysisEquipment("분석장비-2").build()))
+			.sheets(List.of(SheetExportView.builder().category("먼지").build()))
+			.build();
+
+		byte[] rendered = renderer.render(analysisTemplate(), view);
+
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
+			Sheet s = wb.getSheetAt(0);
+			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][12.5][mg/Sm3]");
+			assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("[질소산화물][30][분석장비-2]");
+		}
+	}
+
+	@Test
+	void 분석_전_항목의_분석값_칸은_빈칸으로_남는다() throws Exception {
+		// 렌더러가 withExceptionThrower()로 동작하므로, null 프로퍼티가 예외를 내면 여기서 실패한다
+		byte[] template = analysisTemplate();
+		ScheduleExportView view = itemsView("먼지", "질소산화물");
+
+		assertThatCode(() -> renderer.render(template, view)).doesNotThrowAnyException();
+
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderer.render(template, view)))) {
+			Sheet s = wb.getSheetAt(0);
+			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][][]");
+			assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("[질소산화물][][]");
+		}
+	}
+
+	@Test
+	void 채취기록부도_측정항목을_최상위_변수로_노출한다() throws Exception {
+		byte[] zip = renderer.renderSamplingRecordsZip(itemIndexTemplate(), itemsView("먼지", "질소산화물"));
+
+		try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zip))) {
+			assertThat(zis.getNextEntry()).isNotNull();
+			try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(zis.readAllBytes()))) {
+				assertThat(wb.getSheetAt(0).getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][질소산화물]");
+			}
+		}
 	}
 }

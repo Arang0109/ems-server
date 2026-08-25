@@ -55,6 +55,23 @@ public class DocumentVersionRepositoryAdapter implements DocumentVersionReposito
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public long countByDocumentId(Long documentId) {
+		return jpaDocumentVersionRepository.countByDocument_DocumentId(documentId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public int findMaxVersionNoByDocumentId(Long documentId) {
+		return jpaDocumentVersionRepository.findMaxVersionNoByDocumentId(documentId);
+	}
+
+	@Override
+	public void deleteByDocumentIdAndVersionNo(Long documentId, int versionNo) {
+		jpaDocumentVersionRepository.deleteByDocumentIdAndVersionNo(documentId, versionNo);
+	}
+
+	@Override
 	public void deleteAllByDocumentId(Long documentId) {
 		jpaDocumentVersionRepository.deleteAllByDocumentId(documentId);
 	}

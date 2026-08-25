@@ -1,6 +1,6 @@
 package com.ensolution.ems.platform.application.port.out;
 
-import com.ensolution.ems.platform.application.result.TenantListItem;
+import com.ensolution.ems.platform.application.command.TenantListItem;
 import com.ensolution.ems.platform.domain.Tenant;
 
 import java.util.List;
