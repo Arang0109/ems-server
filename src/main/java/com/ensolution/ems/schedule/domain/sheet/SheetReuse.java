@@ -72,6 +72,10 @@ public final class SheetReuse {
 	/**
 	 * 시료 식별값과 시각만 비우고 {@code sampleName}은 남긴다 —
 	 * 시료 표기 규칙은 시설마다 굳어져 있어 매번 다시 입력할 값이 아니다.
+	 *
+	 * <p>{@code pollutantIds}도 같은 이유로 남긴다. 어느 병에 무엇을 담는가는 그 회차에만
+	 * 유효한 값이 아니라 시설의 채취 구성이며, 지우면 다음 회차에서 통칭 행과 측정항목의
+	 * 대응이 끊겨 성적서 채취시각을 다시 손으로 적어야 한다.
 	 */
 	private static List<Sample> clearSampleIdentity(List<Sample> samples) {
 		if (samples == null) return null;
