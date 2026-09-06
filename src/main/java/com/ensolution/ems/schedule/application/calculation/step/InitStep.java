@@ -3,8 +3,8 @@ package com.ensolution.ems.schedule.application.calculation.step;
 import com.ensolution.ems.global.common.enums.Shape;
 import com.ensolution.ems.schedule.application.calculation.Calculator;
 import com.ensolution.ems.schedule.application.calculation.SheetContext;
-import com.ensolution.ems.schedule.domain.sheet.SamplingPoint;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sampling.SamplingPoint;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -72,20 +72,20 @@ public class InitStep implements SheetStep {
 	}
 
 	private void setPointAverages(SheetContext context) {
-		MeasurementSheet sheet = context.getSheet();
+		SamplingSheet sheet = context.getSheet();
 		List<SamplingPoint> points = sheet.getSamplingPoints();
 		if (points == null || points.isEmpty()) return;
 
 		BigDecimal avgTg = calculator.averageTreatNullAsZero(
 			points.stream()
-				.map(p -> p.getTs() == null ? null : p.getTs().add(BigDecimal.valueOf(273)))
+				.map(p -> p.getGasTemperature() == null ? null : p.getGasTemperature().add(BigDecimal.valueOf(273)))
 				.toList(), 1
 		);
 		BigDecimal avgPv = calculator.averageTreatNullAsZero(
-			points.stream().map(SamplingPoint::getPv).toList(), 1
+			points.stream().map(SamplingPoint::getDynamicPressure).toList(), 1
 		);
 		BigDecimal avgPs = calculator.averageTreatNullAsZero(
-			points.stream().map(SamplingPoint::getPs).toList(), 1
+			points.stream().map(SamplingPoint::getStaticPressure).toList(), 1
 		);
 
 		context.setAvgTg(avgTg);

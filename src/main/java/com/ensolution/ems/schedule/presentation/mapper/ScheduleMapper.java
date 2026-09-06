@@ -54,6 +54,9 @@ public interface ScheduleMapper {
 	@Mapping(target = "teamId", source = "meta.teamId")
 	@Mapping(target = "measurementField", source = "meta.measurementField")
 	@Mapping(target = "sampledAt", source = "meta.sampledAt")
+	@Mapping(target = "receivedAt", source = "meta.receivedAt")
+	@Mapping(target = "analyzedAt", source = "meta.analyzedAt")
+	@Mapping(target = "issuedAt", source = "meta.issuedAt")
 	@Mapping(target = "schedulePurpose", source = "meta.schedulePurpose")
 	@Mapping(target = "status", source = "meta.status")
 	@Mapping(target = "referenceNumber", source = "meta.referenceNumber")
@@ -63,8 +66,10 @@ public interface ScheduleMapper {
 	ScheduleResponse toResponse(ScheduleDetail detail);
 
 	/**
-	 * 세부 스냅샷을 응답으로 변환한다. 문서의 저장 메타(id·scheduleId·tenantId·status·version·createdAt)는
-	 * 대상 record에 자리가 없어 그대로 빠진다 — 최상위 메타가 진실의 원천이므로 사본을 함께 내보내지 않는다.
+	 * 세부 스냅샷을 응답으로 변환한다. 문서의 저장 메타(id·scheduleId·tenantId·version)는 대상 record에
+	 * 자리가 없어 그대로 빠진다 — 최상위 메타가 진실의 원천이므로 사본을 함께 내보내지 않는다.
+	 * 루트의 위임 접근자({@code sheets}·{@code equipments})도 응답에 자리를 두지 않아 빠진다.
+	 * 각각 {@code samplingData.sheets}·{@code team.equipments}로 한 번만 나간다.
 	 * 하위 트리(client→workplace→stack→facilities·preventions)의 변환 메서드는 MapStruct가 이름 기준으로
 	 * 생성하므로 따로 선언하지 않는다.
 	 */

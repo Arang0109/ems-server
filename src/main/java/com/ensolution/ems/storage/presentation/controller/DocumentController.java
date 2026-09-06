@@ -3,8 +3,8 @@ package com.ensolution.ems.storage.presentation.controller;
 import com.ensolution.ems.global.common.enums.DocumentCategory;
 import com.ensolution.ems.global.security.user.CustomUserDetails;
 import com.ensolution.ems.global.web.ApiResponse;
-import com.ensolution.ems.storage.application.port.in.DocumentFile;
-import com.ensolution.ems.storage.application.port.in.DocumentQueryUseCase;
+import com.ensolution.ems.storage.application.command.DocumentFile;
+import com.ensolution.ems.storage.application.service.DocumentService;
 import com.ensolution.ems.storage.presentation.mapper.StorageDocumentMapper;
 import com.ensolution.ems.storage.presentation.response.DocumentResponse;
 import com.ensolution.ems.storage.presentation.response.DocumentVersionResponse;
@@ -36,7 +36,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DocumentController {
 
-	private final DocumentQueryUseCase documentQueryUseCase;
+	private final DocumentService documentService;
 
 	private final StorageDocumentMapper documentMapper;
 
@@ -47,7 +47,7 @@ public class DocumentController {
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			documentMapper.toResponses(documentQueryUseCase.getDocuments(principal.getTenantId(), category))
+			documentMapper.toResponses(documentService.getDocuments(principal.getTenantId(), category))
 		));
 	}
 
@@ -58,7 +58,7 @@ public class DocumentController {
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			documentMapper.toResponse(documentQueryUseCase.getDocument(id, principal.getTenantId()))
+			documentMapper.toResponse(documentService.getDocument(id, principal.getTenantId()))
 		));
 	}
 
@@ -69,7 +69,7 @@ public class DocumentController {
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		return ResponseEntity.ok().body(ApiResponse.success(
-			documentMapper.toVersionResponses(documentQueryUseCase.getVersions(id, principal.getTenantId()))
+			documentMapper.toVersionResponses(documentService.getVersions(id, principal.getTenantId()))
 		));
 	}
 
@@ -79,7 +79,7 @@ public class DocumentController {
 		@PathVariable Long id,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
-		return toDownloadResponse(documentQueryUseCase.download(id, principal.getTenantId(), null));
+		return toDownloadResponse(documentService.download(id, principal.getTenantId(), null));
 	}
 
 	@Operation(summary = "특정 버전 다운로드")
@@ -89,7 +89,7 @@ public class DocumentController {
 		@PathVariable Integer versionNo,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
-		return toDownloadResponse(documentQueryUseCase.download(id, principal.getTenantId(), versionNo));
+		return toDownloadResponse(documentService.download(id, principal.getTenantId(), versionNo));
 	}
 
 	private ResponseEntity<byte[]> toDownloadResponse(DocumentFile file) {

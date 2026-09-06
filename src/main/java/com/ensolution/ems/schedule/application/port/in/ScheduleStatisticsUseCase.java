@@ -17,5 +17,5 @@ public interface ScheduleStatisticsUseCase {
 	long countCompletedInMonth(Long tenantId, YearMonth yearMonth);
 
 	/** 주어진 연도의 1~12월별 완료 측정계획 건수(데이터 없는 달은 0). */
-	List<MonthlyMeasurementCount> monthlyCompletedCounts(Long tenantId, int year);
+	List<MonthlyMeasurementSummary> monthlyCompletedCounts(Long tenantId, int year);
 }

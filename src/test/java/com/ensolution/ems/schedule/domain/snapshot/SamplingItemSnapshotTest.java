@@ -28,7 +28,7 @@ class SamplingItemSnapshotTest {
 		return new SamplingItemSnapshot(
 			pollutantId * 100, pollutantId, "CODE-" + pollutantId, nameKr, nameKr,
 			MeasurementField.AIR, MeasurementMethod.FIELD_MEASUREMENT, PollutantPhase.GAS,
-			"가스분석기", "ES 01310", MeasurementCycle.MONTHLY, allowance, false);
+			"가스분석기", "ES 01310", MeasurementCycle.MONTHLY, allowance, false, null);
 	}
 
 	@Nested
@@ -83,8 +83,7 @@ class SamplingItemSnapshotTest {
 	class WithItemReplaced {
 
 		private ScheduleSnapshot snapshotOf(List<SamplingItemSnapshot> items) {
-			return new ScheduleSnapshot(
-				"1", 1L, 1L, null, null, null, null, null, List.of(), items, List.of(), 0L, null);
+			return new ScheduleSnapshot("1", 1L, 1L, 0L, null, null, null, null, items);
 		}
 
 		@Test

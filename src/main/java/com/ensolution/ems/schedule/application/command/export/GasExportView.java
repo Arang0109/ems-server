@@ -31,4 +31,9 @@ public class GasExportView {
 	// ===== 계산 =====
 	private final BigDecimal standardDensity;      // 표준상태 습윤 배출가스 밀도 (kg/Sm³)
 	private final BigDecimal o2CorrectionFactor;   // 산소보정계수 (무차원)
+	private final BigDecimal avgO2;
+	private final BigDecimal avgCo2;
+	private final BigDecimal avgCo;
+	private final BigDecimal avgNox;
+	private final BigDecimal avgSox;
 }

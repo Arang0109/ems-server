@@ -12,7 +12,7 @@ import com.ensolution.ems.schedule.application.command.export.ScheduleExportView
 import com.ensolution.ems.schedule.application.command.export.SheetExportView;
 import com.ensolution.ems.schedule.application.command.export.WeatherExportView;
 import com.ensolution.ems.schedule.application.mapper.SheetExportViewMapper;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
@@ -42,24 +42,24 @@ class JxlsSheetExcelRendererTest {
 
 	private ScheduleExportView view() {
 		PointExportView p1 = PointExportView.builder()
-			.index(1).temperature(new BigDecimal("100")).dynamicPressure(new BigDecimal("5"))
-			.staticPressure(new BigDecimal("-2")).velocity(new BigDecimal("12.3"))
-			.avgTemperature(new BigDecimal("21"))
+			.index(1).ts(new BigDecimal("100")).pv(new BigDecimal("5"))
+			.ps(new BigDecimal("-2")).vs(new BigDecimal("12.3"))
+			.avgTs(new BigDecimal("21"))
 			.kFactor(new BigDecimal("0.5")).isokineticRatio(new BigDecimal("98.7")).build();
 		PointExportView p2 = PointExportView.builder()
-			.index(2).temperature(new BigDecimal("101")).dynamicPressure(new BigDecimal("6"))
-			.staticPressure(new BigDecimal("-3")).velocity(new BigDecimal("13.1"))
-			.avgTemperature(new BigDecimal("22"))
+			.index(2).ts(new BigDecimal("101")).pv(new BigDecimal("6"))
+			.ps(new BigDecimal("-3")).vs(new BigDecimal("13.1"))
+			.avgTs(new BigDecimal("22"))
 			.kFactor(new BigDecimal("0.6")).isokineticRatio(new BigDecimal("99.1")).build();
 		SheetExportView sheet = SheetExportView.builder()
 			.category("먼지")
-			.pointCount(2)
+			.samplingPointCount(2)
 			.weather(WeatherExportView.builder().pressureMmHg(new BigDecimal("760.0")).build())
-			.moisture(MoistureExportView.builder().ratio(new BigDecimal("11.8")).build())
+			.moisture(MoistureExportView.builder().xw(new BigDecimal("11.8")).build())
 			.flow(FlowExportView.builder()
-				.area(new BigDecimal("0.785"))
-				.pitotCoefficient(new BigDecimal("0.84"))
-				.velocity(new BigDecimal("12.3"))
+				.stackArea(new BigDecimal("0.785"))
+				.cp(new BigDecimal("0.84"))
+				.avgVs(new BigDecimal("12.3"))
 				.quantity(new BigDecimal("1000.0"))
 				.standardQuantity(new BigDecimal("850.0"))
 				.build())
@@ -79,10 +79,10 @@ class JxlsSheetExcelRendererTest {
 
 	// 시트 2개짜리 뷰 (채취기록부: 시트별 파일 분리 검증용)
 	private ScheduleExportView twoSheetView() {
-		SheetExportView dust = SheetExportView.builder().category("먼지").pointCount(1)
-			.flow(FlowExportView.builder().velocity(new BigDecimal("12.3")).build()).build();
-		SheetExportView gas = SheetExportView.builder().category("가스상").pointCount(1)
-			.flow(FlowExportView.builder().velocity(new BigDecimal("9.9")).build()).build();
+		SheetExportView dust = SheetExportView.builder().category("먼지").samplingPointCount(1)
+			.flow(FlowExportView.builder().avgVs(new BigDecimal("12.3")).build()).build();
+		SheetExportView gas = SheetExportView.builder().category("가스상").samplingPointCount(1)
+			.flow(FlowExportView.builder().avgVs(new BigDecimal("9.9")).build()).build();
 		return ScheduleExportView.builder()
 			.referenceNumber("REF-123")
 			.clientName("의뢰기관A")
@@ -97,7 +97,7 @@ class JxlsSheetExcelRendererTest {
 			XSSFCell a1 = s.createRow(0).createCell(0);
 			a1.setCellValue("${plan.referenceNumber}");                    // 원장 데이터
 			s.createRow(1).createCell(0).setCellValue("${sheet.category}"); // 단일 시트
-			s.createRow(2).createCell(0).setCellValue("${sheet.flow.velocity}"); // 하위 그룹 경로
+			s.createRow(2).createCell(0).setCellValue("${sheet.flow.avgVs}"); // 하위 그룹 경로
 			addComment(wb, s, a1, "jx:area(lastCell=\"A3\")");
 			wb.write(out);
 			return out.toByteArray();
@@ -110,9 +110,9 @@ class JxlsSheetExcelRendererTest {
 			XSSFSheet s = wb.createSheet("Record");
 			XSSFCell a1 = s.createRow(0).createCell(0);
 			a1.setCellValue("${plan.referenceNumber}/${sheet.category}"
-				+ "/${weather.pressureMmHg}/${moisture.ratio}/${flow.velocity}");
+				+ "/${weather.pressureMmHg}/${moisture.xw}/${flow.avgVs}");
 			XSSFCell a2 = s.createRow(1).createCell(0);
-			a2.setCellValue("${p.index}=${p.temperature}");
+			a2.setCellValue("${p.index}=${p.ts}");
 			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
 			addComment(wb, s, a2, "jx:each(items=\"points\" var=\"p\" lastCell=\"A2\")");
 			wb.write(out);
@@ -138,10 +138,10 @@ class JxlsSheetExcelRendererTest {
 		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 			XSSFSheet s = wb.createSheet("Report");
 			XSSFCell a1 = s.createRow(0).createCell(0);
-			a1.setCellValue("${plan.sheets[0].weather.pressureMmHg}/${plan.sheets[0].moisture.ratio}"
+			a1.setCellValue("${plan.sheets[0].weather.pressureMmHg}/${plan.sheets[0].moisture.xw}"
 				+ "/${plan.sheets[0].flow.standardQuantity}");
 			XSSFCell a2 = s.createRow(1).createCell(0);
-			a2.setCellValue("${p.index}=${p.avgTemperature}");
+			a2.setCellValue("${p.index}=${p.avgTs}");
 			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
 			addComment(wb, s, a2, "jx:each(items=\"plan.sheets[0].points\" var=\"p\" lastCell=\"A2\")");
 			wb.write(out);
@@ -154,7 +154,7 @@ class JxlsSheetExcelRendererTest {
 		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 			XSSFSheet s = wb.createSheet("Report");
 			XSSFCell a1 = s.createRow(0).createCell(0);
-			a1.setCellValue("[${plan.sheets[0].weather.temperature}][${plan.sheets[0].moisture.ratio}]");
+			a1.setCellValue("[${plan.sheets[0].weather.temperature}][${plan.sheets[0].moisture.xw}]");
 			XSSFCell a2 = s.createRow(1).createCell(0);
 			a2.setCellValue("${o}");
 			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
@@ -316,7 +316,7 @@ class JxlsSheetExcelRendererTest {
 	@Test
 	void 값이_없는_시트도_하위_그룹_경로에서_깨지지_않는다() throws Exception {
 		// 렌더러가 withExceptionThrower()로 동작하므로, 매퍼가 하위 뷰를 항상 채운다는 계약이 깨지면 여기서 실패한다
-		SheetExportView emptySheet = new SheetExportViewMapper().toSheetView(MeasurementSheet.builder().build());
+		SheetExportView emptySheet = new SheetExportViewMapper().toSheetView(SamplingSheet.builder().build());
 		ScheduleExportView plan = ScheduleExportView.builder()
 			.referenceNumber("REF-123").sheets(List.of(emptySheet)).build();
 
@@ -394,7 +394,9 @@ class JxlsSheetExcelRendererTest {
 			}
 		}
 
-		assertThat(entryNames).containsExactly("1_먼지.xlsx", "2_가스상.xlsx");
+		assertThat(entryNames).containsExactly(
+			"fKET-A-QP-17-02-01(2) 대기측정기록부(REF-123)먼지.xlsx",
+			"fKET-A-QP-17-02-01(2) 대기측정기록부(REF-123)가스상.xlsx");
 		assertThat(categories).containsExactly("먼지", "가스상");
 		assertThat(velocities).containsExactly(12.3, 9.9);
 	}

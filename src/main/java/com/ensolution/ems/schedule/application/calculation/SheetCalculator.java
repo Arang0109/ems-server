@@ -3,8 +3,7 @@ package com.ensolution.ems.schedule.application.calculation;
 import com.ensolution.ems.equipment.domain.spec.NozzleSpec;
 import com.ensolution.ems.equipment.domain.spec.PitotTubeSpec;
 import com.ensolution.ems.schedule.application.calculation.step.SheetStep;
-import com.ensolution.ems.schedule.application.command.StackData;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,8 +20,8 @@ public class SheetCalculator {
 
 	private final List<SheetStep> steps;
 
-	public MeasurementSheet calculate(
-		MeasurementSheet sheet,
+	public SamplingSheet calculate(
+		SamplingSheet sheet,
 		StackData stackData,
 		List<PitotTubeSpec.PitotCoefficient> pitotCoefficients,
 		List<NozzleSpec.NozzleDiameter> diameters,

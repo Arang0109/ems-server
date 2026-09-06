@@ -9,13 +9,14 @@ import java.time.LocalDateTime;
 
 /**
  * 측정계획 상세 응답. 메타데이터와 측정 시점 세부 스냅샷 트리를 함께 노출한다.
- * <p>
- * <b>최상위 필드가 진실의 원천이다.</b> 메타는 MySQL에, 스냅샷은 MongoDB에 있고 2PC를 걸 수 없어
- * 문서 쪽 사본이 어긋날 수 있으므로, 두 곳에 같은 값이 있는 항목은 최상위를 신뢰한다.
- * 그래서 {@code snapshot}은 식별자·상태 사본을 담지 않는다({@link ScheduleSnapshotResponse}).
- * <p>
- * 예외는 {@code snapshot.basicInfo}의 관리번호·채취일자·측정분야·측정용도다. 값은 최상위와 같지만
- * 그쪽은 성적서 기본정보 표의 칸이라 별개 개념으로 남긴다.
+ *
+ * <p><b>성적서 기본정보는 전부 최상위에 있다.</b> 관리번호·측정분야·측정용도와 채취일자·시료접수일·
+ * 분석완료일·성적서발행일은 메타(MySQL)가 진실의 원천이며, 문서에 사본을 두지 않으므로 두 곳이
+ * 어긋날 일이 없다. {@code snapshot}은 이 값들을 담지 않는다({@link ScheduleSnapshotResponse}).
+ *
+ * <p>일자 넷은 수정 경로가 갈린다 — 채취일자는 계획을 정의하는 값이라
+ * {@code PUT /api/schedules/{id}}, 나머지 셋은 진행하며 채우는 값이라
+ * {@code PATCH /api/schedules/{id}/basic-info}가 맡는다.
  */
 public record ScheduleResponse(
 	Long id,
@@ -24,6 +25,9 @@ public record ScheduleResponse(
 	Long teamId,
 	MeasurementField measurementField,
 	LocalDate sampledAt,
+	LocalDate receivedAt,
+	LocalDate analyzedAt,
+	LocalDate issuedAt,
 	String schedulePurpose,
 	ScheduleStatus status,
 	String referenceNumber,

@@ -1,7 +1,7 @@
 package com.ensolution.ems.schedule.presentation.request;
 
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.sheet.SheetRef;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
+import com.ensolution.ems.schedule.domain.sampling.SheetRef;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.List;
  */
 public record SaveSheetsRequest(
 	@NotNull(message = "측정 시트는 필수 값입니다.")
-	List<MeasurementSheet> sheets,
+	List<SamplingSheet> sheets,
 
 	List<SheetRef> deletedSheets
 ) {}

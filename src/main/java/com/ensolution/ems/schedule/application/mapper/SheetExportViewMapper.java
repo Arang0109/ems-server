@@ -8,14 +8,7 @@ import com.ensolution.ems.schedule.application.command.export.PointExportView;
 import com.ensolution.ems.schedule.application.command.export.SampleExportView;
 import com.ensolution.ems.schedule.application.command.export.SheetExportView;
 import com.ensolution.ems.schedule.application.command.export.WeatherExportView;
-import com.ensolution.ems.schedule.domain.sheet.ExhaustGasData;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.sheet.MoistureData;
-import com.ensolution.ems.schedule.domain.sheet.ParticleData;
-import com.ensolution.ems.schedule.domain.sheet.QuantityData;
-import com.ensolution.ems.schedule.domain.sheet.Sample;
-import com.ensolution.ems.schedule.domain.sheet.SamplingPoint;
-import com.ensolution.ems.schedule.domain.sheet.WeatherData;
+import com.ensolution.ems.schedule.domain.sampling.*;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -23,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 측정 시트({@link MeasurementSheet})를 엑셀 템플릿용 뷰({@link SheetExportView})로 변환한다.
+ * 측정 시트({@link SamplingSheet})를 엑셀 템플릿용 뷰({@link SheetExportView})로 변환한다.
  * 내부 도메인 구조와 템플릿 계약을 분리하는 경계 매퍼로서, 도메인 트리의 null 여부를 방어적으로 다룬다.
  * <p>
  * <b>하위 뷰는 소스가 null이어도 빈 인스턴스를 반환한다.</b> 렌더러가 {@code withExceptionThrower()}로
@@ -33,26 +26,26 @@ import java.util.List;
 @Component
 public class SheetExportViewMapper {
 
-	public List<SheetExportView> toSheetViews(List<MeasurementSheet> sheets) {
+	public List<SheetExportView> toSheetViews(List<SamplingSheet> sheets) {
 		if (sheets == null) return List.of();
 		List<SheetExportView> views = new ArrayList<>(sheets.size());
-		for (MeasurementSheet sheet : sheets) {
+		for (SamplingSheet sheet : sheets) {
 			views.add(toSheetView(sheet));
 		}
 		return views;
 	}
 
-	public SheetExportView toSheetView(MeasurementSheet sheet) {
+	public SheetExportView toSheetView(SamplingSheet sheet) {
 		return SheetExportView.builder()
 			.category(sheet.getCategory() == null ? null : sheet.getCategory().getDescription())
-			.pointCount(sheet.getSamplingPointCnt())
+			.samplingPointCount(sheet.getSamplingPointCount())
 			.weather(toWeatherView(sheet.getWeather()))
 			.moisture(toMoistureView(sheet.getMoisture()))
 			.gas(toGasView(sheet.getExhaustGas()))
-			.flow(toFlowView(sheet.getQuantity()))
-			.particle(toParticleView(sheet.getParticle(), sheet.getAvgTm()))
+			.flow(toFlowView(sheet.getFlowRate()))
+			.particle(toParticleView(sheet.getParticulateSampling()))
 			.points(toPointViews(sheet.getSamplingPoints()))
-			.samples(toSampleViews(sheet.getSamples()))
+			.gaseousSamplings(toSampleViews(sheet.getGaseousSamplings()))
 			.build();
 	}
 
@@ -60,8 +53,8 @@ public class SheetExportViewMapper {
 		if (weather == null) return WeatherExportView.builder().build();
 
 		return WeatherExportView.builder()
-			.pressureHpa(weather.getPressure())
-			.pressureMmHg(weather.getPa())
+			.pressureHpa(weather.getAtmosphericPressure())
+			.pressureMmHg(weather.getAtmosphericPressureMmHg())
 			.condition(weather.getWeatherCondition() == null ? null : weather.getWeatherCondition().getDescription())
 			.temperature(weather.getTemperature())
 			.humidity(weather.getHumidity())
@@ -73,28 +66,28 @@ public class SheetExportViewMapper {
 	private MoistureExportView toMoistureView(MoistureData moisture) {
 		if (moisture == null) return MoistureExportView.builder().build();
 
-		MoistureData.BattleWeight weight = moisture.getWeight();
+		MoistureData.BottleWeight weight = moisture.getBottleWeight();
 		MoistureData.GasMeterTemperature temperature = moisture.getGasMeterTemperature();
 		MoistureData.DryGasVolume volume = moisture.getDryGasVolume();
 
 		return MoistureExportView.builder()
-			.weightBefore(weight == null ? null : weight.getBefore())
-			.weightAfter(weight == null ? null : weight.getAfter())
-			.inTemperature(temperature == null ? null : temperature.getIn())
-			.outTemperature(temperature == null ? null : temperature.getOut())
-			.volumeBefore(volume == null ? null : volume.getBefore())
-			.volumeAfter(volume == null ? null : volume.getAfter())
+			.m1(weight == null ? null : weight.getBefore())
+			.m2(weight == null ? null : weight.getAfter())
+			.t1(temperature == null ? null : temperature.getIn())
+			.t2(temperature == null ? null : temperature.getOut())
+			.v1(volume == null ? null : volume.getBefore())
+			.v2(volume == null ? null : volume.getAfter())
 			.suctionVelocity(moisture.getSuctionVelocity())
-			.gaugePressureMmH2O(moisture.getGasMeterGaugePressure())
+			.pmMmH2O(moisture.getGasMeterGaugePressure())
 			.startTime(moisture.getSamplingStartTime())
 			.endTime(moisture.getSamplingEndTime())
 
-			.ratio(moisture.getXw())
-			.absorbedMass(moisture.getMa())
-			.avgTemperature(moisture.getTm_g())
-			.dryGasVolume(moisture.getVm_g())
-			.gaugePressureMmHg(moisture.getPm_g())
-			.gaugePressureInchH2O(moisture.getPm_g_inch())
+			.xw(moisture.getMoistureRatio())
+			.ma(moisture.getAbsorbedMoistureMass())
+			.tmG(moisture.getAverageGasMeterTemperature())
+			.vmG(moisture.getSampledDryGasVolume())
+			.pmG(moisture.getGasMeterGaugePressureMmHg())
+			.pmGInch(moisture.getGasMeterGaugePressureInH2O())
 			.build();
 	}
 
@@ -117,42 +110,39 @@ public class SheetExportViewMapper {
 			.build();
 	}
 
-	private FlowExportView toFlowView(QuantityData quantity) {
-		if (quantity == null) return FlowExportView.builder().build();
+	private FlowExportView toFlowView(FlowRateData flowRate) {
+		if (flowRate == null) return FlowExportView.builder().build();
 
 		return FlowExportView.builder()
-			.area(quantity.getArea())
-			.avgTemperature(quantity.getAvgTs())
-			.avgTemperatureK(quantity.getAvgTg())
-			.avgDynamicPressure(quantity.getAvgPv())
-			.avgStaticPressure(quantity.getAvgPs())
-			.density(quantity.getGasDensity())
-			.pitotCoefficient(quantity.getCp())
-			.velocity(quantity.getVs())
-			.quantity(quantity.getQuantity())
-			.standardQuantity(quantity.getStandardQuantity())
+			.stackArea(flowRate.getStackArea())
+			.avgTs(flowRate.getAverageGasTemperature())
+			.avgTg(flowRate.getAverageGasTemperatureKelvin())
+			.avgPv(flowRate.getAverageDynamicPressure())
+			.avgPs(flowRate.getAverageStaticPressure())
+			.gasDensity(flowRate.getGasDensity())
+			.cp(flowRate.getAppliedPitotCoefficient())
+			.avgVs(flowRate.getAverageGasVelocity())
+			.quantity(flowRate.getWetGasFlowRate())
+			.standardQuantity(flowRate.getStandardDryGasFlowRate())
 			.build();
 	}
 
-	/**
-	 * 입자상 집계 뷰. 가스미터 평균 절대온도(avgTm)는 {@link ParticleData}가 아니라 시트가 직접 들고 있으나
-	 * 입자상 측정점에서만 산출되는 값이므로 이 그룹에 함께 노출한다.
-	 */
-	private ParticleExportView toParticleView(ParticleData particle, BigDecimal avgTm) {
-		if (particle == null) return ParticleExportView.builder().avgMeterTemperatureK(avgTm).build();
+	/** 입자상 집계 뷰. 가스미터 평균 절대온도까지 입자상 집계가 함께 들고 있어 그대로 옮긴다. */
+	private ParticleExportView toParticleView(ParticulateSampling particle) {
+		if (particle == null) return ParticleExportView.builder().build();
 
 		return ParticleExportView.builder()
 			.thimbleFilter(particle.getThimbleFilter())
 			.blankThimbleFilter(particle.getBgThimbleFilter())
-			.startTime(particle.getSamplingStartTime())
-			.endTime(particle.getSamplingEndTime())
+			.samplingStartedAt(particle.getSamplingStartedAt())
+			.samplingEndedAt(particle.getSamplingEndedAt())
 
-			.avgKFactor(particle.getAvgKFactor())
-			.avgOrificePressure(particle.getAvgOrificeDp())
-			.avgIsokineticRatio(particle.getAvgIsokineticRatio())
-			.totalDryGasVolume(particle.getTotalVm())
+			.avgKFactor(particle.getAverageKFactor())
+			.avgOrificePressure(particle.getAverageOrificeDifferentialPressure())
+			.avgIsokineticRatio(particle.getAverageIsokineticRatio())
+			.totalVm(particle.getTotalDryGasVolume())
 			.totalSamplingTime(particle.getTotalSamplingTime())
-			.avgMeterTemperatureK(avgTm)
+			.avgTmKelvin(particle.getAverageGasMeterTemperature())
 			.build();
 	}
 
@@ -166,55 +156,55 @@ public class SheetExportViewMapper {
 	}
 
 	private PointExportView toPointView(int index, SamplingPoint point) {
-		SamplingPoint.ParticleSampling particle = point.getParticle();
-		SamplingPoint.ParticleSampling.EquipmentTemperature temperature =
-			particle == null ? null : particle.getEquipmentTemperature();
-		SamplingPoint.ParticleSampling.EquipmentVolume volume =
-			particle == null ? null : particle.getEquipmentVolume();
+		SamplingPoint.IsokineticSamplingData particle = point.getIsokineticSampling();
+		SamplingPoint.IsokineticSamplingData.GasMeterTemperature temperature =
+			particle == null ? null : particle.getGasTemperature();
+		SamplingPoint.IsokineticSamplingData.GasMeterVolume volume =
+			particle == null ? null : particle.getGasMeterVolume();
 
 		return PointExportView.builder()
 			.index(index)
-			.temperature(point.getTs())
-			.dynamicPressure(point.getPv())
-			.staticPressure(point.getPs())
-			.velocity(point.getVs())
+			.ts(point.getGasTemperature())
+			.pv(point.getDynamicPressure())
+			.ps(point.getStaticPressure())
+			.vs(point.getGasVelocity())
 			.density(point.getGasDensity())
 
-			.nozzleSize(particle == null ? null : particle.getNozzleSize())
+			.nozzleDiameter(particle == null ? null : particle.getNozzleDiameter())
 			.samplingTime(particle == null ? null : particle.getSamplingTime())
 			.vacuumPressure(particle == null ? null : particle.getVacuumGaugePressure())
-			.impingerTemperature(particle == null ? null : particle.getFinalImpingerTemperature())
-			.inTemperature(temperature == null ? null : temperature.getInTm())
-			.outTemperature(temperature == null ? null : temperature.getOutTm())
-			.volumeBefore(volume == null ? null : volume.getBeforeVm())
-			.volumeAfter(volume == null ? null : volume.getAfterVm())
+			.finalImpingerTemperature(particle == null ? null : particle.getFinalImpingerTemperature())
+			.tm1(temperature == null ? null : temperature.getInlet())
+			.tm2(temperature == null ? null : temperature.getOutlet())
+			.vm1(volume == null ? null : volume.getBefore())
+			.vm2(volume == null ? null : volume.getAfter())
 
-			.avgTemperature(temperature == null ? null : temperature.getAvgTm())
-			.dryGasVolume(particle == null ? null : particle.getVm())
-			.collectedWater(particle == null ? null : particle.getVlc())
+			.avgTs(temperature == null ? null : temperature.getAverage())
+			.vm(particle == null ? null : particle.getSampledDryGasVolume())
+			.vlc(particle == null ? null : particle.getCollectedWaterVolume())
 			.kFactor(particle == null ? null : particle.getKFactor())
-			.orificePressure(particle == null ? null : particle.getOrificeDp())
+			.orificePressure(particle == null ? null : particle.getOrificeDifferentialPressure())
 			.isokineticRatio(particle == null ? null : particle.getIsokineticRatio())
 			.build();
 	}
 
-	private List<SampleExportView> toSampleViews(List<Sample> samples) {
-		if (samples == null) return List.of();
-		List<SampleExportView> views = new ArrayList<>(samples.size());
-		for (Sample sample : samples) {
+	private List<SampleExportView> toSampleViews(List<GaseousSampling> gaseousSamplings) {
+		if (gaseousSamplings == null) return List.of();
+		List<SampleExportView> views = new ArrayList<>(gaseousSamplings.size());
+		for (GaseousSampling gaseousSampling : gaseousSamplings) {
 			views.add(SampleExportView.builder()
-				.name(sample.getSampleName())
-				.number(sample.getSampleNumber())
-				.blankNumber(sample.getBlankSampleNumber())
-				.startTime(sample.getStartTime())
-				.endTime(sample.getEndTime())
-				.suctionQuantity(sample.getSuctionQuantity())
-				.gaugePressure(sample.getGasMeterGaugePressure())
-				.inTemperature(sample.getInTemperature())
-				.outTemperature(sample.getOutTemperature())
-				.volumeBefore(sample.getBeforeVolume())
-				.volumeAfter(sample.getAfterVolume())
-				.samplingVolume(sample.getSamplingVolume())
+				.name(gaseousSampling.getSampleName())
+				.number(gaseousSampling.getSampleNumber())
+				.blankNumber(gaseousSampling.getBlankSampleNumber())
+				.startTime(gaseousSampling.getSamplingStartedAt())
+				.endTime(gaseousSampling.getSamplingEndedAt())
+				.suctionQuantity(gaseousSampling.getSuctionQuantity())
+				.gaugePressure(gaseousSampling.getGasMeterGaugePressure())
+				.inTemperature(gaseousSampling.getInTemperature())
+				.outTemperature(gaseousSampling.getOutTemperature())
+				.volumeBefore(gaseousSampling.getBeforeVolume())
+				.volumeAfter(gaseousSampling.getAfterVolume())
+				.samplingVolume(gaseousSampling.getSamplingVolume())
 				.build());
 		}
 		return views;

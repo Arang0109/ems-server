@@ -2,10 +2,8 @@ package com.ensolution.ems.schedule.domain.snapshot;
 
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
-import com.ensolution.ems.schedule.domain.ScheduleStatus;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -13,55 +11,89 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 측정계획 세부 스냅샷 애그리거트(MongoDB 문서 본문의 도메인 표현).
- * 측정 시점의 대상·팀·장비·측정항목 정보를 복사해 불변으로 보관하므로,
- * 원장(tenant·equipment)이 변경되어도 과거 기록은 영향을 받지 않는다.
- * {@code sheets}는 실제 측정값과 계산 결과를 담는 측정 시트 목록이다.
- * <p>
- * {@code version}·{@code createdAt}은 문서의 저장 메타다. 도메인이 들고 다녀야
- * 읽어온 문서의 값이 저장까지 이어져 낙관적 락이 성립하고(version), 저장할 때마다
- * 생성 시각이 지워지지 않는다(createdAt). 값을 만들어내는 것은 인프라(Spring Data)다.
+ * <p>{@code version}은 문서 단위 낙관적 락 토큰이다. 읽어온 값이 저장까지 이어져야 락이 성립하므로
+ * 도메인이 들고 다니며, 값을 만들어내는 것은 인프라(Spring Data)다. 문서 생성 시각({@code createdAt})은
+ * 측정 사실이 아니라 저장 메타라 도메인에 두지 않고 {@code ScheduleDocument}에만 남긴다.
  */
 public record ScheduleSnapshot(
 	String id,             // Mongo _id (= scheduleId 문자열)
 	Long scheduleId,       // MySQL 메타 PK 연결키
 	Long tenantId,
-	ScheduleStatus status,
-	BasicInfo basicInfo,
-	TeamSnapshot team,
-	TenantSnapshot tenant,
+	Long version,          // 문서 단위 낙관적 락 토큰
+
 	ClientSnapshot client,
-	List<EquipmentSnapshot> equipments,
-	List<SamplingItemSnapshot> items,
-	List<MeasurementSheet> sheets,
-	Long version,
-	LocalDateTime createdAt
+	TenantSnapshot tenant,
+	TeamSnapshot team,
+	SamplingSnapshot samplingData,
+
+	List<SamplingItemSnapshot> items
 ) {
 	
-	public ScheduleSnapshot syncStatus(ScheduleStatus next) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, next, basicInfo, team, tenant, client, equipments, items, sheets, version, createdAt);
+	public List<SamplingSheet> sheets() { 					// 채취 기록지 목록
+		return samplingData == null || samplingData.sheets() == null ? List.of() : samplingData.sheets();
+	}
+	
+	public List<EquipmentSnapshot> equipments() { 	// 이 회차에 쓴 측정장비
+		return team == null || team.equipments() == null ? List.of() : team.equipments();
 	}
 
-	public ScheduleSnapshot withSheets(List<MeasurementSheet> newSheets) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, status, basicInfo, team, tenant, client, equipments, items, newSheets, version, createdAt);
+	/**
+	 * 기록지만 교체한 새 스냅샷을 반환한다.
+	 * <p>
+	 * 인자가 하나인 fluent 메서드는 MapStruct가 property setter로 읽으므로,
+	 * {@code ScheduleDocumentMapper} 에서 매핑 대상 제외를 함께 선언해야 한다.
+	 */
+	public ScheduleSnapshot withSheets(List<SamplingSheet> newSheets) {
+		SamplingSnapshot sampling = samplingData == null
+			? SamplingSnapshot.create(null, null).withSheets(newSheets)
+			: samplingData.withSheets(newSheets);
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, sampling, items);
 	}
 
-	public ScheduleSnapshot applyEquipmentChange(TeamSnapshot newTeam,
-	                                             List<EquipmentSnapshot> newEquipments,
-	                                             List<MeasurementSheet> newSheets) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, status, basicInfo,
-			newTeam, tenant, client, newEquipments, items, newSheets, version, createdAt);
+	/** 채취 스냅샷(채취시각·현장 담당자·기록지)을 통째로 교체한 새 스냅샷을 반환한다. */
+	public ScheduleSnapshot withSampling(SamplingSnapshot newSampling) {
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, newSampling, items);
 	}
 
-	public ScheduleSnapshot applyClientChange(ClientSnapshot patch, List<MeasurementSheet> newSheets) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, status, basicInfo, team, tenant,
+	/**
+	 * 장비 교체 결과를 반영한다. 장비는 팀 스냅샷 안에 있으므로 새 팀만 받으면 되고,
+	 * 장비가 바뀌면 계산 입력(피토관 계수·노즐경 등)이 달라지므로 재계산된 기록지를 함께 받는다.
+	 */
+	public ScheduleSnapshot applyEquipmentChange(TeamSnapshot newTeam, List<SamplingSheet> newSheets) {
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, newTeam,
+			samplingData == null ? SamplingSnapshot.create(null, null).withSheets(newSheets)
+				: samplingData.withSheets(newSheets),
+			items);
+	}
+
+	/**
+	 * 의뢰기관 트리를 병합한다. 굴뚝 형상·치수가 계산 입력이므로 재계산된 기록지를 함께 받는다.
+	 */
+	public ScheduleSnapshot applyClientChange(ClientSnapshot patch, List<SamplingSheet> newSheets) {
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version,
 			client == null ? patch : client.merge(patch),
-			equipments, items, newSheets, version, createdAt);
+			tenant, team,
+			samplingData == null ? SamplingSnapshot.create(null, null).withSheets(newSheets)
+				: samplingData.withSheets(newSheets),
+			items);
 	}
 
+	/**
+	 * 측정항목 목록만 교체한 새 스냅샷을 반환한다.
+	 * <p>
+	 * 인자가 하나인 fluent 메서드는 MapStruct가 property setter로 읽으므로,
+	 * {@code ScheduleDocumentMapper} 에서 매핑 대상 제외를 함께 선언해야 한다.
+	 */
 	public ScheduleSnapshot withItems(List<SamplingItemSnapshot> newItems) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, status, basicInfo, team, tenant, client,
-			equipments, newItems, sheets, version, createdAt);
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, samplingData, newItems);
+	}
+
+	/**
+	 * 성적서 서명란 담당자와 측정자 표기를 갱신한 새 스냅샷을 반환한다.
+	 * 둘 다 원장이 기본값을 갖지만 회차별로 다를 수 있어 이 문서만 고친다 — 원장은 건드리지 않는다.
+	 */
+	public ScheduleSnapshot applyStaff(TenantSnapshot newTenant, TeamSnapshot newTeam) {
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, newTenant, newTeam, samplingData, items);
 	}
 
 	/**
@@ -90,28 +122,16 @@ public record ScheduleSnapshot(
 			.toList());
 	}
 
+	/**
+	 * 같은 측정물질의 항목을 <b>제자리에서</b> 바꾼 새 스냅샷을 반환한다.
+	 * 배열 순서가 곧 성적서 칸 배치이므로, 지웠다 붙이는 방식으로 바꾸면 손댄 항목이 맨 뒤로 밀려
+	 * 성적서 칸이 어긋난다.
+	 */
 	public ScheduleSnapshot withItemReplaced(Long pollutantId, SamplingItemSnapshot replacement) {
-		List<SamplingItemSnapshot> replaced = items.stream()
-			.map(item -> item != null && pollutantId.equals(item.pollutantId()) ? replacement : item)
+		List<SamplingItemSnapshot> replaced = (items == null ? List.<SamplingItemSnapshot>of() : items).stream()
+			.map(item -> pollutantId.equals(item.pollutantId()) ? replacement : item)
 			.toList();
 		return withItems(replaced);
-	}
-
-	public ScheduleSnapshot applyBasicInfo(BasicInfo newBasicInfo, TeamSnapshot newTeam) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, status, newBasicInfo,
-			newTeam, tenant, client, equipments, items, sheets, version, createdAt);
-	}
-
-	/**
-	 * 메타 수정 결과를 문서에 반영한다. basicInfo·referenceNumber를 갱신하며, client 트리는 변경하지 않는다
-	 * (의뢰기관·사업장·측정시설 스냅샷 수정은 {@link #applyClientChange} 경로를 사용한다).
-	 */
-	public ScheduleSnapshot applyMetaUpdate(BasicInfo newBasicInfo, TenantSnapshot newTenant) {
-		return new ScheduleSnapshot(
-			id, scheduleId, tenantId,
-			status, newBasicInfo, team, newTenant,
-			client,
-			equipments, items, sheets, version, createdAt);
 	}
 
 	/**

@@ -7,48 +7,52 @@
 
 ## 자체 원장이 없는 모듈
 
-**이 모듈은 자기 테이블을 갖지 않습니다.** `infrastructure/` 패키지 자체가 없고,
-`port/out`도 없습니다. 데이터는 전부 다른 모듈의 `port/in`에서 옵니다.
+**이 모듈은 자기 테이블을 갖지 않습니다.** `infrastructure/`도 `application/`도 없습니다.
+`presentation/`만 있으며, 데이터는 전부 다른 모듈의 `port/in`에서 옵니다.
 
 | 관심사 | 원장 소유 모듈 | 이 모듈이 쓰는 계약 |
 |---|---|---|
-| 회원 | `auth` | `UserQueryUseCase`, `UserCommandUseCase` |
-| 문서 | `storage` | `DocumentCommandUseCase` |
+| 회원 | `auth` | `UserQueryUseCase`, `UserCommandUseCase` (+ `UserSummary`·`Create/UpdateUserCommand`) |
+| 문서 | `storage` | `DocumentCommandUseCase` (+ `Create/Update/AddDocumentVersionCommand`·`UploadedFile`) |
 
-그래서 `MemberService`는 **유스케이스 조율만** 합니다 — 포트를 호출하고 매퍼로 변환할 뿐
-자체 비즈니스 규칙이 없습니다. 규칙은 원장 모듈이 소유합니다(예: 역할 부여 제한은 `auth`의 `UserValidator`).
+규칙은 원장 모듈이 소유합니다(예: 역할 부여 제한은 `auth`의 `UserValidator`).
 
 > **원장을 갖지 않는 모듈은 규칙을 중복 구현하지 않습니다.** 검증을 여기 옮겨 오면 원장 모듈의
 > 다른 호출 경로가 그 검증을 우회하게 됩니다.
 
-### `domain/Member`는 무엇인가
+### 중간 계층을 두지 않습니다
 
-`Member`는 JPA 엔티티가 아니라 **auth의 `UserSummary`를 admin 쪽 언어로 옮긴 표현**입니다.
-관리 화면이 "사용자"가 아니라 "회원"이라는 말을 쓰기 때문에 두며, 여기에 admin 고유 필드가
-붙을 자리를 마련해 둡니다.
+**컨트롤러가 타 모듈의 `port/in`에 직접 위임하고, presentation 매퍼가 Request를 그 모듈의 Command로 곧장 바꿉니다.**
 
-변환은 `application/mapper/MemberPortMapper`가 담당합니다 —
-**루트 `CLAUDE.md` 규칙 3의 인터모듈 매퍼 레퍼런스**입니다.
+```
+MemberController → MemberMapper → auth의 Create/UpdateUserCommand → User*UseCase
+                                → auth의 UserSummary → MemberResponse
 
-| 방향 | 메서드 |
-|---|---|
-| auth `UserSummary` → admin `Member` | `toMember`, `toMemberList` |
-| admin `CreateMemberCommand` → auth `CreateUserCommand` | `toCreateUserCommand` |
-| admin `UpdateMemberCommand` → auth `UpdateUserCommand` | `toUpdateUserCommand` |
+DocumentManagementController → AdminDocumentMapper → storage의 Command → DocumentCommandUseCase
+```
 
-이 매퍼 덕분에 컨트롤러·서비스가 auth의 DTO를 직접 들고 다니지 않습니다.
-auth가 `UserSummary` 형태를 바꿔도 이 파일 하나만 고치면 됩니다.
+한때 회원 쪽에는 `domain/Member` + `Create/UpdateMemberCommand` + `MemberService` + `MemberPortMapper`가
+있었지만 **2026-09-06에 걷어냈습니다.** 이유:
 
----
+- `Member`는 `UserSummary`와 필드가 같고(`id` ↔ `userId`만 다름) 행위가 없어 도메인 모델이 아니었습니다.
+  `Create/UpdateMemberCommand`도 auth의 것과 사실상 동일했습니다.
+- `MemberService`는 5개 메서드가 전부 단순 위임이었습니다 — 조율할 것이 없었습니다.
+- "auth가 `UserSummary`를 바꿔도 매퍼 하나만 고치면 된다"는 이점이 실제로는 없었습니다.
+  MapStruct 자동 매핑이라 **필드가 늘면 `Member`에도 같은 이름으로 더해야** 값이 넘어왔고,
+  `unmappedTargetPolicy`가 기본값이라 누락이 조용히 지나갔습니다.
+- 같은 모듈의 문서 관리는 처음부터 중간 계층 없이 동작하고 있었습니다. 두 리소스가 서로 다른 구조일 이유가 없습니다.
 
-## 유스케이스
+근거는 루트 `CLAUDE.md`의 **공유 커널** 예외입니다 — 포트 시그니처에 이미 드러난 타입을 다시 감싸면
+변환 계층만 늘고 얻는 것이 없습니다.
 
-| 서비스 | 메서드 | 위임 대상 |
-|---|---|---|
-| `MemberService` | `createMember`, `getMember`, `getMemberList`, `updateMember`, `deleteMember` | auth `UserCommandUseCase` / `UserQueryUseCase` |
+> **되살릴 때**: 회원 상태(활성·정지)·초대·최근 로그인처럼 **admin 고유 개념**이 생기면 그때
+> `application/`을 만들고 서비스로 승격합니다. auth의 `User`에 넣을 수 없는 필드가 생겼다는 것이 신호입니다.
+> 지금 없는 것을 대비해 두지 않습니다.
 
-문서 관리는 서비스를 두지 않고 컨트롤러가 `storage`의 `DocumentCommandUseCase`에 바로 위임합니다.
-조율할 것이 없기 때문이며, 규칙이 생기면 그때 서비스를 만듭니다.
+### 응답 계약은 `MemberResponse`가 지킵니다
+
+중간 도메인이 없어도 대외 언어는 "회원"으로 유지됩니다. `MemberMapper`는 `unmappedTargetPolicy = ERROR`라
+auth가 `UserSummary`에 필드를 더하면 **컴파일이 깨져** 응답 계약을 함께 검토하게 됩니다.
 
 ---
 
@@ -58,9 +62,9 @@ auth가 `UserSummary` 형태를 바꿔도 이 파일 하나만 고치면 됩니�
 
 `POST /` 등록 · `GET /` 목록 · `GET /{id}` 단건 · `PUT /{id}` 수정 · `DELETE /{id}` 삭제
 
-- **전 경로가 `@AuthenticationPrincipal`로 tenantId를 받습니다.** 단건 경로 3개(`GET`·`PUT`·`DELETE`)는
-  2026-08-25에 추가된 것으로, 그전에는 다른 테넌트의 계정을 조회·수정·삭제할 수 있었습니다.
-  **이 파라미터를 지우지 마세요.**
+- **전 경로가 `@AuthenticationPrincipal`로 tenantId를 받아 Command에 싣습니다.** 단건 경로 3개
+  (`GET`·`PUT`·`DELETE`)는 2026-08-25에 추가된 것으로, 그전에는 다른 테넌트의 계정을 조회·수정·삭제할
+  수 있었습니다. **이 파라미터를 지우지 마세요.** 회귀는 `MemberControllerTest`가 잡습니다.
 - 본문 없이 `ApiResponse.success()`만 반환하는 경로(`POST`·`PUT`)는 선언 타입도 `ApiResponse<Void>`입니다.
   `MemberResponse`로 선언하면 Swagger가 실제와 다른 스키마를 광고합니다.
 
@@ -82,20 +86,18 @@ auth가 `UserSummary` 형태를 바꿔도 이 파일 하나만 고치면 됩니�
 루트 `CLAUDE.md` 규칙 13을 따릅니다. 이 모듈은 원장이 없으므로 **격리는 전적으로 포트 호출에 달려 있습니다.**
 
 - 컨트롤러가 `principal.getTenantId()`를 받아 Command에 실어 보내고, 원장 모듈이 그 범위로 조회합니다.
-- **tenantId를 Command에 넣지 않고 빠뜨리면 그대로 교차 테넌트가 됩니다.** 이 모듈에는 그것을
-  잡아 줄 자체 WHERE 절이 없습니다.
-- `UpdateMemberCommand`에 `tenantId` 필드가 있는 이유가 이것입니다.
+- **tenantId를 Command에 넣지 않아도 컴파일은 통과합니다.** 그 자리에서 교차 테넌트가 되며,
+  이 모듈에는 그것을 잡아 줄 자체 WHERE 절이 없습니다.
+- `MemberControllerTest`가 전 경로에서 tenantId가 실리는지 고정합니다.
 
 ### 계층
 
-`presentation` → `application` → (타 모듈 `port/in`) 구조입니다.
-`domain/Member`는 있지만 규칙을 갖지 않는 표현 모델이고, `infrastructure`는 없습니다.
-**Spring Data Repository나 타 모듈의 엔티티를 직접 참조하지 않습니다.**
+`presentation` → (타 모듈 `port/in`) 구조입니다. `application`도 `domain`도 `infrastructure`도 없습니다.
+**Spring Data Repository나 타 모듈의 엔티티를 직접 참조하지 않습니다** — 참조하는 것은 `port/in`뿐입니다.
 
 ---
 
 ## 향후 과제
 
-- 이 모듈에는 테스트가 없습니다. 특히 **단건 경로의 tenant 격리**는 회귀가 곧 취약점이므로
-  `UserQueryUseCase`를 Fake로 대체한 서비스 테스트가 필요합니다(루트 규칙 14).
-- 문서 관리에 admin 고유 규칙이 생기면 `DocumentManagementController`의 위임을 서비스로 승격합니다.
+- 문서 관리 경로에는 테스트가 없습니다. 회원 쪽과 같은 방식으로 tenantId·uploadedBy 전달을 고정하면 됩니다
+- 문서 관리에 admin 고유 규칙이 생기면 `DocumentManagementController`의 위임을 서비스로 승격합니다

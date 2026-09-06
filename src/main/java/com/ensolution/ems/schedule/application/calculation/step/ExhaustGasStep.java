@@ -2,7 +2,7 @@ package com.ensolution.ems.schedule.application.calculation.step;
 
 import com.ensolution.ems.schedule.application.calculation.Calculator;
 import com.ensolution.ems.schedule.application.calculation.SheetContext;
-import com.ensolution.ems.schedule.domain.sheet.ExhaustGasData;
+import com.ensolution.ems.schedule.domain.sampling.ExhaustGasData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;

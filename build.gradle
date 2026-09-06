@@ -45,12 +45,15 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
-    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 
     // Dev
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     implementation 'org.jxls:jxls-poi:3.1.0'
+
+    // AWS S3 (배포환경 문서 보관소). BOM으로 SDK 모듈 간 버전을 묶는다.
+    implementation platform('software.amazon.awssdk:bom:2.54.13')
+    implementation 'software.amazon.awssdk:s3'
 
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

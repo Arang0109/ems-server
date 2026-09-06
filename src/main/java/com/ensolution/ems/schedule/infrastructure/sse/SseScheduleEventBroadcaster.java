@@ -1,6 +1,6 @@
 package com.ensolution.ems.schedule.infrastructure.sse;
 
-import com.ensolution.ems.schedule.application.command.event.SheetsSavedEvent;
+import com.ensolution.ems.schedule.application.event.SheetsSavedEvent;
 import com.ensolution.ems.schedule.application.port.out.ScheduleEventBroadcaster;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;

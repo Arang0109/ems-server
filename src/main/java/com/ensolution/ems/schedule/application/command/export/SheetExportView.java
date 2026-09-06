@@ -24,7 +24,7 @@ import java.util.List;
 public class SheetExportView {
 
 	private final String category;      // 측정 카테고리 (가스상/중금속/먼지/수은)
-	private final Integer pointCount;   // 규정상 요구 측정점 수
+	private final Integer samplingPointCount;   // 규정상 요구 측정점 수
 
 	// ===== 측정 영역별 하위 뷰 (항상 non-null) =====
 	private final WeatherExportView weather;
@@ -35,5 +35,5 @@ public class SheetExportView {
 
 	// ===== 목록 (jx:each 대상) =====
 	private final List<PointExportView> points;
-	private final List<SampleExportView> samples;
+	private final List<SampleExportView> gaseousSamplings;
 }

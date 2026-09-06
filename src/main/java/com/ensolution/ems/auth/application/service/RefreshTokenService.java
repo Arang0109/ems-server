@@ -2,9 +2,9 @@ package com.ensolution.ems.auth.application.service;
 
 import com.ensolution.ems.auth.application.port.out.RefreshTokenStore;
 import com.ensolution.ems.auth.domain.AuthenticatedUser;
-import com.ensolution.ems.auth.domain.port.Authenticator;
-import com.ensolution.ems.auth.domain.port.TokenIssuer;
-import com.ensolution.ems.auth.domain.port.TokenParser;
+import com.ensolution.ems.auth.application.port.out.Authenticator;
+import com.ensolution.ems.auth.application.port.out.TokenIssuer;
+import com.ensolution.ems.auth.application.port.out.TokenParser;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;

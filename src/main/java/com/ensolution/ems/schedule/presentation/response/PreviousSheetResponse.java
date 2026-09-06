@@ -1,6 +1,6 @@
 package com.ensolution.ems.schedule.presentation.response;
 
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 
 import java.time.LocalDate;
 
@@ -12,5 +12,5 @@ public record PreviousSheetResponse(
 	Long sourceScheduleId,
 	LocalDate sampledAt,
 	String referenceNumber,
-	MeasurementSheet sheet
+	SamplingSheet sheet
 ) {}

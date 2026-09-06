@@ -10,13 +10,13 @@ import com.ensolution.ems.client_management.application.port.in.UserTeamSummary;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.auth.application.validator.UserValidator;
-import com.ensolution.ems.auth.domain.port.Authenticator;
-import com.ensolution.ems.auth.domain.port.PasswordEncryptor;
-import com.ensolution.ems.auth.domain.port.TokenIssuer;
+import com.ensolution.ems.auth.application.port.out.Authenticator;
+import com.ensolution.ems.auth.application.port.out.PasswordEncryptor;
+import com.ensolution.ems.auth.application.port.out.TokenIssuer;
 import com.ensolution.ems.auth.domain.AuthenticatedUser;
 import com.ensolution.ems.auth.domain.TokenResult;
 import com.ensolution.ems.auth.domain.User;
-import com.ensolution.ems.auth.domain.port.UserRepository;
+import com.ensolution.ems.auth.application.port.out.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -97,8 +97,9 @@ public class AuthService implements UserCommandUseCase {
 		String email,
 		String tel
 	) {
+		// 아이디는 로그인 식별자라 tenant와 무관하게 전역 유일하다.
 		if (userRepository.existsByUsername(username)) {
-			throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+			throw new CustomException(ErrorCode.USER_USERNAME_DUPLICATED);
 		}
 
 		// 역할 존재·부여 가능 여부는 호출부(createUser)의 UserValidator가 이미 확인했다.

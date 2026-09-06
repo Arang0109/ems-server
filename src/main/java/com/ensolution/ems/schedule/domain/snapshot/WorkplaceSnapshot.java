@@ -7,8 +7,10 @@ import static com.ensolution.ems.schedule.domain.snapshot.SnapshotMerge.keepText
 
 /**
  * 측정 시점 사업장 스냅샷. 하위로 측정시설 스냅샷을 품는다.
- * 배출시설관리자·시료채취입회자는 측정계획마다 달라지는 값이므로 여기가 아니라 {@link BasicInfo}가 보유한다
- * (사업장 원장의 값은 측정계획 생성 시 {@code BasicInfo}의 초기값으로만 쓰인다).
+ *
+ * <p>배출시설관리자·시료채취입회자는 여기에 두지 않는다. 사업장 원장에는 "그날 누가 입회했는가"라는
+ * 칸이 없어 채울 소스가 없고, 회차마다 달라지는 값이기 때문이다 — {@link SamplingSnapshot}이 보유하며
+ * 사업장 원장의 값은 측정계획 생성 시 그 초기값으로만 쓰인다.
  */
 public record WorkplaceSnapshot(
 	Long workplaceId,

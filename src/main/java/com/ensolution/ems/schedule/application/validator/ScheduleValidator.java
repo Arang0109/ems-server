@@ -43,7 +43,6 @@ public class ScheduleValidator {
 		}
 
 		Set<Long> currentIds = (current == null ? List.<SamplingItemSnapshot>of() : current).stream()
-			.filter(Objects::nonNull)
 			.map(SamplingItemSnapshot::pollutantId)
 			.collect(Collectors.toSet());
 

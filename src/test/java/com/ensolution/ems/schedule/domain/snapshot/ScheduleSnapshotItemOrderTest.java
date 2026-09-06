@@ -1,6 +1,6 @@
 package com.ensolution.ems.schedule.domain.snapshot;
 
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -16,12 +16,12 @@ class ScheduleSnapshotItemOrderTest {
 
 	private SamplingItemSnapshot item(Long pollutantId, String nameKr) {
 		return new SamplingItemSnapshot(pollutantId * 10, pollutantId, null, nameKr, null,
-			null, null, null, null, null, null, null, false);
+			null, null, null, null, null, null, null, false, null);
 	}
 
 	private ScheduleSnapshot snapshot(SamplingItemSnapshot... items) {
-		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null, null,
-			items == null ? null : Arrays.asList(items), null, null, null);
+		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null,
+			items == null ? null : Arrays.asList(items));
 	}
 
 	@Test
@@ -48,9 +48,10 @@ class ScheduleSnapshotItemOrderTest {
 
 	@Test
 	void 항목_외의_스냅샷은_건드리지_않는다() {
-		List<MeasurementSheet> sheets = List.of(MeasurementSheet.builder().build());
-		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 5L, 7L, null, null, null, null, null,
-			List.of(), List.of(item(1L, "먼지"), item(2L, "질소산화물")), sheets, 3L, null);
+		List<SamplingSheet> sheets = List.of(SamplingSheet.builder().build());
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 5L, 7L, 3L, null, null, null,
+			new SamplingSnapshot(null, null, null, null, sheets),
+			List.of(item(1L, "먼지"), item(2L, "질소산화물")));
 
 		ScheduleSnapshot reordered = snapshot.withItemOrder(List.of(2L, 1L));
 

@@ -17,24 +17,24 @@ import java.time.LocalTime;
 @Builder
 @AllArgsConstructor
 public class MoistureExportView {
-
-	// ===== 입력 =====
-	private final BigDecimal weightBefore;        // 흡습병 무게 전 (g)
-	private final BigDecimal weightAfter;         // 흡습병 무게 후 (g)
-	private final BigDecimal inTemperature;       // 가스미터 입구온도 (℃)
-	private final BigDecimal outTemperature;      // 가스미터 출구온도 (℃)
-	private final BigDecimal volumeBefore;        // 건조가스 적산 부피 전 (L)
-	private final BigDecimal volumeAfter;         // 건조가스 적산 부피 후 (L)
-	private final BigDecimal suctionVelocity;     // 흡입속도
-	private final BigDecimal gaugePressureMmH2O;  // 가스미터 게이지압 입력 (mmH2O)
-	private final LocalTime startTime;            // 수분 채취 시작시각
-	private final LocalTime endTime;              // 수분 채취 종료시각
-
-	// ===== 계산 =====
-	private final BigDecimal ratio;               // 수분량 Xw (%)
-	private final BigDecimal absorbedMass;        // 흡습 수분질량 ma (g)
-	private final BigDecimal avgTemperature;      // 가스미터 흡입 가스온도 Tm_g (℃)
-	private final BigDecimal dryGasVolume;        // 흡입 건조가스량 Vm_g (L)
-	private final BigDecimal gaugePressureMmHg;   // 가스미터 게이지압 Pm_g (mmHg)
-	private final BigDecimal gaugePressureInchH2O;// 가스미터 게이지압 Pm_g_inch (inchH2O)
+	// 입력값
+	private final BigDecimal m1;
+	private final BigDecimal m2;
+	private final BigDecimal t1;
+	private final BigDecimal t2;
+	private final BigDecimal v1;
+	private final BigDecimal v2;
+	private final BigDecimal suctionVelocity;
+	private final BigDecimal pmMmH2O;
+	private final LocalTime startTime;
+	private final LocalTime endTime;
+	
+	// 계산값
+	private final BigDecimal xw;        // 수분량 (%)
+	private final BigDecimal ma;        // 흡습 수분질량 (g)
+	private final BigDecimal tmG;       // 평균 가스미터 온도 (℃)
+	private final BigDecimal vmG;       // 건조가스량 (L)
+	private final BigDecimal pmG;       // 게이지압 (mmHg)
+	private final BigDecimal pmGInch;   // 게이지압 (inchH2O)
+	private final Integer samplingTime;
 }

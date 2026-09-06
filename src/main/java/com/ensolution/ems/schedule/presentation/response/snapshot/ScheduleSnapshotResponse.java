@@ -1,29 +1,24 @@
 package com.ensolution.ems.schedule.presentation.response.snapshot;
 
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-
 import java.util.List;
 
 /**
- * 측정계획 세부 스냅샷 응답. 측정 시점의 대상·팀·장비·측정항목 사본과 측정 시트를 담는다.
+ * 측정계획 세부 스냅샷 응답. 측정 시점의 대상·팀·장비·측정항목 사본과 채취 정보를 담는다.
  * <p>
- * <b>문서의 저장 메타는 담지 않는다</b> — {@code id}(Mongo _id)·{@code scheduleId}·{@code tenantId}·
- * {@code status}·{@code version}·{@code createdAt}은 응답에서 제외한다. 앞의 넷은 응답 최상위
- * ({@code ScheduleResponse})에 이미 있고 그쪽이 진실의 원천이며(메타는 MySQL, 문서는 사본),
- * 뒤의 둘은 문서 단위 낙관적 락 토큰과 문서 생성 시각이라 서버 내부 값이다.
+ * <b>메타와 겹치는 값은 담지 않는다</b> — 관리번호·측정분야·측정용도와 채취일자·시료접수일·
+ * 분석완료일·성적서발행일, 그리고 상태는 응답 최상위({@code ScheduleResponse})에 있고 그쪽이
+ * 진실의 원천이다(메타는 MySQL, 문서는 사본). 문서에 사본을 두지 않으므로 두 값이 어긋날 일도 없다.
  * <p>
- * 다만 {@code sheets[].version}은 <b>반드시 유지된다</b> — 클라이언트가 읽어간 시트 버전을 그대로
- * 되돌려 보내야 동시 편집 충돌을 판정할 수 있다({@code docs/DATABASE.md}).
+ * <b>문서의 저장 메타도 담지 않는다</b> — {@code id}(Mongo _id)·{@code scheduleId}·{@code tenantId}는
+ * 최상위에 있고, {@code version}(문서 단위 낙관적 락)과 문서 생성 시각은 서버 내부 값이다.
  * <p>
- * {@code sheets}가 도메인 타입인 이유는 {@code SaveSheetsRequest}와 같다 — 시트는 클라이언트가
- * 읽어서 그대로 되돌려 보내는 왕복 페이로드라, 응답만 감싸면 요청과 모양이 갈라진다.
+ * 장비는 팀 아래({@code team.equipments}), 채취 기록지는 채취 정보 아래
+ * ({@code samplingData.sheets})에 있다. 실험분석 결과는 측정항목 안({@code items[].analysis})에 있다.
  */
 public record ScheduleSnapshotResponse(
-	BasicInfoResponse basicInfo,
 	TeamSnapshotResponse team,
 	TenantSnapshotResponse tenant,
 	ClientSnapshotResponse client,
-	List<EquipmentSnapshotResponse> equipments,
-	List<SamplingItemSnapshotResponse> items,
-	List<MeasurementSheet> sheets
+	SamplingSnapshotResponse samplingData,
+	List<SamplingItemSnapshotResponse> items
 ) {}

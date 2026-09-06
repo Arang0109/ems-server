@@ -30,46 +30,77 @@ public class Schedule {
 	private Long stackId;
 	private Long teamId;
 	private MeasurementField measurementField;
-	private LocalDate sampledAt;
 	private String schedulePurpose;
-	private ScheduleStatus status;
 	private String referenceNumber;
+	private ScheduleStatus status;
+	private LocalDate sampledAt;
+	private LocalDate receivedAt;
+	private LocalDate analyzedAt;
+	private LocalDate issuedAt;
 	private LocalDateTime createdAt;
 	private LocalDateTime modifiedAt;
 
 	public static Schedule register(
-		Long tenantId,
-		Long stackId,
-		Long teamId,
-		MeasurementField measurementField,
-		LocalDate sampledAt,
-		String schedulePurpose,
-		String referenceNumber
+		Long tenantId, Long stackId, Long teamId,
+		MeasurementField measurementField, String schedulePurpose, String referenceNumber,
+		LocalDate sampledAt
 	) {
 		return Schedule.builder()
 			.tenantId(tenantId)
 			.stackId(stackId)
 			.teamId(teamId)
 			.measurementField(measurementField)
-			.sampledAt(sampledAt)
 			.schedulePurpose(schedulePurpose)
+			.referenceNumber(referenceNumber)
 			.status(ScheduleStatus.SCHEDULED)
+			.sampledAt(sampledAt)
+			.build();
+	}
+	
+	/**
+	 * 측정계획의 메타정보를 수정한다. 측정일은 필수값이며, null이 전달되면 기존 측정일을 유지한다.
+	 */
+	public Schedule updateMetadata(LocalDate sampledAt, String schedulePurpose, String referenceNumber) {
+		return this.toBuilder()
+			.sampledAt(sampledAt != null ? sampledAt : this.sampledAt)
+			.schedulePurpose(schedulePurpose)
 			.referenceNumber(referenceNumber)
 			.build();
 	}
+	
+	/**
+	 * 보고서 진행 상태의 일자를 갱신한다. <b>부분 갱신</b>이므로 전달되지 않은(null) 일자는 기존 값을 유지한다 —
+	 * 현장 채취 탭과 실험·분석 탭이 이 경로를 공유해 서로 자기 것이 아닌 칸에 null을 실어 보내기 때문이다.
+	 * <p>
+	 * 순서 검증은 <b>병합한 뒤의 값</b>으로 한다. 요청 인자만 보고 판정하면 미전달 칸 때문에 이미 저장된
+	 * 값과의 순서를 놓친다. 아직 채우지 않은 일자는 검사 대상이 아니며(진행하며 하나씩 채우는 값이다),
+	 * 같은 날 접수·분석·발행이 가능하므로 경계는 ≤ 다.
+	 */
+	public Schedule applyReportProgress(LocalDate receivedAt, LocalDate analyzedAt, LocalDate issuedAt) {
+		LocalDate mergedReceivedAt = keep(receivedAt, this.receivedAt);
+		LocalDate mergedAnalyzedAt = keep(analyzedAt, this.analyzedAt);
+		LocalDate mergedIssuedAt = keep(issuedAt, this.issuedAt);
 
-	public Schedule update(
-		MeasurementField measurementField,
-		LocalDate sampledAt,
-		String schedulePurpose,
-		String referenceNumber
-	) {
+		requireChronological(sampledAt, mergedReceivedAt);
+		requireChronological(mergedReceivedAt, mergedAnalyzedAt);
+		requireChronological(mergedAnalyzedAt, mergedIssuedAt);
+
 		return this.toBuilder()
-			.measurementField(measurementField != null ? measurementField : this.measurementField)
-			.sampledAt(sampledAt != null ? sampledAt : this.sampledAt)
-			.schedulePurpose(keep(schedulePurpose, this.schedulePurpose))
-			.referenceNumber(keep(referenceNumber, this.referenceNumber))
+			.receivedAt(mergedReceivedAt)
+			.analyzedAt(mergedAnalyzedAt)
+			.issuedAt(mergedIssuedAt)
 			.build();
+	}
+
+	private static LocalDate keep(LocalDate value, LocalDate original) {
+		return value == null ? original : value;
+	}
+
+	/** 한쪽이라도 비어 있으면 아직 순서를 따질 수 없다 — 진행하며 하나씩 채우는 값이다. */
+	private static void requireChronological(LocalDate before, LocalDate after) {
+		if (before != null && after != null && after.isBefore(before)) {
+			throw new CustomException(ErrorCode.SCHEDULE_INVALID_CHRONOLOGY);
+		}
 	}
 
 	private Schedule changeStatus(ScheduleStatus next) {
@@ -79,22 +110,16 @@ public class Schedule {
 		return this.toBuilder().status(next).build();
 	}
 	
-	public Schedule startMeasuringIfScheduled() {
+	public Schedule startMeasuring() {
 		return this.status == ScheduleStatus.SCHEDULED ? this.changeStatus(ScheduleStatus.MEASURING) : this;
 	}
 	
-	public Schedule startAnalyzingIfMeasuring() {
+	public Schedule startAnalyzing() {
 		return this.status == ScheduleStatus.MEASURING ? this.changeStatus(ScheduleStatus.ANALYZING) : this;
 	}
 
-	public Schedule complete() {
-		return this.changeStatus(ScheduleStatus.REPORT_COMPLETED);
-	}
-
-	public Schedule cancel() {
-		return this.changeStatus(ScheduleStatus.CANCELED);
-	}
-
+	public Schedule complete() { return this.changeStatus(ScheduleStatus.REPORT_COMPLETED); }
+	public Schedule cancel() { return this.changeStatus(ScheduleStatus.CANCELED); }
 	public Schedule reopen() {
 		if (!this.status.canReopen()) {
 			throw new CustomException(ErrorCode.SCHEDULE_NOT_REOPENABLE);
@@ -102,25 +127,21 @@ public class Schedule {
 		return this.toBuilder().status(ScheduleStatus.SCHEDULED).build();
 	}
 
-	/** 편집 불가(완료·취소) 상태면 예외를 던진다. */
 	public void requireEditable() {
 		if (!this.status.canEdit()) {
 			throw new CustomException(ErrorCode.SCHEDULE_NOT_EDITABLE);
 		}
 	}
 
-	/**
-	 * 삭제할 수 없는 상태(진행 중)면 예외를 던진다.
-	 * 삭제는 되돌릴 수 없으므로 실측 데이터가 없는 '측정 예정'과 '취소'에서만 허용한다
-	 * ({@link ScheduleStatus#canDelete()}).
-	 */
+	public void requireSheetEditable() {
+		if (!this.status.canEditSheets()) {
+			throw new CustomException(ErrorCode.SCHEDULE_SHEET_NOT_EDITABLE);
+		}
+	}
+
 	public void requireDeletable() {
 		if (!this.status.canDelete()) {
 			throw new CustomException(ErrorCode.SCHEDULE_NOT_DELETABLE);
 		}
-	}
-
-	private static String keep(String value, String original) {
-		return value == null || value.isBlank() ? original : value;
 	}
 }

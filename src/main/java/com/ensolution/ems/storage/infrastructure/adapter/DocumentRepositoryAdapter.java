@@ -3,7 +3,7 @@ package com.ensolution.ems.storage.infrastructure.adapter;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.platform.infrastructure.repository.TenantJpaRepository;
-import com.ensolution.ems.storage.application.port.in.DocumentSummary;
+import com.ensolution.ems.storage.application.command.DocumentSummary;
 import com.ensolution.ems.storage.application.port.out.DocumentRepository;
 import com.ensolution.ems.storage.domain.Document;
 import com.ensolution.ems.global.common.enums.DocumentCategory;

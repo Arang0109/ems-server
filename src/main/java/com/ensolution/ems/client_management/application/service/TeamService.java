@@ -8,6 +8,7 @@ import com.ensolution.ems.client_management.application.command.update.UpdateTea
 import com.ensolution.ems.client_management.application.port.in.TeamQueryUseCase;
 import com.ensolution.ems.client_management.application.port.in.TeamSummary;
 import com.ensolution.ems.client_management.application.port.in.UserTeamSummary;
+import com.ensolution.ems.client_management.application.service.assembler.TeamAssembler;
 import com.ensolution.ems.client_management.application.port.out.TeamRepository;
 import com.ensolution.ems.client_management.application.validator.TeamValidator;
 import com.ensolution.ems.client_management.domain.Team;
@@ -94,9 +95,7 @@ public class TeamService implements TeamQueryUseCase {
 		return new TeamSummary(
 			detail.id(),
 			detail.name(),
-			detail.mentorUserId(),
 			detail.mentorName(),
-			detail.menteeUserId(),
 			detail.menteeName(),
 			detail.particleSamplerId(),
 			detail.gasSamplerId(),

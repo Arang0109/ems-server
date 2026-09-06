@@ -40,6 +40,12 @@ public class TenantEntity {
 	@Column
 	private String zipcode;
 	
+	@Column
+	private String analyst;
+	
+	@Column(name = "technical_manager")
+	private String technicalManager;
+	
 	@Enumerated(EnumType.STRING)
 	private TenantStatus status;
 	

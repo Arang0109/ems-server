@@ -38,7 +38,6 @@ public class DocumentVersion {
 	private String storageKey;
 	private Long size;
 	private String contentType;
-	private StorageProvider provider;
 
 	private String changeNote;
 	private Long uploadedBy;
@@ -52,7 +51,6 @@ public class DocumentVersion {
 		String originalFilename,
 		String contentType,
 		Long size,
-		StorageProvider provider,
 		String changeNote,
 		Long uploadedBy
 	) {
@@ -65,7 +63,6 @@ public class DocumentVersion {
 			.storageKey(generateStorageKey(tenantId, documentId, versionNo, originalFilename))
 			.contentType(contentType)
 			.size(size)
-			.provider(provider)
 			.changeNote(changeNote)
 			.uploadedBy(uploadedBy)
 			.build();

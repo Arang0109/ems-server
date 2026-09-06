@@ -20,28 +20,28 @@ public class PointExportView {
 	private final int index;              // 1부터 시작하는 측정점 번호
 
 	// ===== 유량 입력 =====
-	private final BigDecimal temperature;     // 배출가스 온도 Ts (℃)
-	private final BigDecimal dynamicPressure; // 동압 Pv (mmH2O)
-	private final BigDecimal staticPressure;  // 정압 Ps (mmH2O)
+	private final BigDecimal ts;     // 배출가스 온도 Ts (℃)
+	private final BigDecimal pv; // 동압 Pv (mmH2O)
+	private final BigDecimal ps;  // 정압 Ps (mmH2O)
 
 	// ===== 유량 계산 =====
-	private final BigDecimal velocity;        // 유속 Vs (m/s)
+	private final BigDecimal vs;        // 유속 Vs (m/s)
 	private final BigDecimal density;         // 측정점 배출가스 밀도 (kg/m³)
 
 	// ===== 입자상 입력 (nullable) =====
-	private final BigDecimal nozzleSize;           // 노즐 직경 (cm)
+	private final BigDecimal nozzleDiameter;           // 노즐 직경 (cm)
 	private final BigDecimal samplingTime;         // 채취 시간 (min)
 	private final BigDecimal vacuumPressure;       // 진공게이지 압력
-	private final BigDecimal impingerTemperature;  // 최종 임핀저 온도 (℃)
-	private final BigDecimal inTemperature;        // 가스미터 입구온도 (℃)
-	private final BigDecimal outTemperature;       // 가스미터 출구온도 (℃)
-	private final BigDecimal volumeBefore;         // 건식가스미터 채취 전 적산값 (m³)
-	private final BigDecimal volumeAfter;          // 건식가스미터 채취 후 적산값 (m³)
+	private final BigDecimal finalImpingerTemperature;  // 최종 임핀저 온도 (℃)
+	private final BigDecimal tm1;        // 가스미터 입구온도 (℃)
+	private final BigDecimal tm2;       // 가스미터 출구온도 (℃)
+	private final BigDecimal vm1;         // 건식가스미터 채취 전 적산값 (m³)
+	private final BigDecimal vm2;          // 건식가스미터 채취 후 적산값 (m³)
 
 	// ===== 입자상 계산 (nullable) =====
-	private final BigDecimal avgTemperature;       // 가스미터 평균온도 (inTm+outTm)/2 (℃)
-	private final BigDecimal dryGasVolume;         // 건식가스미터 채취량 Vm (m³)
-	private final BigDecimal collectedWater;       // 채취된 물의 총량 Vlc (mL)
+	private final BigDecimal avgTs;       // 가스미터 평균온도 (inTm+outTm)/2 (℃)
+	private final BigDecimal vm;         // 건식가스미터 채취량 Vm (m³)
+	private final BigDecimal vlc;       // 채취된 물의 총량 Vlc (mL)
 	private final BigDecimal kFactor;              // K계수 (무차원)
 	private final BigDecimal orificePressure;      // 오리피스 차압 (mmH2O)
 	private final BigDecimal isokineticRatio;      // 등속흡입계수 (%)

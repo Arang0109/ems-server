@@ -2,7 +2,14 @@ package com.ensolution.ems.storage.application.service;
 
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
-import com.ensolution.ems.storage.application.port.in.*;
+import com.ensolution.ems.storage.application.command.DocumentFile;
+import com.ensolution.ems.storage.application.command.DocumentSummary;
+import com.ensolution.ems.storage.application.command.DocumentVersionSummary;
+import com.ensolution.ems.storage.application.port.in.AddDocumentVersionCommand;
+import com.ensolution.ems.storage.application.port.in.CreateDocumentCommand;
+import com.ensolution.ems.storage.application.port.in.DocumentCommandUseCase;
+import com.ensolution.ems.storage.application.port.in.UpdateDocumentCommand;
+import com.ensolution.ems.storage.application.port.in.UploadedFile;
 import com.ensolution.ems.storage.application.port.out.DocumentRepository;
 import com.ensolution.ems.storage.application.port.out.DocumentVersionRepository;
 import com.ensolution.ems.storage.application.port.out.FileStorageClient;
@@ -25,7 +32,7 @@ import java.util.List;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class DocumentService implements DocumentCommandUseCase, DocumentQueryUseCase {
+public class DocumentService implements DocumentCommandUseCase {
 
 	private final DocumentRepository documentRepository;
 	private final DocumentVersionRepository documentVersionRepository;
@@ -93,7 +100,6 @@ public class DocumentService implements DocumentCommandUseCase, DocumentQueryUse
 		storageKeys.forEach(fileStorageClient::delete);
 	}
 
-	@Override
 	@Transactional(readOnly = true)
 	public List<DocumentSummary> getDocuments(Long tenantId, DocumentCategory category) {
 		return category == null
@@ -101,13 +107,11 @@ public class DocumentService implements DocumentCommandUseCase, DocumentQueryUse
 			: documentRepository.findAllByTenantIdAndCategory(tenantId, category);
 	}
 
-	@Override
 	@Transactional(readOnly = true)
 	public DocumentSummary getDocument(Long documentId, Long tenantId) {
 		return documentRepository.findSummaryById(documentId, tenantId);
 	}
 
-	@Override
 	@Transactional(readOnly = true)
 	public List<DocumentVersionSummary> getVersions(Long documentId, Long tenantId) {
 		documentRepository.findById(documentId, tenantId);
@@ -115,7 +119,6 @@ public class DocumentService implements DocumentCommandUseCase, DocumentQueryUse
 		return documentVersionRepository.findAllByDocumentId(documentId);
 	}
 
-	@Override
 	@Transactional(readOnly = true)
 	public DocumentFile download(Long documentId, Long tenantId, Integer versionNo) {
 		Document document = documentRepository.findById(documentId, tenantId);
@@ -144,7 +147,6 @@ public class DocumentService implements DocumentCommandUseCase, DocumentQueryUse
 				file.originalFilename(),
 				file.contentType(),
 				file.size(),
-				fileStorageClient.provider(),
 				changeNote,
 				uploadedBy
 			)

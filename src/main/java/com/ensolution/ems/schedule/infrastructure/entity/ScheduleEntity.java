@@ -55,19 +55,28 @@ public class ScheduleEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "measurement_field", nullable = false)
 	private MeasurementField measurementField;
-
-	@Column(name = "sampled_at", nullable = false)
-	private LocalDate sampledAt;
-
+	
+	@Column(name = "reference_number")
+	private String referenceNumber;
+	
 	@Column(name = "schedule_purpose")
 	private String schedulePurpose;
-
+	
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private ScheduleStatus status;
 
-	@Column(name = "reference_number")
-	private String referenceNumber;
+	@Column(name = "sampled_at", nullable = false)
+	private LocalDate sampledAt;
+	
+	@Column(name = "received_at")
+	private LocalDate receivedAt;
+	
+	@Column(name = "analyzed_at")
+	private LocalDate analyzedAt;
+	
+	@Column(name = "issued_at")
+	private LocalDate issuedAt;
 
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)

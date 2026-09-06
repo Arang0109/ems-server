@@ -15,7 +15,6 @@ public class Calculator {
 		return value == null ? null : value.setScale(scale, RoundingMode.HALF_UP);
 	}
 
-	/** null은 0으로 취급해 평균. 비어 있으면 0. */
 	public BigDecimal averageTreatNullAsZero(List<BigDecimal> values, int scale) {
 		if (values == null || values.isEmpty()) return BigDecimal.ZERO;
 

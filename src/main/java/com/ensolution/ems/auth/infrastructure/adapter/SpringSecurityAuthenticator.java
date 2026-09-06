@@ -1,6 +1,6 @@
 package com.ensolution.ems.auth.infrastructure.adapter;
 
-import com.ensolution.ems.auth.domain.port.Authenticator;
+import com.ensolution.ems.auth.application.port.out.Authenticator;
 import com.ensolution.ems.auth.domain.AuthenticatedUser;
 import com.ensolution.ems.global.security.user.CustomUserDetails;
 import com.ensolution.ems.global.security.user.CustomUserDetailsService;

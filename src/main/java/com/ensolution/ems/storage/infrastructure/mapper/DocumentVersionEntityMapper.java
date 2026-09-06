@@ -1,6 +1,6 @@
 package com.ensolution.ems.storage.infrastructure.mapper;
 
-import com.ensolution.ems.storage.application.port.in.DocumentVersionSummary;
+import com.ensolution.ems.storage.application.command.DocumentVersionSummary;
 import com.ensolution.ems.storage.domain.DocumentVersion;
 import com.ensolution.ems.storage.infrastructure.entity.DocumentVersionEntity;
 import org.mapstruct.Builder;

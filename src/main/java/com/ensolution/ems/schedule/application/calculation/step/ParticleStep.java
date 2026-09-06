@@ -2,10 +2,10 @@ package com.ensolution.ems.schedule.application.calculation.step;
 
 import com.ensolution.ems.schedule.application.calculation.Calculator;
 import com.ensolution.ems.schedule.application.calculation.SheetContext;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.sheet.ParticleData;
-import com.ensolution.ems.schedule.domain.sheet.SamplingPoint;
-import com.ensolution.ems.schedule.domain.sheet.SamplingPoint.ParticleSampling;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
+import com.ensolution.ems.schedule.domain.sampling.ParticulateSampling;
+import com.ensolution.ems.schedule.domain.sampling.SamplingPoint;
+import com.ensolution.ems.schedule.domain.sampling.SamplingPoint.IsokineticSamplingData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * 입자상 측정점의 등속흡인 관련 값을 계산한다. 측정점에 {@code particle}이 있는 경우에만 수행하며,
- * 측정점별로 kFactor → 오리피스차압(orificeDp) → 채취 건조가스량(Vm)·채취수분량(Vlc) → 등속흡입계수(isokineticRatio)를
+ * 측정점별로 kFactor → 오리피스차압 → 채취 건조가스량·채취수분량 → 등속흡입계수를
  * 산출한다. 노즐사이즈 추천은 측정 전 계획 보조 기능이므로 프론트에만 두고, 여기서는 저장된 입력의 결정적 결과만 계산한다.
  */
 @Component
@@ -46,10 +46,10 @@ public class ParticleStep implements SheetStep {
 
 	@Override
 	public void execute(SheetContext context) {
-		MeasurementSheet sheet = context.getSheet();
+		SamplingSheet sheet = context.getSheet();
 		List<SamplingPoint> points = sheet.getSamplingPoints();
 		if (points == null || points.isEmpty()) return;
-		if (points.stream().noneMatch(p -> p.getParticle() != null)) return; // 입자상 없는 시트
+		if (points.stream().noneMatch(p -> p.getIsokineticSampling() != null)) return; // 입자상 없는 시트
 
 		BigDecimal Cp = context.getCp();
 		BigDecimal Xw = context.getXw();
@@ -69,18 +69,18 @@ public class ParticleStep implements SheetStep {
 		List<BigDecimal> tmRaws = new ArrayList<>();
 
 		for (SamplingPoint p : points) {
-			ParticleSampling ps = p.getParticle();
+			IsokineticSamplingData ps = p.getIsokineticSampling();
 			if (ps == null) {
 				computed.add(p);
 				continue;
 			}
 
-			BigDecimal Ts = p.getTs();
-			BigDecimal Pv = p.getPv();
-			BigDecimal Ps = p.getPs();
-			BigDecimal nozzleSize = ps.getNozzleSize();
+			BigDecimal Ts = p.getGasTemperature();
+			BigDecimal Pv = p.getDynamicPressure();
+			BigDecimal Ps = p.getStaticPressure();
+			BigDecimal nozzleSize = ps.getNozzleDiameter();
 
-			BigDecimal tmRaw = avgTm(ps);                             // (inTm + outTm) / 2
+			BigDecimal tmRaw = avgTm(ps);                             // (inlet + outlet) / 2
 			BigDecimal Tm = tmRaw == null ? null : tmRaw.add(K273);   // 절대온도 K
 			BigDecimal Tg = Ts == null ? null : Ts.add(K273);
 			BigDecimal PgPoint = pgPoint(Pa, Ps);                     // 측정점별 절대압력 Pa + Ps/13.6
@@ -89,23 +89,23 @@ public class ParticleStep implements SheetStep {
 				kFactor(Cp, deltaH, nozzleSize, Xw, Md, Mw, Tm, Tg, Pa, PgPoint), 2);
 			BigDecimal orificeDp = kFactor == null || Pv == null ? null
 				: calculator.round(kFactor.multiply(Pv), 2);
-			BigDecimal Vm = calculator.round(vm(ps), 5);             // afterVm - beforeVm
+			BigDecimal Vm = calculator.round(vm(ps), 5);             // after - before
 			BigDecimal Vlc = calculator.round(vlc(Xw, Vm), 2);
 			BigDecimal Vs = calculator.round(gasVelocity(Cp, Pv, gasDensity), 3);
 			BigDecimal An = calculator.round(nozzleArea(nozzleSize), 3);
 			BigDecimal isokineticRatio = calculator.round(
 				isokineticRatio(Tg, Vlc, Vm, Pa, orificeDp, Tm, Pg, ps.getSamplingTime(), Vs, An), 1);
 
-			ParticleSampling updatedPs = ps.toBuilder()
-				.equipmentTemperature(withAvgTm(ps, tmRaw))
-				.Vm(Vm)
-				.Vlc(Vlc)
+			IsokineticSamplingData updatedPs = ps.toBuilder()
+				.gasTemperature(withAvgTm(ps, tmRaw))
+				.sampledDryGasVolume(Vm)
+				.collectedWaterVolume(Vlc)
 				.kFactor(kFactor)
-				.orificeDp(orificeDp)
+				.orificeDifferentialPressure(orificeDp)
 				.isokineticRatio(isokineticRatio)
 				.build();
 
-			computed.add(p.toBuilder().Vs(Vs).particle(updatedPs).build());
+			computed.add(p.toBuilder().gasVelocity(Vs).isokineticSampling(updatedPs).build());
 
 			addIfNotNull(kFactors, kFactor);
 			addIfNotNull(orificeDps, orificeDp);
@@ -115,22 +115,25 @@ public class ParticleStep implements SheetStep {
 			addIfNotNull(tmRaws, tmRaw);
 		}
 
-		ParticleData particle = (sheet.getParticle() == null ? ParticleData.builder() : sheet.getParticle().toBuilder())
-			.avgKFactor(average(kFactors, 2))
-			.avgOrificeDp(average(orificeDps, 2))
-			.avgIsokineticRatio(average(isokineticRatios, 1))
-			.totalVm(sum(vms, 5))
+		// 가스미터 절대온도 = 평균((inlet+outlet)/2) + 273. 나머지 집계값과 함께 입자상 집계에 담는다.
+		BigDecimal avgTmRaw = average(tmRaws, 1);
+
+		ParticulateSampling particle =
+			(sheet.getParticulateSampling() == null
+				? ParticulateSampling.builder()
+				: sheet.getParticulateSampling().toBuilder())
+			.averageKFactor(average(kFactors, 2))
+			.averageOrificeDifferentialPressure(average(orificeDps, 2))
+			.averageIsokineticRatio(average(isokineticRatios, 1))
+			.averageGasMeterTemperature(avgTmRaw == null ? null : avgTmRaw.add(K273))
+			.totalDryGasVolume(sum(vms, 5))
 			.totalSamplingTime(sum(samplingTimes, 1))
 			.build();
 
 		context.setSheet(sheet.toBuilder()
 			.samplingPoints(computed)
-			.particle(particle)
+			.particulateSampling(particle)
 			.build());
-
-		// 가스미터 절대온도 avgTm = 평균((inTm+outTm)/2) + 273
-		BigDecimal avgTmRaw = average(tmRaws, 1);
-		if (avgTmRaw != null) context.setAvgTm(avgTmRaw.add(K273));
 	}
 
 	// kFactor = K × Cp² × △H × (nozzle×10)⁴ × (1 − Xw/100)² × (Md·Tm·Pg) / (Mw·Tg·Pa)
@@ -192,24 +195,24 @@ public class ParticleStep implements SheetStep {
 		return Pa.add(Ps.divide(MMHG, SCALE, RoundingMode.HALF_UP));
 	}
 
-	// 채취 건조가스량 Vm = afterVm − beforeVm
-	private BigDecimal vm(ParticleSampling ps) {
-		ParticleSampling.EquipmentVolume ev = ps.getEquipmentVolume();
-		if (ev == null || anyNull(ev.getAfterVm(), ev.getBeforeVm())) return null;
-		return ev.getAfterVm().subtract(ev.getBeforeVm());
+	// 채취 건조가스량 Vm = after − before
+	private BigDecimal vm(IsokineticSamplingData ps) {
+		IsokineticSamplingData.GasMeterVolume ev = ps.getGasMeterVolume();
+		if (ev == null || anyNull(ev.getAfter(), ev.getBefore())) return null;
+		return ev.getAfter().subtract(ev.getBefore());
 	}
 
-	// (inTm + outTm) / 2
-	private BigDecimal avgTm(ParticleSampling ps) {
-		ParticleSampling.EquipmentTemperature et = ps.getEquipmentTemperature();
-		if (et == null || anyNull(et.getInTm(), et.getOutTm())) return null;
-		return et.getInTm().add(et.getOutTm()).divide(BigDecimal.valueOf(2), SCALE, RoundingMode.HALF_UP);
+	// (inlet + outlet) / 2
+	private BigDecimal avgTm(IsokineticSamplingData ps) {
+		IsokineticSamplingData.GasMeterTemperature et = ps.getGasTemperature();
+		if (et == null || anyNull(et.getInlet(), et.getOutlet())) return null;
+		return et.getInlet().add(et.getOutlet()).divide(BigDecimal.valueOf(2), SCALE, RoundingMode.HALF_UP);
 	}
 
-	private ParticleSampling.EquipmentTemperature withAvgTm(ParticleSampling ps, BigDecimal avgTm) {
-		ParticleSampling.EquipmentTemperature et = ps.getEquipmentTemperature();
+	private IsokineticSamplingData.GasMeterTemperature withAvgTm(IsokineticSamplingData ps, BigDecimal avgTm) {
+		IsokineticSamplingData.GasMeterTemperature et = ps.getGasTemperature();
 		if (et == null) return null;
-		return et.toBuilder().avgTm(calculator.round(avgTm, 1)).build();
+		return et.toBuilder().average(calculator.round(avgTm, 1)).build();
 	}
 
 	private boolean anyNull(BigDecimal... values) {

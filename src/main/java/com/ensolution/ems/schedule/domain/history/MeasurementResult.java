@@ -1,6 +1,6 @@
 package com.ensolution.ems.schedule.domain.history;
 
-import com.ensolution.ems.schedule.domain.analysis.AnalysisRecord;
+import com.ensolution.ems.schedule.domain.snapshot.AnalysisResult;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingItemSnapshot;
 
 import java.math.BigDecimal;
@@ -34,9 +34,8 @@ public record MeasurementResult(
 	 * 측정계획이 완료될 때 확정하는 결과값. 실측 농도와 단위는 실험분석정보에서, 판정 근거인 허용기준치와
 	 * 산소보정 적용 여부는 측정항목 스냅샷에서 가져온다.
 	 *
-	 * <p>근거를 분석 기록이 아니라 스냅샷에서 취하는 이유는 이행 기록의 다른 모든 값(주기·물질명·코드)이
-	 * 스냅샷 출처이기 때문이다. 분석 결과가 없는 항목은 어차피 스냅샷을 쓸 수밖에 없으므로,
-	 * 한 컬럼에 두 출처가 섞여 나중에 구분할 수 없게 되는 것을 막는다.
+	 * <p>두 값의 출처가 갈라질 여지는 없다 — 분석 결과가 측정항목 스냅샷 안에 들어 있어
+	 * 판정 근거와 결과값을 한 원소에서 함께 읽기 때문이다.
 	 *
 	 * <p>분석 결과가 아직 없으면 판정 근거만 남기고 결과값은 비운다 — 현장 측정은 이행했으므로
 	 * 기록 자체는 남아야 주기 이행 현황판의 집계가 맞는다.
@@ -45,13 +44,14 @@ public record MeasurementResult(
 	 * 어느 시트를 볼지는 물질별 매핑 규칙이 정해져야 하는데, 그 규칙이 아직 확정되지 않았다.
 	 * 그래서 산소보정 적용 항목은 비교값이 없어 초과 판정도 함께 보류된다.
 	 */
-	public static MeasurementResult ofCompletion(SamplingItemSnapshot item, AnalysisRecord analysis) {
-		if (analysis == null) {
+	public static MeasurementResult ofCompletion(SamplingItemSnapshot item) {
+		AnalysisResult analysis = item.analysis();
+		if (analysis == null || analysis.isEmpty()) {
 			return new MeasurementResult(null, null, null, null, item.allowance(), null);
 		}
 		return of(
-			analysis.getAnalysisValue(),
-			analysis.getUnit(),
+			analysis.analysisValue(),
+			analysis.unit(),
 			null,
 			null,
 			item.allowance(),

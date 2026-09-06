@@ -9,6 +9,7 @@ import com.ensolution.ems.dashboard.application.command.InspectionDue;
 import com.ensolution.ems.dashboard.application.command.MeasurementCountItem;
 import com.ensolution.ems.dashboard.application.mapper.ContractPortMapper;
 import com.ensolution.ems.dashboard.application.mapper.EquipmentPortMapper;
+import com.ensolution.ems.dashboard.application.mapper.SchedulePortMapper;
 import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
 import com.ensolution.ems.schedule.application.port.in.ScheduleStatisticsUseCase;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class DashboardService {
 
 	private final ContractPortMapper contractPortMapper;
 	private final EquipmentPortMapper equipmentPortMapper;
+	private final SchedulePortMapper schedulePortMapper;
 
 	/** 상단 KPI 요약(사업장·계약·측정시설 수, 측정 건수, 만료 임박 계약, 검사 임박 장비)을 조립한다. */
 	@Transactional(readOnly = true)
@@ -65,9 +67,9 @@ public class DashboardService {
 	/** 올해 1~12월 완료 측정건수 추이를 조립한다(데이터 없는 달은 0). */
 	public List<MeasurementCountItem> getMeasurementStats(Long tenantId) {
 		int year = LocalDate.now().getYear();
-		return scheduleStatisticsUseCase.monthlyCompletedCounts(tenantId, year).stream()
-			.map(monthly -> new MeasurementCountItem(monthly.month() + "월", monthly.count()))
-			.toList();
+		return schedulePortMapper.toMeasurementCountItems(
+			scheduleStatisticsUseCase.monthlyCompletedCounts(tenantId, year)
+		);
 	}
 
 	private List<ExpiringContract> expiringContracts(Long tenantId, LocalDate today) {

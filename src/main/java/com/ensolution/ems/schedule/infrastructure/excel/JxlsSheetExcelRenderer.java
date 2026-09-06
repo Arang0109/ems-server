@@ -62,7 +62,7 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 				SheetExportView sheet = sheets.get(i);
 				byte[] rendered = fill(template, samplingRecordModel(data, sheet));
 
-				zip.putNextEntry(new ZipEntry(entryName(i + 1, sheet)));
+				zip.putNextEntry(new ZipEntry(entryName(data.getReferenceNumber(), sheet)));
 				zip.write(rendered);
 				zip.closeEntry();
 			}
@@ -94,7 +94,7 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 		model.put("flow", sheet.getFlow());
 		model.put("particle", sheet.getParticle());
 		model.put("points", sheet.getPoints());
-		model.put("samples", sheet.getSamples());
+		model.put("gaseousSamplings", sheet.getGaseousSamplings());
 		model.put("items", data.getItems());
 		return model;
 	}
@@ -119,8 +119,9 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 	}
 
 	/** ZIP 엔트리명: {순번}_{카테고리}.xlsx (카테고리 null이면 sheet로 대체). */
-	private String entryName(int index, SheetExportView sheet) {
+	private String entryName(String referenceNumber, SheetExportView sheet) {
+		String refNum = referenceNumber == null ? "..." : referenceNumber;
 		String category = sheet.getCategory() == null || sheet.getCategory().isBlank() ? "sheet" : sheet.getCategory();
-		return index + "_" + category + ".xlsx";
+		return "fKET-A-QP-17-02-01(2) 대기측정기록부(" + refNum + ")" + category + ".xlsx";
 	}
 }

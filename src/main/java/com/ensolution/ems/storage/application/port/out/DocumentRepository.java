@@ -1,6 +1,6 @@
 package com.ensolution.ems.storage.application.port.out;
 
-import com.ensolution.ems.storage.application.port.in.DocumentSummary;
+import com.ensolution.ems.storage.application.command.DocumentSummary;
 import com.ensolution.ems.storage.domain.Document;
 import com.ensolution.ems.global.common.enums.DocumentCategory;
 

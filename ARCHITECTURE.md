@@ -50,7 +50,7 @@ src/main/java/com/ensolution/ems/
 - Outbound Port를 통해 도메인 객체를 조회하고, 도메인 메서드를 호출하며, 결과를 저장합니다.
 - `@Transactional`로 트랜잭션 경계를 관리합니다.
 - Spring Data Repository를 직접 참조하지 않습니다.
-- 서비스가 위임하는 협력자(Validator·Assembler·Recorder 등)는 `@Transactional`을 갖지 않고
+- 서비스가 위임하는 협력자(Validator·Assembler·Recorder·Transitioner 등)는 `@Transactional`을 갖지 않고
   호출 서비스의 트랜잭션에 참여합니다.
 
 ### Domain 계층
@@ -83,8 +83,25 @@ WorkplaceQueryUseCase  — 사업장 존재 확인·요약 조회 (외부 모듈
 
 > Inbound Port는 호출자가 실제로 필요한 메서드만 노출합니다 (ISP).
 > Repository 전체를 노출하지 않고, 외부 모듈이 필요한 기능만 정의합니다.
->
-> 이 모듈이 외부에 공개하는 VO(`~Summary`)도 같은 위치에 둡니다. 공개 계약의 일부이기 때문입니다.
+
+#### 무엇을 `port/in`에 두는가 — 판단 기준
+
+**포트는 인터페이스가 아니라 계약입니다.** 메서드 시그니처에 등장하는 타입은 계약의 일부이므로,
+인터페이스와 그 payload(Command·`~Summary`)를 **같은 패키지에 둡니다.** 나누면 소비 모듈이 두 곳을
+import해야 하고, 어느 쪽이 공개 범위인지 코드에서 사라집니다.
+
+| 위치 | 두는 것 | 판단 질문 |
+|---|---|---|
+| `application/port/in/` | 포트 시그니처에 등장하고 **타 모듈 소비자가 있는** 타입만 | "다른 모듈이 이걸 import하는가?" |
+| `application/command/` | 그 외 모든 Command·조회 VO. **모듈 프라이빗** | 위 질문의 답이 "아니오"면 여기 |
+
+이 경계는 관례가 아니라 실제로 지켜지고 있습니다 — **타 모듈이 `application/command/`를 참조하는 것은 0건**입니다.
+따라서 `command/`의 타입은 소비자를 확인하지 않고 고칠 수 있고, `port/in`의 타입은 고치기 전에 소비 모듈을
+확인해야 합니다. 이 구분이 사라지면 두 성질이 한 패키지에 섞입니다.
+
+> **타 모듈 소비자가 없는 UseCase 인터페이스는 만들지 않습니다.** presentation은 `{도메인}Service`를 직접
+> 주입합니다(`ClientService`·`DocumentService` 등 다수가 이미 그렇습니다). 소비자 없는 인터페이스를 `port/in`에
+> 두면 그 반환 VO까지 공개 계약 자리로 끌려 올라옵니다.
 
 ### Outbound Port (Secondary Port) — 모듈이 외부에 요구하는 계약
 
@@ -97,11 +114,22 @@ WorkplaceQueryUseCase  — 사업장 존재 확인·요약 조회 (외부 모듈
 | 위치 | 용도 | 예시 |
 |------|------|------|
 | `application/port/out/` | Repository 등 인프라에 요구하는 Outbound 계약 (표준) | `ClientRepository`, `WorkplaceRepository`, `StackRepository` (client_management) |
-| `domain/port/` | 기술 어댑터형 Outbound 계약 (레거시 위치, 정렬 예정) | auth 6개(`UserRepository`·`RoleRepository`·`PasswordEncryptor`·`TokenIssuer`·`TokenParser`·`Authenticator`), contract 1개(`ContractRepository`) |
 
-> **표준화 진행 상황**: `client_management`·`schedule`·`equipment`·`storage`·`platform`은 이관 완료.
-> `auth`(6개)·`contract`(1개)만 `domain/port/`에 남아 있으며 향후 `application/port/out/`으로 정렬 예정입니다.
+> **표준화 완료**: 2026-09-06에 `auth`의 6개(`UserRepository`·`RoleRepository`·`PasswordEncryptor`·
+> `TokenIssuer`·`TokenParser`·`Authenticator`)를 마지막으로 전 모듈이 `application/port/out/`으로 이관했습니다.
+> `domain/port/` 패키지는 더 이상 존재하지 않으며 다시 만들지 않습니다.
 > **`application/port/` 직하에는 파일을 두지 않습니다** — 반드시 `in/` 또는 `out/` 아래입니다.
+
+**`port/out`은 record를 소유하지 않습니다.** 21개 파일 전부 interface이며, 목록 조회의 반환 VO는
+`application/command/`에서 가져옵니다(`StackRepository` → `command.list_item.StackListItem`).
+`port/out`이 `port/in`의 타입을 반환하면 **인프라에 요구하는 계약과 외부에 공개하는 계약이 묶입니다** —
+공개 계약을 넓히려다 저장소 시그니처가 따라 바뀝니다.
+
+| 예외 | 근거 |
+|---|---|
+| `client_management/application/port/out/StackPollutantRepository.findMeasurementItems` → `port.in.StackMeasurementItemSummary` | 이 조회의 결과 표현이 모듈 안팎에서 동일합니다. 필드가 같은 내부 VO를 따로 두면 변환만 늘고 한쪽만 고치는 사고가 납니다. 근거는 포트 javadoc에 있습니다 |
+
+**현재 예외는 이 1건뿐입니다.** 늘릴 때는 포트 javadoc에 근거를 남기고 이 표에 추가합니다.
 
 ---
 
@@ -116,8 +144,9 @@ WorkplaceQueryUseCase  — 사업장 존재 확인·요약 조회 (외부 모듈
 │       ├── response/        # 응답 DTO
 │       └── mapper/          # Request/Response ↔ Command (MapStruct)
 ├── application/
-│   ├── service/             # {Aggregate}Service (유스케이스)
-│   │   └── assembler/       # {대상}Assembler — 여러 포트를 모아 조회 VO 조립
+│   ├── service/             # {Aggregate}Service (유스케이스) — 직하에는 @Service만
+│   │   ├── assembler/       # {대상}Assembler — 여러 포트를 모아 조회 VO 조립
+│   │   └── support/         # 그 외 협력자 — Writer·Finder·Recorder·Recalculator·Transitioner
 │   ├── validator/           # {Aggregate}Validator — 포트 조회가 필요한 비즈니스 규칙
 │   ├── command/             # Command 객체, 결과 VO (Java Record)
 │   │   ├── create/ update/  # 파일이 많은 모듈은 종류별 하위 그룹핑
@@ -126,7 +155,7 @@ WorkplaceQueryUseCase  — 사업장 존재 확인·요약 조회 (외부 모듈
 │   ├── event/               # 도메인·알림 이벤트와 그 리스너
 │   ├── mapper/              # 인터모듈 매퍼 · 포트 계약 생산 매퍼
 │   └── port/
-│       ├── in/              # Inbound Port (UseCase) + 공개 VO(~Summary)
+│       ├── in/              # Inbound Port (UseCase) + 공개 VO — 타 모듈 소비자가 있는 것만
 │       └── out/             # Outbound Port (Repository 등) — 인프라에 요구하는 계약
 ├── domain/
 │   ├── {Entity}.java        # 도메인 모델 (순수 자바, 프레임워크 비의존)
@@ -224,7 +253,7 @@ Domain은 어떤 계층도 참조하지 않습니다.
 |---|---|---|
 | MySQL | 대부분 | 원장 테이블 전반 (`docs/DATABASE.md`) |
 | MongoDB | `equipment` | `equipments`, `equipment_inspection_records` — 장비 유형별 사양이 sealed 계층이라 컬럼 스키마와 맞지 않음 |
-| MongoDB | `schedule` | `schedule_documents`(측정 시점 스냅샷 + 측정 시트), `analysis_records` |
+| MongoDB | `schedule` | `schedule_documents`(측정 시점 스냅샷 + 측정 시트 + 실험분석정보) |
 | Redis | `auth` | Refresh Token |
 
 ### 두 저장소에 걸친 애그리거트
@@ -251,7 +280,7 @@ Domain은 어떤 계층도 참조하지 않습니다.
 ### 핵심 규칙
 
 다른 모듈의 기능이 필요할 때, 반드시 해당 모듈의 **Inbound Port (application/port/in/)** 를 통해 접근합니다.
-Outbound Port (application/port/out/, 레거시는 domain/port/) 를 외부 모듈에서 직접 참조하는 것은 금지입니다.
+Outbound Port (application/port/out/) 를 외부 모듈에서 직접 참조하는 것은 금지입니다.
 
 **이유:**
 - `application/port/out/Repository`는 해당 모듈이 인프라에 요구하는 **Outbound 계약**입니다.
@@ -291,6 +320,7 @@ Outbound Port (application/port/out/, 레거시는 domain/port/) 를 외부 모�
 - **의미 있는 이름**: `WorkplaceQueryUseCase`, `WorkplaceCommandUseCase`처럼 역할을 명시합니다.
 - **구현체는 Application Service**: `WorkplaceService implements WorkplaceQueryUseCase`
 - **공개 VO는 `~Summary`**로 이름 짓고 포트와 같은 위치(`application/port/in/`)에 둡니다.
+- **타 모듈 소비자가 없으면 여기에 두지 않습니다.** 위 "무엇을 `port/in`에 두는가" 참고
 
 ### 공유 커널 (명시적 예외)
 

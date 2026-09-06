@@ -38,10 +38,22 @@ spring:
       hibernate:
         format_sql: true  # SQL문 보기 좋게 정렬
 
-# 문서 보관소. LOCAL 저장 시 루트 디렉토리이며, 컨테이너에서는 볼륨 마운트 경로를 주입한다.
+# 문서 보관소. 배포환경은 STORAGE_PROVIDER=S3 로 올린다.
+# provider가 보관소 구현체를 고른다 — LOCAL이면 LocalFileStorageAdapter, S3면 S3FileStorageAdapter만
+# 빈으로 뜬다. 한 환경에 보관소는 하나뿐이라 값을 바꾸면 이전 보관소의 파일은 읽지 못한다.
 ems:
   storage:
+    provider: ${STORAGE_PROVIDER:LOCAL}
     local-root: ${STORAGE_LOCAL_ROOT:./data/storage}
+    s3:
+      # provider=S3 인데 비어 있으면 기동이 실패한다. 자격증명은 IAM Role(SDK 기본 체인)에 맡긴다.
+      bucket: ${S3_BUCKET:}
+      region: ${AWS_REGION:ap-northeast-2}
+      # 한 번 정하면 바꾸지 않는다. 바꾸면 이전에 올린 파일을 찾지 못한다.
+      key-prefix: ${S3_KEY_PREFIX:documents}
+      # MinIO 등 S3 호환 스토리지로 검증할 때만 채운다.
+      endpoint: ${S3_ENDPOINT:}
+      path-style-access: ${S3_PATH_STYLE:false}
 
 # Refresh Token 쿠키 전송 정책. HTTP로 접속하는 개발 서버에 secure 쿠키를 내려보내면
 # 브라우저가 저장하지 않아 재발급이 실패한다. 프론트·API가 같은 오리진(nginx)이라 Lax로 충분하며,
