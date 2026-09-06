@@ -2,7 +2,7 @@ package com.ensolution.ems.storage.infrastructure.adapter;
 
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
-import com.ensolution.ems.storage.application.port.in.DocumentVersionSummary;
+import com.ensolution.ems.storage.application.command.DocumentVersionSummary;
 import com.ensolution.ems.storage.application.port.out.DocumentVersionRepository;
 import com.ensolution.ems.storage.domain.DocumentVersion;
 import com.ensolution.ems.storage.infrastructure.entity.DocumentVersionEntity;

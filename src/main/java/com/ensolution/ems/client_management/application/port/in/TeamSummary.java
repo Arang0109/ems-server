@@ -7,9 +7,7 @@ package com.ensolution.ems.client_management.application.port.in;
 public record TeamSummary(
 	Long teamId,
 	String teamName,
-	Long mentorUserId,
 	String mentorName,
-	Long menteeUserId,
 	String menteeName,
 	String particleSamplerId,
 	String gasSamplerId,

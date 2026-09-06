@@ -4,6 +4,7 @@ import com.ensolution.ems.auth.application.port.in.UserQueryUseCase;
 import com.ensolution.ems.auth.application.port.in.UserSummary;
 import com.ensolution.ems.client_management.application.FakeTeamRepository;
 import com.ensolution.ems.client_management.application.port.in.UserTeamSummary;
+import com.ensolution.ems.client_management.application.service.assembler.TeamAssembler;
 import com.ensolution.ems.client_management.application.validator.TeamValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

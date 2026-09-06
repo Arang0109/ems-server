@@ -1,6 +1,6 @@
 # storage 모듈 가이드라인
 
-문서와 그 버전 이력을 관리하는 모듈입니다. 메타는 MySQL에, 파일 실물은 보관소(현재 로컬 디스크)에 둡니다.
+문서와 그 버전 이력을 관리하는 모듈입니다. 메타는 MySQL에, 파일 실물은 보관소(로컬 디스크 또는 S3)에 둡니다.
 
 ---
 
@@ -51,13 +51,48 @@ Document (문서)
 
 ## 보관소 추상화
 
-`application/port/out/FileStorageClient` — 파일 실물의 보관소입니다.
-구현체를 교체해 저장 위치를 바꿉니다. 현재는 `LocalFileStorageAdapter` 하나뿐입니다.
+**환경마다 보관소는 하나입니다.** `ems.storage.provider`가 어느 구현체를 빈으로 올릴지 정하고,
+서비스는 어느 보관소인지 모른 채 `storageKey`만 넘깁니다.
 
-- `domain/StorageProvider`(`S3`, `LOCAL`) — **버전 레코드에 어디에 저장했는지 기록**합니다.
-  보관소를 바꿔도 과거 파일을 어디서 찾아야 하는지 알 수 있어야 하기 때문입니다.
-- `storageKey`는 도메인이 만듭니다. 어댑터는 그 키를 받아 자기 방식으로 해석할 뿐입니다.
-- 설정은 `infrastructure/config/StorageProperties`입니다.
+```
+DocumentService
+      │  (storageKey)
+      ▼
+FileStorageClient          ← application/port/out
+      ▲
+      ├── LocalFileStorageAdapter   (provider=LOCAL 또는 미설정)
+      └── S3FileStorageAdapter      (provider=S3, S3Config가 배선)
+```
+
+- `application/port/out/FileStorageClient` — 서비스가 보는 유일한 계약입니다. `store`·`load`·`delete` 셋뿐입니다.
+- 구현체는 `infrastructure/adapter/`에 나란히 둡니다. 둘 중 하나만 등록되므로 라우팅 계층이 없습니다.
+- `storageKey`는 도메인(`DocumentVersion`)이 만듭니다. 어댑터는 그 키를 받아 자기 방식으로 해석할 뿐입니다.
+  S3에서는 `keyPrefix`를 앞에 붙인 것이 오브젝트 키가 됩니다.
+- 설정은 `infrastructure/config/StorageProperties`, S3 빈 배선은 `infrastructure/config/S3Config`입니다.
+  **활성 보관소 값 자체는 `StorageProperties`에 바인딩하지 않습니다** — `@ConditionalOnProperty`가
+  Environment에서 직접 읽어 빈 등록 시점에 판단하므로, record에는 선택된 보관소가 실제로 쓰는 설정만 남습니다.
+
+### 보관소 선택
+
+`ems.storage.provider`(환경변수 `STORAGE_PROVIDER`, 기본 `LOCAL`) 하나로 결정됩니다.
+
+| 값 | 등록되는 빈 |
+|---|---|
+| `LOCAL` 또는 미설정 | `LocalFileStorageAdapter` |
+| `S3` | `S3FileStorageAdapter` (+ `S3Client`) |
+| 그 외 | 없음 → **기동 실패** |
+
+- **오설정은 기동 시점에 터집니다.** 값이 둘 중 어느 것도 아니면 `FileStorageClient` 빈이 없어
+  `DocumentService` 주입이 실패하고, `provider=S3`인데 `S3_BUCKET`이 비면 `S3Config.s3Client`가
+  `IllegalStateException`을 던집니다. 첫 업로드에서 500이 나는 것보다 부팅 실패가 낫습니다.
+- 자격증명은 설정에 두지 않습니다. AWS SDK 기본 체인이 IAM Role(EC2 인스턴스 프로파일·
+  ECS Task Role·EKS IRSA)을 찾습니다.
+
+> **보관소를 바꾸면 이전 보관소의 파일은 읽지 못합니다.** 한때는 버전 레코드마다 `provider`를 기록하고
+> 읽기·삭제를 그 값으로 라우팅했지만(`RoutingFileStorageAdapter` + `FileStore` SPI + `StorageProvider` enum),
+> **개발 단계라 과거 로컬 파일을 운영에서 읽을 일이 없다**는 전제로 전부 걷어냈습니다.
+> 운영 데이터가 쌓인 뒤 보관소를 옮기게 되면 파일을 먼저 이관하고 전환해야 합니다
+> (컬럼 제거 스크립트: `docs/migration/2026-09-06-storage-drop-provider.sql`).
 
 ---
 
@@ -97,13 +132,23 @@ Document (문서)
 
 ### command·VO 위치
 
-이 모듈은 `application/command/`가 없고 Command·VO를 전부 `application/port/in/`에 둡니다
-(`CreateDocumentCommand`·`UpdateDocumentCommand`·`AddDocumentVersionCommand`·`DocumentFile`·`UploadedFile`·
-`DocumentSummary`·`DocumentVersionSummary`).
+**쓰기만 공개 계약입니다.** `admin`의 `/api/admin/documents`가 쓰기 유스케이스를 전부 위임하므로
+그 경로의 타입만 `port/in`에 있고, 조회 경로는 이 모듈 안에서 끝나므로 `command/`에 있습니다.
 
-`admin`이 쓰기 유스케이스를 전부 위임하므로 **대부분이 실제로 공개 계약**이라 이 배치가 성립합니다.
-다만 `DocumentFile`·`UploadedFile`은 `~Summary`가 아니어서 접미사 체계에서 벗어나 있습니다.
-모듈 내부 전용 타입이 생기면 그때는 `application/command/`를 만들어 나눕니다.
+| 위치 | 타입 | 근거 |
+|---|---|---|
+| `application/port/in/` | `DocumentCommandUseCase`, `CreateDocumentCommand`, `UpdateDocumentCommand`, `AddDocumentVersionCommand`, `UploadedFile` | `admin`이 소비하는 공개 계약 |
+| `application/command/` | `DocumentSummary`, `DocumentVersionSummary`, `DocumentFile` | 조회 경로는 이 모듈 안에서 끝납니다 |
+
+- **조회용 `DocumentQueryUseCase`는 두지 않습니다.** 타 모듈 소비자가 없어 공개 계약이 아니며,
+  인터페이스를 두면 그 반환 VO까지 `port/in`으로 끌려 올라갑니다. `DocumentController`가
+  `DocumentService`를 직접 주입합니다(다수 모듈의 기존 방식).
+- `port/out`의 `DocumentRepository`·`DocumentVersionRepository`는 `command/`의 `~Summary`를 반환합니다.
+  한때 `port/in`을 반환해 **인프라 계약과 공개 계약이 묶여 있었습니다.**
+
+> **접미사 체계 예외 2건** — `UploadedFile`은 Command의 컴포넌트로 전이 노출되는 **입력** payload라
+> `~Summary`가 아니고, `DocumentFile`은 바이트+파일명 다운로드 payload라 기존 접미사 어디에도 맞지
+> 않습니다. 루트 `CLAUDE.md`의 접미사 표에 예외로 명시돼 있습니다.
 
 ### 매퍼
 
@@ -118,7 +163,9 @@ Document (문서)
 
 - `DocumentVersionRepository`에 tenantId를 넣어 **포트 자체로 격리가 드러나게** 하는 편이 안전합니다.
   현재는 호출 순서라는 관례에 의존합니다
-- `LocalFileStorageAdapter` 외 S3 어댑터 (`StorageProvider.S3`는 이미 정의돼 있음)
 - 파일 크기·확장자 제한, 바이러스 검사 등 업로드 정책
+- 업로드·다운로드가 전 구간 온메모리 `byte[]`입니다. multipart 제한이 20MB라 아직 감당되지만,
+  더 큰 파일을 다루게 되면 스트리밍이나 presigned URL을 검토해야 합니다
 - `docs/DATABASE.md`에 `documents`·`document_versions` 섹션이 없습니다
-- 이 모듈에는 테스트가 없습니다. 버전 번호 부여와 "마지막 버전은 못 지운다" 규칙이 우선 대상입니다
+- 테스트는 `S3FileStorageAdapterTest`(오브젝트 키 조합·실패 번역) 하나뿐입니다.
+  버전 번호 부여와 "마지막 버전은 못 지운다" 규칙이 다음 대상입니다

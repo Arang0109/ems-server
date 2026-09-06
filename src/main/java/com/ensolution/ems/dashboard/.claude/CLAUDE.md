@@ -6,7 +6,8 @@
 - **자체 도메인 원장이 없습니다.** `domain/`·`infrastructure/`·`application/port/out/`을 두지 않습니다.
 - 데이터는 전부 **공급 모듈의 인바운드 포트(`application/port/in`)만** 소비해 조립합니다. 타 모듈의 JPA/Repository를 직접 참조하지 않습니다(`ScheduleSnapshotAssembler` 선례와 동일한 크로스모듈 규칙).
 - 현재 공급원: `client_management`(`WorkplaceQueryUseCase.countWorkplaces`, `StackQueryUseCase.countStacks`), `schedule`(`ScheduleStatisticsUseCase`), `contract`(`ContractStatisticsUseCase`), `equipment`(`EquipmentQueryUseCase.findInspectionDueBefore`).
-- 공급 모듈의 `port/in` VO → 대시보드 VO 변환은 **인터모듈 매퍼** `application/mapper/`에 둡니다(`ContractPortMapper`, `EquipmentPortMapper`). 표시용 파생값(잔여일수 등)은 이 계층에서 계산합니다.
+- 공급 모듈의 `port/in` VO → 대시보드 VO 변환은 **인터모듈 매퍼** `application/mapper/`에 둡니다(`ContractPortMapper`, `EquipmentPortMapper`, `SchedulePortMapper`). 표시용 파생값(잔여일수·기간 라벨 등)은 이 계층에서 계산합니다.
+  **서비스 본문에서 직접 변환하지 않습니다** — 공급 모듈이 늘 때 변환이 서비스에 흩어지는 것을 막습니다.
 
 ## 통계 정의 (도메인 규칙)
 - **"측정 건수" = `ScheduleStatus.REPORT_COMPLETED` 상태만** 집계합니다(진행중·CANCELED 제외). 이 규칙은 데이터 소유 모듈인 `schedule`이 `ScheduleStatisticsUseCase`로 소유합니다.

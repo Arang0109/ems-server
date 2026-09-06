@@ -16,16 +16,17 @@ import java.util.List;
 )
 public interface ScheduleDocumentMapper {
 
-	// version·createdAt은 스냅샷이 왕복시키므로 그대로 매핑한다 — 읽어온 값을 저장까지 이어야
-	// 낙관적 락이 성립하고(version), 저장할 때마다 생성 시각이 null로 지워지지 않는다(createdAt).
-	// modifiedAt만 @LastModifiedDate가 매번 새로 채우므로 매핑에서 뺀다.
+	// version은 스냅샷이 왕복시키므로 그대로 매핑한다 — 읽어온 값을 저장까지 이어야 낙관적 락이 성립한다.
+	// createdAt·modifiedAt은 저장 메타라 도메인에 없다. createdAt은 어댑터가 기존 값을 복원하고,
+	// modifiedAt은 @LastModifiedDate가 매번 새로 채운다.
+	@Mapping(target = "createdAt", ignore = true)
 	@Mapping(target = "modifiedAt", ignore = true)
 	ScheduleDocument toDocument(ScheduleSnapshot snapshot);
 
-	// syncStatus·withSheets·withItems는 도메인 파생 메서드일 뿐 property가 아니므로 매핑 대상에서 제외한다.
-	// (인자가 하나인 fluent 메서드는 MapStruct가 타깃 property의 setter로 읽는다.)
-	@Mapping(target = "syncStatus", ignore = true)
+	// withSheets·withSampling·withItems·withItemOrder는 도메인 파생 메서드일 뿐 property가 아니므로
+	// 매핑 대상에서 제외한다. (인자가 하나인 fluent 메서드는 MapStruct가 타깃 property의 setter로 읽는다.)
 	@Mapping(target = "withSheets", ignore = true)
+	@Mapping(target = "withSampling", ignore = true)
 	@Mapping(target = "withItems", ignore = true)
 	@Mapping(target = "withItemOrder", ignore = true)
 	ScheduleSnapshot toDomain(ScheduleDocument document);

@@ -14,7 +14,7 @@ import com.ensolution.ems.schedule.application.command.export.PitotCoefficientEx
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
 import com.ensolution.ems.schedule.application.command.export.SamplingItemExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
-import com.ensolution.ems.schedule.domain.analysis.AnalysisRecord;
+import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.snapshot.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,7 +22,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 측정계획 스냅샷을 엑셀 템플릿용 뷰({@link ScheduleExportView})로 평탄화한다.
@@ -30,8 +29,10 @@ import java.util.Map;
  * 스냅샷 트리의 null 여부를 방어적으로 다룬다.
  * 측정 시트 변환은 {@link SheetExportViewMapper}에 위임한다.
  * <p>
- * 측정항목에는 실험분석정보(별도 컬렉션)의 실험실 입력값이 합류한다. 조회·결합은 조립부
- * ({@code ScheduleExportAssembler})가 맡고 여기서는 <b>순수 변환만</b> 한다 — 포트를 주입받지 않는다.
+ * 성적서 기본정보(관리번호·측정분야·측정용도와 일자 4종)는 메타에서 온다 — 문서에 사본이 없기
+ * 때문이다. 두 저장소를 읽어 합치는 것은 조립부({@code ScheduleExportAssembler})가 맡고 여기서는
+ * <b>순수 변환만</b> 한다 — 포트를 주입받지 않는다.
+ * 실험실 입력값은 측정항목 안에 함께 들어 있어 따로 결합할 것이 없다.
  */
 @Component
 @RequiredArgsConstructor
@@ -39,13 +40,9 @@ public class ScheduleExportViewMapper {
 
 	private final SheetExportViewMapper sheetExportViewMapper;
 
-	/**
-	 * 스냅샷과 실험분석정보를 합쳐 내보내기 뷰를 만든다.
-	 *
-	 * @param analyses 측정물질(pollutantId)로 색인한 실험분석정보. null이면 분석 결과가 없는 것으로 다룬다
-	 */
-	public ScheduleExportView toExportView(ScheduleSnapshot snapshot, Map<Long, AnalysisRecord> analyses) {
-		BasicInfo info = snapshot.basicInfo();
+	/** 메타와 스냅샷을 합쳐 내보내기 뷰를 만든다. */
+	public ScheduleExportView toExportView(Schedule meta, ScheduleSnapshot snapshot) {
+		SamplingSnapshot sampling = snapshot.samplingData();
 		TeamSnapshot team = snapshot.team();
 		TenantSnapshot tenant = snapshot.tenant();
 		ClientSnapshot client = snapshot.client();
@@ -57,24 +54,24 @@ public class ScheduleExportViewMapper {
 		List<PreventionExportView> preventionViews = toPreventionViews(preventions);
 
 		return ScheduleExportView.builder()
-			.referenceNumber(info == null ? null : info.referenceNumber())
-			.measurementField(info == null || info.measurementField() == null ? null : info.measurementField().getDesc())
-			.schedulePurpose(info == null ? null : info.schedulePurpose())
+			.referenceNumber(meta.getReferenceNumber())
+			.measurementField(meta.getMeasurementField() == null ? null : meta.getMeasurementField().getDesc())
+			.schedulePurpose(meta.getSchedulePurpose())
 
-			.sampledAt(info == null ? null : info.sampledAt())
-			.receivedAt(info == null ? null : info.receivedAt())
-			.analyzedAt(info == null ? null : info.analyzedAt())
-			.issuedAt(info == null ? null : info.issuedAt())
+			.sampledAt(meta.getSampledAt())
+			.receivedAt(meta.getReceivedAt())
+			.analyzedAt(meta.getAnalyzedAt())
+			.issuedAt(meta.getIssuedAt())
 
-			.samplingStartedAt(info == null ? null : info.samplingStartedAt())
-			.samplingEndedAt(info == null ? null : info.samplingEndedAt())
+			.samplingStartedAt(sampling == null ? null : sampling.samplingStartedAt())
+			.samplingEndedAt(sampling == null ? null : sampling.samplingEndedAt())
 
-			.mentor(team == null ? null : team.mentorName())
-			.mentee(team == null ? null : team.menteeName())
-			.facilityManager(info == null ? null : info.facilityManager())
-			.samplingWitness(info == null ? null : info.samplingWitness())
-			.analyst(info == null ? null : info.analyst())
-			.technicalManager(info == null ? null : info.technicalManager())
+			.mentorName(team == null ? null : team.mentorName())
+			.menteeName(team == null ? null : team.menteeName())
+			.facilityManager(sampling == null ? null : sampling.facilityManager())
+			.samplingWitness(sampling == null ? null : sampling.samplingWitness())
+			.analyst(tenant == null ? null : tenant.analyst())
+			.technicalManager(tenant == null ? null : tenant.technicalManager())
 			
 			.tenantName(tenant == null ? null : tenant.name())
 			.tenantBizNumber(tenant == null ? null : tenant.bizNumber())
@@ -84,12 +81,14 @@ public class ScheduleExportViewMapper {
 			.clientName(client == null ? null : client.name())
 			.clientBizNumber(client == null ? null : client.bizNumber())
 			.clientRepresentative(client == null ? null : client.representative())
-			.clientAddress(client == null ? null : address(client.roadAddress(), client.detailAddress()))
+			.clientRoadAddress(client == null ? null : client.roadAddress())
+			.clientDetailAddress(client == null ? null : client.detailAddress())
 
 			.workplaceName(workplace == null ? null : workplace.name())
 			.workplaceBizNumber(workplace == null ? null : workplace.bizNumber())
 			.businessCategory(workplace == null ? null : workplace.businessCategory())
-			.workplaceAddress(workplace == null ? null : address(workplace.roadAddress(), workplace.detailAddress()))
+			.workplaceRoadAddress(workplace == null ? null : workplace.roadAddress())
+			.workplaceDetailAddress(workplace == null ? null : workplace.detailAddress())
 			.workplaceGrade(workplace == null || workplace.grade() == null ? null : workplace.grade().getDesc())
 
 			.stackName(stack == null ? null : stack.name())
@@ -104,11 +103,11 @@ public class ScheduleExportViewMapper {
 			.standardOxygen(stack == null ? null : stack.standardOxygen())
 			.facilities(toFacilityViews(facilities))
 			.preventions(preventionViews)
-			.items(toItemViews(snapshot.items(), analyses == null ? Map.of() : analyses))
-			.particleSampler(slot(equipments, team == null ? null : team.particleSamplerId(), EquipType.PARTICLE_SAMPLER))
-			.gasSampler(slot(equipments, team == null ? null : team.gasSamplerId(), EquipType.GAS_SAMPLER))
-			.pitotTube(slot(equipments, team == null ? null : team.pitotTubeId(), EquipType.PITOT_TUBE))
-			.nozzle(slot(equipments, team == null ? null : team.nozzleId(), EquipType.NOZZLE))
+			.items(toItemViews(snapshot.items()))
+			.particleSampler(slot(equipments, EquipType.PARTICLE_SAMPLER))
+			.gasSampler(slot(equipments, EquipType.GAS_SAMPLER))
+			.pitotTube(slot(equipments, EquipType.PITOT_TUBE))
+			.nozzle(slot(equipments, EquipType.NOZZLE))
 			.equipments(toEquipmentViews(equipments))
 			.sheets(sheetExportViewMapper.toSheetViews(snapshot.sheets()))
 			.build();
@@ -156,31 +155,28 @@ public class ScheduleExportViewMapper {
 	 * 실험분석정보는 {@code pollutantId}로 붙인다. <b>분석 결과가 없어도 항목은 목록에 남긴다</b> —
 	 * 성적서의 칸 배치는 항목 순서가 정하므로, 미분석 항목을 빼면 뒤 항목들이 앞칸으로 밀려 버린다.
 	 */
-	private List<SamplingItemExportView> toItemViews(
-		List<SamplingItemSnapshot> items, Map<Long, AnalysisRecord> analyses) {
-
+	private List<SamplingItemExportView> toItemViews(List<SamplingItemSnapshot> items) {
 		if (items == null) return List.of();
 		List<SamplingItemExportView> views = new ArrayList<>(items.size());
 		for (SamplingItemSnapshot item : items) {
 			if (item == null) continue;
-			AnalysisRecord analysis = item.pollutantId() == null ? null : analyses.get(item.pollutantId());
+			AnalysisResult analysis = item.analysis();
 			views.add(SamplingItemExportView.builder()
 				.name(item.nameKr())
 				.nameEn(item.nameEn())
 				.code(item.code())
 				.cycle(item.cycle() == null ? null : item.cycle().name())
-				// 허용기준·산소보정은 분석 기록에도 사본이 있으나 스냅샷 값을 쓴다(출처를 한쪽으로 고정)
 				.allowance(item.allowance())
 				.oxygenApplicable(item.oxygenApplicable())
 				.equipment(item.equipment())
 				.testMethod(item.testMethod())
 				// 아직 작성되지 않은 항목은 실험실 입력값·채취시간이 모두 null로 남는다
-				.samplingStartedAt(analysis == null ? null : analysis.getSamplingStartedAt())
-				.samplingEndedAt(analysis == null ? null : analysis.getSamplingEndedAt())
-				.analysisValue(analysis == null ? null : analysis.getAnalysisValue())
-				.unit(analysis == null ? null : analysis.getUnit())
-				.analysisMethod(analysis == null ? null : analysis.getAnalysisMethod())
-				.analysisEquipment(analysis == null ? null : analysis.getAnalysisEquipment())
+				.samplingStartedAt(analysis == null ? null : analysis.samplingStartedAt())
+				.samplingEndedAt(analysis == null ? null : analysis.samplingEndedAt())
+				.analysisValue(analysis == null ? null : analysis.analysisValue())
+				.unit(analysis == null ? null : analysis.unit())
+				.analysisMethod(analysis == null ? null : analysis.analysisMethod())
+				.analysisEquipment(analysis == null ? null : analysis.analysisEquipment())
 				.build());
 		}
 		return views;
@@ -190,27 +186,17 @@ public class ScheduleExportViewMapper {
 	 * 팀의 장비 슬롯에 해당하는 장비 뷰를 찾는다. 슬롯 id와 일치하는 장비를 우선 선택하고,
 	 * 슬롯 id가 없거나 매칭되지 않으면(과거 문서 호환) 같은 유형의 첫 장비로 대체한다.
 	 */
-	private EquipmentExportView slot(List<EquipmentSnapshot> equipments, String equipmentId, EquipType type) {
+	/**
+	 * 성적서의 유형별 장비 칸을 채운다. 팀 스냅샷이 유형별 슬롯을 들고 있지 않으므로 장비 목록에서
+	 * 유형으로 고른다 — 어떤 유형인지는 장비 자신이 안다. 같은 유형을 두 대 이상 쓴 회차에서는
+	 * 첫 번째가 대표로 들어가고, 나머지는 {@code equipments} 목록에 그대로 남는다.
+	 */
+	private EquipmentExportView slot(List<EquipmentSnapshot> equipments, EquipType type) {
 		if (equipments == null || equipments.isEmpty()) return null;
-
-		EquipmentSnapshot matched = null;
-		if (equipmentId != null && !equipmentId.isBlank()) {
-			for (EquipmentSnapshot e : equipments) {
-				if (equipmentId.equals(e.equipmentId())) {
-					matched = e;
-					break;
-				}
-			}
+		for (EquipmentSnapshot e : equipments) {
+			if (e != null && e.type() == type) return toEquipmentView(e);
 		}
-		if (matched == null) {
-			for (EquipmentSnapshot e : equipments) {
-				if (e.type() == type) {
-					matched = e;
-					break;
-				}
-			}
-		}
-		return toEquipmentView(matched);
+		return null;
 	}
 
 	private List<EquipmentExportView> toEquipmentViews(List<EquipmentSnapshot> equipments) {

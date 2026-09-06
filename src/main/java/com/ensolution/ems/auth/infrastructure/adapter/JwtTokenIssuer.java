@@ -1,6 +1,6 @@
 package com.ensolution.ems.auth.infrastructure.adapter;
 
-import com.ensolution.ems.auth.domain.port.TokenIssuer;
+import com.ensolution.ems.auth.application.port.out.TokenIssuer;
 import com.ensolution.ems.auth.domain.AuthenticatedUser;
 import com.ensolution.ems.auth.domain.TokenResult;
 import com.ensolution.ems.global.security.domain.JwtProperties;

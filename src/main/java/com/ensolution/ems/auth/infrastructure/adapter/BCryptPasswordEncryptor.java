@@ -1,6 +1,6 @@
 package com.ensolution.ems.auth.infrastructure.adapter;
 
-import com.ensolution.ems.auth.domain.port.PasswordEncryptor;
+import com.ensolution.ems.auth.application.port.out.PasswordEncryptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;

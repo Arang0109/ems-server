@@ -1,7 +1,7 @@
 package com.ensolution.ems.auth.application.validator;
 
 import com.ensolution.ems.auth.domain.Role;
-import com.ensolution.ems.auth.domain.port.RoleRepository;
+import com.ensolution.ems.auth.application.port.out.RoleRepository;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;

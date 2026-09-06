@@ -1,7 +1,7 @@
 package com.ensolution.ems.auth.infrastructure.adapter;
 
 import com.ensolution.ems.auth.domain.User;
-import com.ensolution.ems.auth.domain.port.UserRepository;
+import com.ensolution.ems.auth.application.port.out.UserRepository;
 import com.ensolution.ems.auth.infrastructure.entity.UserEntity;
 import com.ensolution.ems.auth.infrastructure.repository.RoleJpaRepository;
 import com.ensolution.ems.auth.infrastructure.repository.UserJpaRepository;

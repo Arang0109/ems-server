@@ -12,6 +12,9 @@ import java.math.BigDecimal;
  * <p>
  * <b>배열 순서가 곧 성적서의 항목 순서다</b> — 기록부 서식이 인덱스로 칸을 지목하므로
  * 클라이언트는 이 순서를 임의로 정렬하지 않는다.
+ * <p>
+ * 판정 근거({@code allowance}·{@code oxygenApplicable})와 실험실 분석 결과({@code analysis})가
+ * 한 항목 안에 함께 있어 둘이 갈라질 일이 없다. {@code analysis}가 null이면 아직 분석 전이다.
  *
  * @param code 전역 측정물질 카탈로그 키(예: {@code NOX}). 카탈로그 도입 이전 스냅샷과
  *             고객사 자체 물질은 null이므로 {@code nameKr}로 폴백해야 한다
@@ -29,5 +32,6 @@ public record SamplingItemSnapshotResponse(
 	String testMethod,
 	MeasurementCycle cycle,
 	BigDecimal allowance,
-	boolean oxygenApplicable
+	boolean oxygenApplicable,
+	AnalysisResultResponse analysis
 ) {}

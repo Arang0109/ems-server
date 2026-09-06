@@ -1,5 +1,7 @@
 package com.ensolution.ems.schedule.application.service;
 
+import com.ensolution.ems.schedule.application.service.assembler.FulfillmentBoardDetailAssembler;
+import com.ensolution.ems.schedule.application.service.support.MeasurementRecordRecorder;
 import com.ensolution.ems.schedule.application.command.detail.FulfillmentBoardDetail;
 import com.ensolution.ems.schedule.application.command.list_item.MeasurementRecordListItem;
 import com.ensolution.ems.schedule.application.command.list_item.PendingMeasurementListItem;
@@ -24,7 +26,7 @@ import java.util.List;
 public class MeasurementHistoryService {
 
 	private final MeasurementRecordRepository measurementRecordRepository;
-	private final FulfillmentBoardAssembler fulfillmentBoardAssembler;
+	private final FulfillmentBoardDetailAssembler fulfillmentBoardDetailAssembler;
 
 	/** 측정지점의 회차별 이력. 연도를 주지 않으면 전체 기간을 반환한다. */
 	public List<MeasurementRecordListItem> getRecords(Long stackId, Long tenantId, Integer year) {
@@ -40,7 +42,7 @@ public class MeasurementHistoryService {
 		Long tenantId, Long workplaceId, Long stackId, Integer year) {
 
 		LocalDate today = LocalDate.now();
-		return fulfillmentBoardAssembler.assemble(
+		return fulfillmentBoardDetailAssembler.assemble(
 			tenantId, workplaceId, stackId, resolveYear(year, today), today);
 	}
 
@@ -49,7 +51,7 @@ public class MeasurementHistoryService {
 		Long tenantId, Integer year, int withinDays) {
 
 		LocalDate today = LocalDate.now();
-		return fulfillmentBoardAssembler.assemblePending(
+		return fulfillmentBoardDetailAssembler.assemblePending(
 			tenantId, resolveYear(year, today), today, withinDays);
 	}
 

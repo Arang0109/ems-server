@@ -28,7 +28,7 @@
 > |---|---|---|
 > | MySQL | 대부분 | 원장 테이블 전반 (`docs/DATABASE.md` 참고) |
 > | MongoDB | `equipment` | `equipments`, `equipment_inspection_records` |
-> | MongoDB | `schedule` | `schedule_documents`, `analysis_records` |
+> | MongoDB | `schedule` | `schedule_documents` (측정 시트·실험분석정보 임베드) |
 > | Redis | `auth` | Refresh Token |
 >
 > 두 저장소에 걸친 저장은 2PC를 쓸 수 없으므로 **순서로 정합성을 확보**합니다.
@@ -79,8 +79,14 @@
 공급 모듈이 `application/port/in/` 공개 계약에 **노출한 도메인 타입은 소비 모듈이 직접 참조할 수 있습니다.**
 포트 시그니처에 이미 드러난 타입을 다시 감싸면 변환 계층만 늘고 얻는 것이 없기 때문입니다.
 
-- 현재 해당하는 것: `equipment`의 `EquipType`·`InspectionType`·`InspectionItem`·`EquipmentSpec`(sealed)과
-  그 하위 구체 타입(`NozzleSpec`·`PitotTubeSpec`·`ParticleSamplerSpec` 등). `schedule`·`dashboard`가 참조합니다.
+- 현재 해당하는 것
+  - `equipment`의 `EquipType`·`InspectionType`·`InspectionItem`·`EquipmentSpec`(sealed)과
+    그 하위 구체 타입(`NozzleSpec`·`PitotTubeSpec`·`ParticleSamplerSpec` 등). `schedule`·`dashboard`가 참조합니다.
+  - `auth`의 `UserSummary`·`CreateUserCommand`·`UpdateUserCommand`. `admin`이 참조합니다 —
+    회원 원장은 auth가 갖고 admin은 관리 화면의 표현만 가지므로, 중간 도메인·커맨드를 두지 않고
+    presentation 매퍼가 Request를 auth의 Command로 곧장 바꿉니다.
+  - `storage`의 `CreateDocumentCommand`·`UpdateDocumentCommand`·`AddDocumentVersionCommand`·`UploadedFile`.
+    `admin`이 참조합니다(같은 이유).
 - 노출 범위는 **공급 모듈의 문서가 선언**합니다(`equipment/.claude/CLAUDE.md`). 선언되지 않은 타입은 참조하지 않습니다.
 - **역방향은 금지입니다** — 공급 모듈이 소비 모듈을 참조해서는 안 됩니다.
 - 도메인 타입이 아니라 **데이터**(이름·상태 등)가 필요하면 공유 커널이 아니라 `port/in` 조회로 가져옵니다.
@@ -127,7 +133,10 @@
 
 - 애그리거트가 여러 개인 모듈은 `presentation/{aggregate}/mapper/`로 애그리거트별 그룹핑합니다.
 - **인터모듈 매퍼**는 소비 모듈이 공급 모듈의 `port/in` 계약과만 결합하도록 하는 경계 변환입니다.
-  - 예) `admin/application/mapper/MemberPortMapper` — auth의 `UserSummary`→admin `Member`, admin `CreateMemberCommand`→auth `CreateUserCommand`
+  - 예) `dashboard/application/mapper/SchedulePortMapper` — schedule의 `port/in` 통계 VO를 dashboard 자기 VO로
+  - **감싸기만 하는 매퍼는 두지 않습니다.** 소비 모듈이 공급 모듈의 `port/in` 타입을 그대로 써도 되는
+    경우(필드가 같고 자기 규칙이 없는 경우)는 공유 커널 예외에 해당하며, 변환 계층 대신 직접 참조합니다.
+    `admin`의 회원 관리가 그 예입니다 — presentation 매퍼가 Request를 auth의 Command로 곧장 바꿉니다.
 - **포트 계약 생산 매퍼**는 방향이 반대입니다. 자기 모듈이 외부에 공개할 `~Summary`를 만드는 변환이라
   presentation도 infrastructure도 아니며, 같은 이유로 `application/mapper/`에 둡니다.
   - 예) `contract/.../ContractSummaryMapper`, `equipment/.../InspectionDueSummaryMapper`, `platform/.../TenantSummaryMapper`
@@ -157,9 +166,12 @@ Application Service는 Spring Data Repository를 직접 사용하지 않습니�
 > **포트 위치 표준화**: Repository 등 Outbound Port는 `application/port/out/`, 외부 공개 Inbound Port(UseCase)는
 > `application/port/in/`에 둡니다. `application/port/` **직하에는 파일을 두지 않습니다.**
 >
-> `domain/port/`는 레거시 위치이며 **auth 6개**(`Authenticator`·`PasswordEncryptor`·`RoleRepository`·
-> `TokenIssuer`·`TokenParser`·`UserRepository`)와 **contract 1개**(`ContractRepository`)가 남아 있습니다.
-> 신규 포트는 `domain/port/`에 만들지 않습니다.
+> `domain/port/`는 레거시 위치였으며 **2026-09-06에 전 모듈 이관을 마쳤습니다**(마지막 잔존은 auth 6개였습니다).
+> 이 패키지를 다시 만들지 않습니다 — Outbound Port는 전부 `application/port/out/`입니다.
+>
+> **`port/out`은 record를 소유하지 않습니다.** 목록 조회의 반환 VO는 `application/command/`에서 가져옵니다.
+> 유일한 예외는 `client_management`의 `StackPollutantRepository.findMeasurementItems`이며 근거가 포트
+> javadoc에 있습니다(`ARCHITECTURE.md`의 Outbound Port 절).
 
 ### 5. 생성자 주입
 Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다. 필드 주입은 사용하지 않습니다.
@@ -221,17 +233,32 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | `{대상}Assembler` | 여러 포트를 모아 조회 VO로 조립 | `StackDetailAssembler`, `ScheduleSnapshotAssembler`, `TeamAssembler` |
 | `{대상}Recorder` | 유스케이스 완료 시 파생 이력 기록 | `MeasurementRecordRecorder` |
 | `{대상}Finder` | 단순 조회를 넘는 탐색 규칙 캡슐화 | `PreviousSheetFinder` |
-| `{대상}Indexer` | 두 애그리거트의 결합 규칙 캡슐화 | `AnalysisRecordIndexer` |
+| `{대상}Indexer` | 두 애그리거트의 결합 규칙 캡슐화 | *(현재 없음 — `AnalysisRecordIndexer`는 실험분석정보를 측정항목 안으로 들이면서 사라졌습니다)* |
 | `{대상}Recalculator` | 도메인 계산 엔진과 애그리거트 사이의 어댑터 | `SnapshotSheetRecalculator` |
+| `{대상}Writer` | 동시 쓰기 정책(재읽기·재시도) 캡슐화 | `SnapshotWriter` |
+| `{대상}Transitioner` | 상태 머신 전이 저장과 그 부수효과(이력 동기화·문서 저장 시점) 캡슐화 | `ScheduleStatusTransitioner` |
 
 - `{대상}Detail`을 반환하는 어셈블러만 `{대상}DetailAssembler`로 씁니다 (`StackDetailAssembler`, `ContractDetailAssembler`).
-- **위치는 `application/service/assembler/`**입니다. (현재 `service/` 직하에 남은 것들이 있으며 순차 이관 예정입니다.)
+- **위치**: `{대상}Assembler`는 `application/service/assembler/`, 그 외 협력자
+  (`Writer`·`Finder`·`Recorder`·`Recalculator`·`Transitioner` 등)는 `application/service/support/`에 둡니다.
+  **`service/` 직하에는 `@Service`만 남습니다.** (`client_management`에 미이관분이 남아 있으며 순차 이관합니다.)
 - 협력자로 뽑는 기준은 Validator와 같습니다 — 서비스 본문에 조립·탐색 절차가 남지 않는 것이 목표이며,
   단순 위임 래퍼를 만들기 위한 규칙이 아닙니다.
 
 > **Service 분리 방침**: 유스케이스는 도메인당 단일 `{도메인}Service`로 둡니다. Command/Query 서비스 분리(CQRS)는
-> 현재 채택하지 않으며, 규모가 커지면 재검토합니다.
+> 채택하지 않습니다 — 관심사가 아니라 방향으로 가르면 같은 애그리거트의 쓰기와 읽기가 서로 다른 파일로 흩어지기만 합니다.
 > 예외 — 빈 이름이 충돌하면 모듈명을 씁니다. `platform`의 도메인은 `Tenant`이지만 서비스는 `PlatformService`입니다.
+>
+> **예외 — 유스케이스 축 분할**: 한 애그리거트의 서비스가 400줄 또는 public 메서드 15개를 넘으면
+> **유스케이스 축**으로 분할합니다. 분할 후 `{도메인}Service`가 애그리거트 라이프사이클
+> (생성·삭제·상태 전이·단건/목록 조회)을 갖고, 나머지는 `{도메인}{관심사}Service`로 명명합니다.
+> 이때도 CQRS 축으로는 나누지 않습니다.
+> 현재 해당: `schedule`의 `ScheduleService`·`ScheduleSnapshotService`·`ScheduleSheetService`·`ScheduleStatisticsService`.
+>
+> **예외 — 공개 계약 구현 분리**: 타 모듈에 여는 `port/in` 구현이 자기 모듈 유스케이스와 **의존이 다르면**
+> 분리합니다. 소비자가 다르다는 것(`ScheduleStatisticsService`)과 빈 순환을 끊어야 한다는 것
+> (`platform`의 `TenantQueryService` — `PlatformService`가 auth에 의존해 겸할 수 없습니다)이 근거입니다.
+> CQRS 축 분할과는 다릅니다. 갈라내는 것은 "읽기"가 아니라 **공개 계약 구현 한 덩어리**입니다.
 
 #### DTO·VO 접미사 체계 (Request / Response / Command / VO)
 **핵심 원칙: 접미사가 그 타입의 계층과 입·출력 방향을 결정한다.** 파일이 많아져도 접미사만 보면 위치를 판단할 수 있어야 합니다.
@@ -244,7 +271,7 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | `~Result` | application **출력**(쓰기 유스케이스 반환 VO) | `{동작}{대상}Result` | `application/command/` | `SignInResult` |
 | `~ListItem` | application **출력**(목록 조회 아이템 VO) | `{대상}ListItem` | `application/command/` | `WorkplaceListItem`, `StackListItem` |
 | `~Detail` | application **출력**(상세·조립 조회 VO) | `{대상}Detail` | `application/command/` | `StackDetail`, `ContractDetail` |
-| `~Summary` | application **출력**, **타 모듈 공개용** | `{대상}Summary` | `application/port/in/` | `UserSummary`, `ContractSummary`, `TenantSummary` |
+| `~Summary` | application **출력**, **타 모듈 공개용** (소비자가 있을 때만) | `{대상}Summary` | `application/port/in/` | `UserSummary`, `ContractSummary`, `TenantSummary` |
 | `~ExportView` | application **출력**, **외부 템플릿 엔진 바인딩용** | `{대상}ExportView` | `application/command/export/` | `ScheduleExportView`, `SheetExportView` |
 | `~Event` | application **알림 페이로드** | `{대상}{과거형동작}Event` | `application/event/` | `WorkplaceDeletedEvent`, `SheetsSavedEvent` |
 
@@ -255,6 +282,19 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 
 > **`~Result` vs `~Response` 구분 유지**: `~Result`는 application VO, `~Response`는 presentation DTO입니다.
 > 계층 경계를 나타내므로 (`SignInResult` → `SignInResponse`) 하나로 합치지 않습니다.
+
+> **`port/in`이냐 `command/`냐는 소비자가 결정합니다.** 포트 시그니처에 등장하고 **타 모듈이 import하는**
+> 타입만 `port/in`에 두고, 나머지는 전부 `application/command/`입니다. 인터페이스와 그 payload는 하나의
+> 계약이라 같은 패키지에 둡니다 — 나누면 소비 모듈이 두 곳을 import해야 하고, 어느 것이 공개 범위인지
+> 코드에서 사라집니다. 반대로 소비자 없는 타입을 `port/in`에 두면 `command/`가 갖는 "모듈 프라이빗"
+> 성질이 흐려집니다. 판단 기준의 정본은 `ARCHITECTURE.md`의 "무엇을 `port/in`에 두는가"입니다.
+>
+> 같은 이유로 **타 모듈 소비자가 없는 UseCase 인터페이스는 만들지 않습니다.** presentation은
+> `{도메인}Service`를 직접 주입합니다.
+
+> **접미사 체계 예외 2건**: `storage`의 `UploadedFile`(Command의 컴포넌트로 전이 노출되는 **입력** payload)과
+> `DocumentFile`(바이트+파일명 다운로드 payload). 둘 다 조회 결과 VO가 아니라 기존 접미사 어디에도
+> 맞지 않아 이름을 그대로 둡니다. 새 타입을 예외로 추가하기 전에 먼저 표의 접미사에 맞는지 검토합니다.
 
 > **`~ExportView`가 별도 접미사인 이유**: jxls의 JEXL이 표준 getter로 프로퍼티를 해석하므로 **record를 쓸 수 없고**(규칙 8의 예외),
 > 필드명이 곧 고객이 작성하는 엑셀 템플릿의 계약이라(`docs/excel-template-guide.md`) 함부로 바꿀 수 없습니다.

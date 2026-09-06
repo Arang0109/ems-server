@@ -19,10 +19,11 @@ import com.ensolution.ems.schedule.application.command.export.PitotCoefficientEx
 import com.ensolution.ems.schedule.application.command.export.PreventionExportView;
 import com.ensolution.ems.schedule.application.command.export.SamplingItemExportView;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
-import com.ensolution.ems.schedule.domain.analysis.AnalysisRecord;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementCategory;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.snapshot.BasicInfo;
+import com.ensolution.ems.schedule.domain.Schedule;
+import com.ensolution.ems.schedule.domain.snapshot.AnalysisResult;
+import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
+import com.ensolution.ems.schedule.domain.snapshot.SamplingSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.FacilitySnapshot;
@@ -32,13 +33,13 @@ import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.StackSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.WorkplaceSnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.TenantSnapshot;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -48,9 +49,14 @@ class ScheduleExportViewMapperTest {
 
 	private final ScheduleExportViewMapper mapper = new ScheduleExportViewMapper(new SheetExportViewMapper());
 
-	/** 실험분석정보와 무관한 검증의 기본 경로 — 분석 결과가 하나도 없는 계획. */
+	/** 성적서 기본정보 표를 채우는 메타. 이 클래스의 검증 대상이 아니라 최소값만 담는다. */
+	private static final Schedule META = Schedule.builder()
+		.id(1L).tenantId(1L).stackId(10L).teamId(20L)
+		.schedulePurpose("자가측정용")
+		.build();
+
 	private ScheduleExportView toView(ScheduleSnapshot snapshot) {
-		return mapper.toExportView(snapshot, Map.of());
+		return mapper.toExportView(META, snapshot);
 	}
 
 	private EquipmentSnapshot equipment(String id, EquipType type, String managementNumber) {
@@ -70,13 +76,13 @@ class ScheduleExportViewMapperTest {
 			"제조사-" + id, inspections, spec);
 	}
 
-	private TeamSnapshot team(String particleSamplerId, String gasSamplerId, String pitotTubeId, String nozzleId) {
-		return new TeamSnapshot(1L, "1팀", 10L, "홍길동", 20L, "김철수",
-			particleSamplerId, gasSamplerId, pitotTubeId, nozzleId);
+	private TeamSnapshot team(List<EquipmentSnapshot> equipments) {
+		return new TeamSnapshot(1L, "1팀", "홍길동", "김철수", equipments);
 	}
 
 	private ScheduleSnapshot snapshot(TeamSnapshot team, List<EquipmentSnapshot> equipments) {
-		return new ScheduleSnapshot("1", 1L, 1L, null, null, team, null, null, equipments, null, null, null, null);
+		return new ScheduleSnapshot("1", 1L, 1L, null, null, null,
+			team == null ? team(equipments) : team.withEquipments(equipments), null, null);
 	}
 
 	/** 배출·방지시설이 달린 측정시설 트리(의뢰기관 → 사업장 → 측정시설)를 품은 스냅샷. */
@@ -86,18 +92,18 @@ class ScheduleExportViewMapperTest {
 		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
 			null, null, workplace);
-		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, client, null, null, null, null, null);
+		return new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, null);
 	}
 
 	@Test
-	void 팀_슬롯_id로_장비가_매칭된다() {
+	void 장비_유형으로_성적서의_장비_칸이_채워진다() {
 		List<EquipmentSnapshot> equipments = List.of(
 			equipment("E1", EquipType.PARTICLE_SAMPLER, "PS-001"),
 			equipment("E2", EquipType.GAS_SAMPLER, "GS-001"),
 			equipment("E3", EquipType.PITOT_TUBE, "PT-001"),
 			equipment("E4", EquipType.NOZZLE, "NZ-001"));
 
-		ScheduleExportView view = toView(snapshot(team("E1", "E2", "E3", "E4"), equipments));
+		ScheduleExportView view = toView(snapshot(null, equipments));
 
 		assertThat(view.getParticleSampler().getManagementNumber()).isEqualTo("PS-001");
 		assertThat(view.getParticleSampler().getTypeLabel()).isEqualTo("입자상 시료채취장비");
@@ -114,7 +120,7 @@ class ScheduleExportViewMapperTest {
 			new InspectionItem(InspectionType.PRECISION_INSPECTION, true, 24, LocalDate.of(2024, 9, 1), null, true),
 			new InspectionItem(InspectionType.CALIBRATION, true, 12, LocalDate.of(2025, 3, 1), null, true)));
 
-		ScheduleExportView view = toView(snapshot(team("E1", null, null, null), List.of(sampler)));
+		ScheduleExportView view = toView(snapshot(null, List.of(sampler)));
 
 		EquipmentExportView particleSampler = view.getParticleSampler();
 		assertThat(particleSampler.getCalibrationCycle()).isEqualTo(12);
@@ -131,7 +137,7 @@ class ScheduleExportViewMapperTest {
 	void 검사_항목이_없는_구_스냅샷도_빈_목록으로_매핑된다() {
 		EquipmentSnapshot legacy = equipment("E1", EquipType.PARTICLE_SAMPLER, "PS-001", null, null);
 
-		ScheduleExportView view = toView(snapshot(team("E1", null, null, null), List.of(legacy)));
+		ScheduleExportView view = toView(snapshot(null, List.of(legacy)));
 
 		EquipmentExportView particleSampler = view.getParticleSampler();
 		assertThat(particleSampler.getInspections()).isEmpty();   // jx:each가 깨지지 않도록 null이 아닌 빈 리스트
@@ -146,7 +152,7 @@ class ScheduleExportViewMapperTest {
 			equipment("E1", EquipType.PARTICLE_SAMPLER, "PS-001"),
 			equipment("E3", EquipType.PITOT_TUBE, "PT-001"));
 
-		ScheduleExportView view = toView(snapshot(team(null, null, null, null), equipments));
+		ScheduleExportView view = toView(snapshot(null, equipments));
 
 		assertThat(view.getParticleSampler().getManagementNumber()).isEqualTo("PS-001");
 		assertThat(view.getPitotTube().getManagementNumber()).isEqualTo("PT-001");
@@ -166,7 +172,7 @@ class ScheduleExportViewMapperTest {
 
 	@Test
 	void 장비가_없으면_슬롯은_null이고_목록은_비어있다() {
-		ScheduleExportView view = toView(snapshot(team("E1", "E2", "E3", "E4"), null));
+		ScheduleExportView view = toView(snapshot((TeamSnapshot) null, null));
 
 		assertThat(view.getParticleSampler()).isNull();
 		assertThat(view.getGasSampler()).isNull();
@@ -180,7 +186,7 @@ class ScheduleExportViewMapperTest {
 		EquipmentSnapshot sampler = equipment("E1", EquipType.PARTICLE_SAMPLER, "PS-001",
 			new ParticleSamplerSpec(new BigDecimal("2.5"), new BigDecimal("46.3"), new BigDecimal("1.002")));
 
-		ScheduleExportView view = toView(snapshot(team("E1", null, null, null), List.of(sampler)));
+		ScheduleExportView view = toView(snapshot(null, List.of(sampler)));
 
 		EquipmentExportView particleSampler = view.getParticleSampler();
 		assertThat(particleSampler.getTotalVolume()).isEqualByComparingTo("2.5");
@@ -197,7 +203,7 @@ class ScheduleExportViewMapperTest {
 		EquipmentSnapshot gasSampler = equipment("E2", EquipType.GAS_SAMPLER, "GS-001",
 			new GasSamplerSpec(new BigDecimal("1.2")));
 
-		ScheduleExportView view = toView(snapshot(team(null, "E2", null, null), List.of(gasSampler)));
+		ScheduleExportView view = toView(snapshot(null, List.of(gasSampler)));
 
 		assertThat(view.getGasSampler().getTotalVolume()).isEqualByComparingTo("1.2");
 		assertThat(view.getGasSampler().getOrificeDeltaH()).isNull();
@@ -211,7 +217,7 @@ class ScheduleExportViewMapperTest {
 				new PitotTubeSpec.PitotCoefficient(new BigDecimal("0.84"), new BigDecimal("5")),
 				new PitotTubeSpec.PitotCoefficient(new BigDecimal("0.85"), new BigDecimal("10")))));
 
-		ScheduleExportView view = toView(snapshot(team(null, null, "E3", null), List.of(pitotTube)));
+		ScheduleExportView view = toView(snapshot(null, List.of(pitotTube)));
 
 		EquipmentExportView pitot = view.getPitotTube();
 		assertThat(pitot.getPitotTubeType()).isEqualTo("FINE_DUST");
@@ -230,7 +236,7 @@ class ScheduleExportViewMapperTest {
 				new NozzleSpec.NozzleDiameter(new BigDecimal("6.0")),
 				new NozzleSpec.NozzleDiameter(new BigDecimal("8.0")))));
 
-		ScheduleExportView view = toView(snapshot(team(null, null, null, "E4"), List.of(nozzle)));
+		ScheduleExportView view = toView(snapshot(null, List.of(nozzle)));
 
 		assertThat(view.getNozzle().getNozzleDiameters())
 			.containsExactly(new BigDecimal("6.0"), new BigDecimal("8.0"));
@@ -240,7 +246,7 @@ class ScheduleExportViewMapperTest {
 	void 사양이_없으면_사양_필드는_null이고_목록은_비어있다() {
 		EquipmentSnapshot pitotTube = equipment("E3", EquipType.PITOT_TUBE, "PT-001");   // spec == null
 
-		ScheduleExportView view = toView(snapshot(team(null, null, "E3", null), List.of(pitotTube)));
+		ScheduleExportView view = toView(snapshot(null, List.of(pitotTube)));
 
 		EquipmentExportView pitot = view.getPitotTube();
 		assertThat(pitot.getManagementNumber()).isEqualTo("PT-001");
@@ -313,27 +319,35 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 측정시설_트리가_없으면_시설_목록은_모두_비어있다() {
 		// client == null 이므로 stack까지 도달하지 못한다
-		ScheduleExportView view = toView(snapshot(team(null, null, null, null), List.of()));
+		ScheduleExportView view = toView(snapshot((TeamSnapshot) null, List.of()));
 
 		assertThat(view.getFacilities()).isEmpty();
 		assertThat(view.getPreventions()).isEmpty();
 	}
 
+	/**
+	 * 담당자의 출처가 셋으로 갈려 있다 — 현장(채취 스냅샷)·서명란(고객사 스냅샷)·측정자(팀 스냅샷).
+	 * 성적서 한 장에 모이므로 어느 하나가 엉뚱한 노드에서 읽히면 조용히 빈칸이 된다.
+	 */
 	@Test
-	void 담당자_정보가_기본정보와_팀에서_모인다() {
-		BasicInfo info = new BasicInfo("REF-1", "이관리", "정입회", "박분석", "최기술",
-			LocalDate.of(2026, 5, 1), null, null, null, null, null, null, "자가측정용");
-		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, info,
-			team(null, null, null, null), null, null, null, null, null, null, null);
+	void 담당자_정보가_채취_고객사_팀에서_모인다() {
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null,
+			new TenantSnapshot(1L, "고객사", null, null, null, null, null, "박분석", "최기술"),
+			team(List.of()),
+			new SamplingSnapshot(LocalTime.of(9, 30), LocalTime.of(11, 0), "이관리", "정입회", List.of()),
+			null);
 
 		ScheduleExportView view = toView(snapshot);
 
-		assertThat(view.getMentor()).isEqualTo("홍길동");
-		assertThat(view.getMentee()).isEqualTo("김철수");
+		assertThat(view.getMentorName()).isEqualTo("홍길동");
+		assertThat(view.getMenteeName()).isEqualTo("김철수");
 		assertThat(view.getFacilityManager()).isEqualTo("이관리");
 		assertThat(view.getSamplingWitness()).isEqualTo("정입회");
+		assertThat(view.getSamplingStartedAt()).isEqualTo(LocalTime.of(9, 30));
+		assertThat(view.getSamplingEndedAt()).isEqualTo(LocalTime.of(11, 0));
 		assertThat(view.getAnalyst()).isEqualTo("박분석");
 		assertThat(view.getTechnicalManager()).isEqualTo("최기술");
+		// 성적서 기본정보 표의 값은 메타에서 온다
 		assertThat(view.getSchedulePurpose()).isEqualTo("자가측정용");
 	}
 
@@ -344,8 +358,7 @@ class ScheduleExportViewMapperTest {
 		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
 			null, null, workplace);
-		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, client,
-			null, null, null, null, null);
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, null);
 
 		ScheduleExportView view = toView(snapshot);
 
@@ -366,11 +379,11 @@ class ScheduleExportViewMapperTest {
 	private SamplingItemSnapshot item(Long pollutantId, String nameKr, String allowance) {
 		return new SamplingItemSnapshot(pollutantId * 10, pollutantId, "CODE-" + pollutantId, nameKr, "EN-" + pollutantId,
 			null, null, null, "장비-" + pollutantId, "방법-" + pollutantId,
-			MeasurementCycle.QUARTERLY, allowance == null ? null : new BigDecimal(allowance), true);
+			MeasurementCycle.QUARTERLY, allowance == null ? null : new BigDecimal(allowance), true, null);
 	}
 
 	private ScheduleSnapshot itemSnapshot(List<SamplingItemSnapshot> items) {
-		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null, null, items, null, null, null);
+		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null, items);
 	}
 
 	@Test
@@ -418,9 +431,9 @@ class ScheduleExportViewMapperTest {
 
 	@Test
 	void 측정_시트가_시트_뷰_목록으로_위임된다() {
-		MeasurementSheet sheet = MeasurementSheet.builder().category(MeasurementCategory.DUST).build();
-		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null,
-			null, null, List.of(sheet), null, null);
+		SamplingSheet sheet = SamplingSheet.builder().category(MeasurementCategory.DUST).build();
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null,
+			new SamplingSnapshot(null, null, null, null, List.of(sheet)), null);
 
 		ScheduleExportView view = toView(snapshot);
 
@@ -429,26 +442,19 @@ class ScheduleExportViewMapperTest {
 		assertThat(view.getSheets().getFirst().getCategory()).isEqualTo("먼지");
 	}
 
-	// ===== 실험분석정보 합류 (analysis_records × schedule_documents.items[]) =====
+	// ===== 실험분석 결과 (schedule_documents.items[].analysis) =====
 
-	private AnalysisRecord analysis(Long pollutantId, String value, String unit) {
-		return AnalysisRecord.builder()
-			.id("analysis-" + pollutantId)
-			.tenantId(1L)
-			.scheduleId(1L)
-			.pollutantId(pollutantId)
-			.analysisValue(value == null ? null : new BigDecimal(value))
-			.unit(unit)
-			.analysisMethod("분석방법-" + pollutantId)
-			.analysisEquipment("분석장비-" + pollutantId)
-			.build();
+	/** 분석 결과가 채워진 측정항목. 판정 근거와 결과가 한 원소 안에 있다. */
+	private SamplingItemSnapshot analyzed(SamplingItemSnapshot item, String value, String unit) {
+		return item.withAnalysis(AnalysisResult.empty().applyAnalysisResult(
+			value == null ? null : new BigDecimal(value), unit,
+			"분석방법-" + item.pollutantId(), "분석장비-" + item.pollutantId()));
 	}
 
 	@Test
-	void 실험실_분석값이_측정물질로_항목에_붙는다() {
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(item(1L, "먼지", "50"))),
-			Map.of(1L, analysis(1L, "12.5", "mg/Sm3")));
+	void 실험실_분석값이_항목에_실린다() {
+		ScheduleExportView view = toView(itemSnapshot(List.of(
+			analyzed(item(1L, "먼지", "50"), "12.5", "mg/Sm3"))));
 
 		SamplingItemExportView first = view.getItems().getFirst();
 		assertThat(first.getAnalysisValue()).isEqualByComparingTo("12.5");
@@ -460,9 +466,9 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 분석_전_항목도_목록에_남고_실험실_입력값만_비어있다() {
 		// 항목을 빼면 뒤 항목이 앞칸으로 밀려 성적서 칸 배치가 어긋난다
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(item(1L, "먼지", "50"), item(2L, "질소산화물", "200"))),
-			Map.of(2L, analysis(2L, "30", "ppm")));
+		ScheduleExportView view = toView(itemSnapshot(List.of(
+			item(1L, "먼지", "50"),
+			analyzed(item(2L, "질소산화물", "200"), "30", "ppm"))));
 
 		assertThat(view.getItems())
 			.extracting(SamplingItemExportView::getName, SamplingItemExportView::getUnit)
@@ -473,10 +479,11 @@ class ScheduleExportViewMapperTest {
 	}
 
 	@Test
-	void 분석값을_붙여도_항목_순서는_스냅샷을_따른다() {
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(item(3L, "황산화물", "150"), item(1L, "먼지", "50"), item(2L, "질소산화물", "200"))),
-			Map.of(1L, analysis(1L, "1", "u1"), 2L, analysis(2L, "2", "u2"), 3L, analysis(3L, "3", "u3")));
+	void 분석값이_있어도_항목_순서는_스냅샷을_따른다() {
+		ScheduleExportView view = toView(itemSnapshot(List.of(
+			analyzed(item(3L, "황산화물", "150"), "3", "u3"),
+			analyzed(item(1L, "먼지", "50"), "1", "u1"),
+			analyzed(item(2L, "질소산화물", "200"), "2", "u2"))));
 
 		assertThat(view.getItems())
 			.extracting(SamplingItemExportView::getName)
@@ -484,33 +491,20 @@ class ScheduleExportViewMapperTest {
 	}
 
 	@Test
-	void 허용기준은_분석기록이_아니라_스냅샷_값을_쓴다() {
-		// 한 칸에 두 출처가 섞이면 어느 쪽이 성적서의 판정 근거였는지 구분할 수 없게 된다
-		AnalysisRecord stale = analysis(1L, "12.5", "mg/Sm3").toBuilder()
-			.allowance(new BigDecimal("999"))
-			.build();
-
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(item(1L, "먼지", "50"))), Map.of(1L, stale));
+	void 허용기준은_항목_자신의_판정_근거를_쓴다() {
+		// 판정 근거와 결과값이 한 항목 안에 있어 출처가 갈라질 수 없다
+		ScheduleExportView view = toView(itemSnapshot(List.of(
+			analyzed(item(1L, "먼지", "50"), "12.5", "mg/Sm3"))));
 
 		assertThat(view.getItems().getFirst().getAllowance()).isEqualByComparingTo("50");
 	}
 
 	@Test
-	void 분석_색인이_null이어도_뷰_변환이_깨지지_않는다() {
-		ScheduleExportView view = mapper.toExportView(itemSnapshot(List.of(item(1L, "먼지", "50"))), null);
-
-		assertThat(view.getItems()).hasSize(1);
-		assertThat(view.getItems().getFirst().getAnalysisValue()).isNull();
-	}
-
-	@Test
-	void 측정물질_식별자가_없는_항목은_분석값_없이_매핑된다() {
+	void 측정물질_식별자가_없는_구형_항목도_매핑된다() {
 		SamplingItemSnapshot legacy = new SamplingItemSnapshot(
-			null, null, null, "구형항목", null, null, null, null, null, null, null, null, false);
+			null, null, null, "구형항목", null, null, null, null, null, null, null, null, false, null);
 
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(legacy)), Map.of(1L, analysis(1L, "12.5", "mg/Sm3")));
+		ScheduleExportView view = toView(itemSnapshot(List.of(legacy)));
 
 		assertThat(view.getItems()).hasSize(1);
 		assertThat(view.getItems().getFirst().getName()).isEqualTo("구형항목");
@@ -519,13 +513,10 @@ class ScheduleExportViewMapperTest {
 
 	@Test
 	void 성적서_탭에서_작성한_채취시간이_항목에_실린다() {
-		AnalysisRecord withTimes = analysis(1L, "12.5", "mg/Sm3").toBuilder()
-			.samplingStartedAt(LocalTime.of(9, 30))
-			.samplingEndedAt(LocalTime.of(10, 0))
-			.build();
+		SamplingItemSnapshot withTimes = item(1L, "먼지", "50").withAnalysis(
+			AnalysisResult.empty().applySamplingTime(LocalTime.of(9, 30), LocalTime.of(10, 0)));
 
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(item(1L, "먼지", "50"))), Map.of(1L, withTimes));
+		ScheduleExportView view = toView(itemSnapshot(List.of(withTimes)));
 
 		SamplingItemExportView first = view.getItems().getFirst();
 		assertThat(first.getSamplingStartedAt()).isEqualTo(LocalTime.of(9, 30));
@@ -535,8 +526,8 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 채취시간을_아직_작성하지_않은_항목은_시각이_비어있다() {
 		// 분석값만 있고 채취시간은 없는 상태 — 두 탭이 따로 작성하므로 흔한 중간 상태다
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(item(1L, "먼지", "50"))), Map.of(1L, analysis(1L, "12.5", "mg/Sm3")));
+		ScheduleExportView view = toView(itemSnapshot(List.of(
+			analyzed(item(1L, "먼지", "50"), "12.5", "mg/Sm3"))));
 
 		SamplingItemExportView first = view.getItems().getFirst();
 		assertThat(first.getSamplingStartedAt()).isNull();
@@ -546,13 +537,10 @@ class ScheduleExportViewMapperTest {
 
 	@Test
 	void 자정을_넘기는_채취시간도_그대로_실린다() {
-		AnalysisRecord overnight = analysis(1L, "12.5", "mg/Sm3").toBuilder()
-			.samplingStartedAt(LocalTime.of(23, 0))
-			.samplingEndedAt(LocalTime.of(1, 0))
-			.build();
+		SamplingItemSnapshot overnight = item(1L, "먼지", "50").withAnalysis(
+			AnalysisResult.empty().applySamplingTime(LocalTime.of(23, 0), LocalTime.of(1, 0)));
 
-		ScheduleExportView view = mapper.toExportView(
-			itemSnapshot(List.of(item(1L, "먼지", "50"))), Map.of(1L, overnight));
+		ScheduleExportView view = toView(itemSnapshot(List.of(overnight)));
 
 		assertThat(view.getItems().getFirst().getSamplingStartedAt()).isEqualTo(LocalTime.of(23, 0));
 		assertThat(view.getItems().getFirst().getSamplingEndedAt()).isEqualTo(LocalTime.of(1, 0));

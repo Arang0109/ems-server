@@ -1,6 +1,6 @@
 package com.ensolution.ems.storage.infrastructure.mapper;
 
-import com.ensolution.ems.storage.application.port.in.DocumentSummary;
+import com.ensolution.ems.storage.application.command.DocumentSummary;
 import com.ensolution.ems.storage.domain.Document;
 import com.ensolution.ems.storage.infrastructure.entity.DocumentEntity;
 import org.mapstruct.Builder;

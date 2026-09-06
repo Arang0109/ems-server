@@ -1,7 +1,7 @@
 package com.ensolution.ems.schedule.application.calculation.step;
 
 import com.ensolution.ems.schedule.application.calculation.SheetContext;
-import com.ensolution.ems.schedule.domain.sheet.MoistureData;
+import com.ensolution.ems.schedule.domain.sampling.MoistureData;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +27,7 @@ public class MoistureStep implements SheetStep {
 		// Xw 계산에 필요한 값이 없어도 게이지압 환산은 독립적으로 제공한다
 		setGaugePressureInch(context, moisture);
 
-		MoistureData.BattleWeight weight = moisture.getWeight();
+		MoistureData.BottleWeight weight = moisture.getBottleWeight();
 		MoistureData.GasMeterTemperature temp = moisture.getGasMeterTemperature();
 		MoistureData.DryGasVolume volume = moisture.getDryGasVolume();
 		if (weight == null || weight.getAfter() == null || weight.getBefore() == null) return;
@@ -71,7 +71,14 @@ public class MoistureStep implements SheetStep {
 		return waterG.multiply(BigDecimal.valueOf(22.4).divide(BigDecimal.valueOf(18), 5, RoundingMode.HALF_UP));
 	}
 
+	/**
+	 * 수분량 Xw(%) = round(100 × 수분부피 / 전체부피, 2).
+	 *
+	 * <p><b>곱한 뒤 반올림한다.</b> 비율을 먼저 scale 5로 반올림하고 100을 곱하면 값이 갈린다
+	 * (같은 입력에서 11.818 vs 11.82). 현장이 쓰는 성적서 엑셀 서식이 후자를 내므로 그쪽에 맞춘다 —
+	 * 화면·엑셀·서버가 같은 수분량을 보여야 하고, 이 값은 밀도·유속·유량으로 이어진다.
+	 */
 	private BigDecimal calcMoistureRatio(BigDecimal waterVolStp, BigDecimal denominator) {
-		return BigDecimal.valueOf(100).multiply(waterVolStp.divide(denominator, 5, RoundingMode.HALF_UP));
+		return waterVolStp.multiply(BigDecimal.valueOf(100)).divide(denominator, 2, RoundingMode.HALF_UP);
 	}
 }

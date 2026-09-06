@@ -1,7 +1,7 @@
 package com.ensolution.ems.storage.presentation.mapper;
 
-import com.ensolution.ems.storage.application.port.in.DocumentSummary;
-import com.ensolution.ems.storage.application.port.in.DocumentVersionSummary;
+import com.ensolution.ems.storage.application.command.DocumentSummary;
+import com.ensolution.ems.storage.application.command.DocumentVersionSummary;
 import com.ensolution.ems.storage.presentation.response.DocumentResponse;
 import com.ensolution.ems.storage.presentation.response.DocumentVersionResponse;
 import org.mapstruct.Builder;

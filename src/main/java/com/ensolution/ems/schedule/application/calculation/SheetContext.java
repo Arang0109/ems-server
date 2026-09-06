@@ -4,8 +4,7 @@ import com.ensolution.ems.equipment.domain.spec.NozzleSpec;
 import com.ensolution.ems.equipment.domain.spec.PitotTubeSpec;
 import com.ensolution.ems.global.common.enums.Orientation;
 import com.ensolution.ems.global.common.enums.Shape;
-import com.ensolution.ems.schedule.application.command.StackData;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -20,7 +19,7 @@ import java.util.List;
 @Setter
 public class SheetContext {
 
-	private MeasurementSheet sheet;
+	private SamplingSheet sheet;
 
 	private final StackData stackData;
 
@@ -67,10 +66,9 @@ public class SheetContext {
 	private BigDecimal avgTg; // 배출가스 절대온도 (K)
 	private BigDecimal avgPv; // 배출가스 평균 동압
 	private BigDecimal avgPs; // 배출가스 평균 정압
-	private BigDecimal avgTm; // 가스미터 절대온도 (K)
 	
 	public SheetContext(
-		MeasurementSheet sheet, StackData stackData,
+		SamplingSheet sheet, StackData stackData,
 		List<PitotTubeSpec.PitotCoefficient> pitotCoefficients,
 		List<NozzleSpec.NozzleDiameter> diameters,
 		BigDecimal deltaH

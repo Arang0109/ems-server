@@ -20,14 +20,19 @@ public class ParticleExportView {
 	// ===== 입력 =====
 	private final String thimbleFilter;            // 원통여지 번호
 	private final String blankThimbleFilter;       // 바탕(공시료) 원통여지 번호
-	private final LocalTime startTime;             // 입자상 채취 시작시각
-	private final LocalTime endTime;               // 입자상 채취 종료시각
+	private final LocalTime samplingStartedAt;             // 입자상 채취 시작시각
+	private final LocalTime samplingEndedAt;               // 입자상 채취 종료시각
 
 	// ===== 계산 =====
 	private final BigDecimal avgKFactor;           // 평균 K계수 (무차원)
 	private final BigDecimal avgOrificePressure;   // 평균 오리피스 차압 (mmH2O)
 	private final BigDecimal avgIsokineticRatio;   // 평균 등속흡입계수 (%)
-	private final BigDecimal totalDryGasVolume;    // 총 건식가스미터 채취량 (m³)
+	private final BigDecimal avgVacuumPressure;     // 평균 진공게이지압
+	private final BigDecimal avgFinalImpingerTemperature;
+	private final BigDecimal totalVm;    // 총 건식가스미터 채취량 (m³)
 	private final BigDecimal totalSamplingTime;    // 총 채취시간 (min)
-	private final BigDecimal avgMeterTemperatureK; // 가스미터 평균 절대온도 avgTm (K)
+	private final BigDecimal avgTm;	// 가스미터 평균온도 (C)
+	private final BigDecimal avgTmKelvin; // 가스미터 평균 절대온도 avgTm (K)
+	private final BigDecimal appliedNozzleDiameter;
+	private final BigDecimal nozzleArea;
 }

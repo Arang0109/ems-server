@@ -8,9 +8,6 @@ import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.platform.application.command.ProvisionTenantCommand;
 import com.ensolution.ems.platform.application.command.TenantAdminCommand;
 import com.ensolution.ems.platform.application.command.TenantListItem;
-import com.ensolution.ems.platform.application.mapper.TenantSummaryMapper;
-import com.ensolution.ems.platform.application.port.in.TenantQueryUseCase;
-import com.ensolution.ems.platform.application.port.in.TenantSummary;
 import com.ensolution.ems.platform.application.port.out.TenantRepository;
 import com.ensolution.ems.platform.domain.Tenant;
 import lombok.RequiredArgsConstructor;
@@ -22,16 +19,19 @@ import java.util.List;
 /**
  * 플랫폼 운영자(PLATFORM_ADMIN) 전용 고객사(테넌트) 유스케이스.
  * 초기 관리자 계정 생성은 auth의 인바운드 포트(UserCommandUseCase/RoleQueryUseCase)를 통해서만 수행한다.
+ * <p>
+ * <b>타 모듈 공개 계약({@code TenantQueryUseCase})은 여기서 구현하지 않는다.</b>
+ * 이 서비스는 auth에 의존하는데, auth의 인증 경로가 다시 테넌트 요약을 필요로 해서
+ * 한 서비스가 둘을 겸하면 빈 순환이 된다. 그 구현은 {@link TenantQueryService}에 있다.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class PlatformService implements TenantQueryUseCase {
+public class PlatformService {
 
 	private static final String ADMIN_ROLE_NAME = "ADMIN";
 
 	private final TenantRepository tenantRepository;
-	private final TenantSummaryMapper tenantSummaryMapper;
 	private final RoleQueryUseCase roleQueryUseCase;
 	private final UserCommandUseCase userCommandUseCase;
 
@@ -71,14 +71,5 @@ public class PlatformService implements TenantQueryUseCase {
 	@Transactional(readOnly = true)
 	public List<TenantListItem> getTenantList() {
 		return tenantRepository.findAll();
-	}
-
-	/**
-	 * 타 모듈(schedule 등)이 스냅샷 조립에 사용하는 고객사 요약. 미존재 시 TENANT_NOT_FOUND.
-	 */
-	@Override
-	@Transactional(readOnly = true)
-	public TenantSummary getTenantSummary(Long tenantId) {
-		return tenantSummaryMapper.toSummary(getTenant(tenantId));
 	}
 }

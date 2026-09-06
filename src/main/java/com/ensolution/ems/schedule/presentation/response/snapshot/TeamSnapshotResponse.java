@@ -1,15 +1,15 @@
 package com.ensolution.ems.schedule.presentation.response.snapshot;
 
-/** 측정 시점 팀 스냅샷 응답. */
+import java.util.List;
+
+/**
+ * 측정 시점 팀 스냅샷 응답. 이 회차에 나간 측정자와 들고 간 장비를 담는다.
+ * 측정자 이름은 문서상 표기이며 팀 원장과 다를 수 있다.
+ */
 public record TeamSnapshotResponse(
 	Long teamId,
 	String teamName,
-	Long mentorUserId,
 	String mentorName,
-	Long menteeUserId,
 	String menteeName,
-	String particleSamplerId,
-	String gasSamplerId,
-	String pitotTubeId,
-	String nozzleId
+	List<EquipmentSnapshotResponse> equipments
 ) {}

@@ -2,7 +2,7 @@ package com.ensolution.ems.schedule.domain.history;
 
 import com.ensolution.ems.global.common.enums.MeasurementCycle;
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.schedule.domain.analysis.AnalysisRecord;
+import com.ensolution.ems.schedule.domain.snapshot.AnalysisResult;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingItemSnapshot;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,9 +74,19 @@ class MeasurementResultTest {
 	}
 
 	@Test
+	@DisplayName("입력했다가 전부 지운 분석 결과도 결과값 없음으로 다룬다")
+	void ofCompletionWithEmptyAnalysis() {
+		MeasurementResult result = MeasurementResult.ofCompletion(
+			item(false).withAnalysis(AnalysisResult.empty()));
+
+		assertThat(result.hasValue()).isFalse();
+		assertThat(result.allowance()).isEqualByComparingTo(ALLOWANCE);
+	}
+
+	@Test
 	@DisplayName("완료 시점에 분석 결과가 없으면 허용기준만 남기고 판정하지 않는다")
 	void ofCompletionWithoutAnalysis() {
-		MeasurementResult result = MeasurementResult.ofCompletion(item(false), null);
+		MeasurementResult result = MeasurementResult.ofCompletion(item(false));
 
 		assertThat(result.hasValue()).isFalse();
 		assertThat(result.unit()).isNull();
@@ -86,19 +96,13 @@ class MeasurementResultTest {
 	}
 
 	@Test
-	@DisplayName("실측값·단위는 분석 결과에서, 허용기준은 측정항목 스냅샷에서 가져온다")
+	@DisplayName("실측값·단위는 분석 결과에서, 허용기준은 같은 항목의 판정 근거에서 가져온다")
 	void ofCompletionTakesAllowanceFromSnapshot() {
-		SamplingItemSnapshot item = item(false);
-		AnalysisRecord analysis = analysis(item, RAW, "ppm")
-			.toBuilder()
-			.allowance(new BigDecimal("999"))
-			.build();
-
-		MeasurementResult result = MeasurementResult.ofCompletion(item, analysis);
+		MeasurementResult result = MeasurementResult.ofCompletion(itemWithAnalysis(false, RAW, "ppm"));
 
 		assertThat(result.concentration()).isEqualByComparingTo(RAW);
 		assertThat(result.unit()).isEqualTo("ppm");
-		// 분석 기록에도 사본이 있지만 이행 기록의 다른 값과 출처를 맞춘다
+		// 판정 근거와 결과값이 한 항목 안에 있어 출처가 갈라질 수 없다
 		assertThat(result.allowance()).isEqualByComparingTo(ALLOWANCE);
 		assertThat(result.exceeded()).isTrue();
 	}
@@ -106,9 +110,7 @@ class MeasurementResultTest {
 	@Test
 	@DisplayName("보정 농도와 배출량은 아직 채우지 않으므로 산소보정 항목은 판정이 보류된다")
 	void ofCompletionLeavesDerivedValuesEmpty() {
-		SamplingItemSnapshot item = item(true);
-
-		MeasurementResult result = MeasurementResult.ofCompletion(item, analysis(item, RAW, "ppm"));
+		MeasurementResult result = MeasurementResult.ofCompletion(itemWithAnalysis(true, RAW, "ppm"));
 
 		assertThat(result.correctedConcentration()).isNull();
 		assertThat(result.emission()).isNull();
@@ -120,10 +122,13 @@ class MeasurementResultTest {
 		return new SamplingItemSnapshot(
 			1L, 11L, "NOX", "질소산화물", "NOx",
 			MeasurementField.AIR, null, null, null, null,
-			MeasurementCycle.QUARTERLY, ALLOWANCE, oxygenApplicable);
+			MeasurementCycle.QUARTERLY, ALLOWANCE, oxygenApplicable, null);
 	}
 
-	private static AnalysisRecord analysis(SamplingItemSnapshot item, BigDecimal value, String unit) {
-		return AnalysisRecord.register(10L, 1L, item, value, unit, "주시험법", "장비");
+	/** 분석 결과가 채워진 측정항목. 판정 근거와 결과가 한 원소 안에 있다. */
+	private static SamplingItemSnapshot itemWithAnalysis(
+		boolean oxygenApplicable, BigDecimal value, String unit) {
+		return item(oxygenApplicable).withAnalysis(AnalysisResult.empty()
+			.applyAnalysisResult(value, unit, "주시험법", "장비"));
 	}
 }

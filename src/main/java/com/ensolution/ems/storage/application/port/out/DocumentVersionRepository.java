@@ -1,6 +1,6 @@
 package com.ensolution.ems.storage.application.port.out;
 
-import com.ensolution.ems.storage.application.port.in.DocumentVersionSummary;
+import com.ensolution.ems.storage.application.command.DocumentVersionSummary;
 import com.ensolution.ems.storage.domain.DocumentVersion;
 
 import java.util.List;

@@ -34,8 +34,13 @@
 - `domain/{TenantStatus, SubscriptionPlan}` — 이 모듈만 쓰는 enum이라 `global/common/enums/`가 아니라 여기에 둔다
   (루트 `CLAUDE.md` 규칙 2 — global은 **둘 이상**의 모듈이 공유하는 enum만 받는다).
 - `application/service/PlatformService` — `provisionTenant`(테넌트+초기 ADMIN 원자 생성), `getTenant`, `getTenantList`.
-  `TenantQueryUseCase`를 구현한다. **클래스명을 `TenantService`로 두지 않는다** — 도메인은 `Tenant`이지만
+  운영자 콘솔 유스케이스만 담는다. **클래스명을 `TenantService`로 두지 않는다** — 도메인은 `Tenant`이지만
   `client_management`가 테넌트 내부 업무를 다루므로 이름이 겹치면 빈 이름(`tenantService`) 충돌과 혼동을 부른다.
+- `application/service/TenantQueryService` — **타 모듈 공개 계약(`TenantQueryUseCase`)의 구현**.
+  `PlatformService`와 분리한 이유는 **의존이 다르기 때문**이다. `PlatformService`는 테넌트 발급 시
+  초기 관리자를 만들려고 auth의 `UserCommandUseCase`를 쓰는데, auth의 인증 경로가 다시 이 조회 계약을
+  필요로 한다(`global`의 `CustomUserDetailsService`). 한 서비스가 둘을 겸하면 빈 순환이 되어 기동이 실패한다.
+  **이 서비스에 auth 의존을 들이지 말 것.**
 - `application/port/in/TenantQueryUseCase`·`TenantSummary` — 타 모듈 공개 계약. schedule이 측정 시점
   고객사 스냅샷을 조립할 때 `getTenantSummary(tenantId)`로 조회한다. 변환은 `application/mapper/TenantSummaryMapper`.
 - `application/port/out/TenantRepository` — 아웃바운드 포트. `findById`는 없으면 `TENANT_NOT_FOUND`.

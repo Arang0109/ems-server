@@ -116,7 +116,7 @@ jx:each(items="sheets" var="s" lastCell="H30")
 | `flow` | 유량 (§5-4) | `sheet.flow` |
 | `particle` | 입자상 채취 집계 (§5-5) | `sheet.particle` |
 | `points` | 측정점 목록 (§5-6) | `sheet.points` |
-| `samples` | 시료 채취 목록 (§5-7) | `sheet.samples` |
+| `gaseousSamplings` | 시료 채취 목록 (§5-7) | `sheet.gaseousSamplings` |
 | `items` | 측정항목 목록 (§4-9) | `plan.items` |
 
 ```
@@ -432,9 +432,9 @@ jx:each(items="gas.o2" var="v" lastCell="B8")   →  ${v}
 | `p.orificePressure` | 오리피스 차압 | mmH2O |
 | `p.isokineticRatio` | 등속흡입계수 | % |
 
-### 5-7. 시료 채취 목록 `samples` (반복)
+### 5-7. 시료 채취 목록 `gaseousSamplings` (반복)
 
-`jx:each(items="samples" var="sm" lastCell="L10")`
+`jx:each(items="gaseousSamplings" var="sm" lastCell="L10")`
 
 | 변수 | 내용 | 단위 |
 |------|------|------|

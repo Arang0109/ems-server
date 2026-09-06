@@ -23,6 +23,10 @@ public class Tenant {
 	private String roadAddress;
 	private String detailAddress;
 	private String zipcode;
+	/** 시료분석검사자. 성적서 서명란의 기본값이며, 회차별로 다르면 측정계획 스냅샷에서 덮어쓴다. */
+	private String analyst;
+	/** 기술책임자. 위와 같은 규약이다. */
+	private String technicalManager;
 	private TenantStatus status;
 	private SubscriptionPlan subscriptionPlan;
 	private LocalDateTime createdAt;

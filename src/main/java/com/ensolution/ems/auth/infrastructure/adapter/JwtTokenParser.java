@@ -1,6 +1,6 @@
 package com.ensolution.ems.auth.infrastructure.adapter;
 
-import com.ensolution.ems.auth.domain.port.TokenParser;
+import com.ensolution.ems.auth.application.port.out.TokenParser;
 import com.ensolution.ems.global.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

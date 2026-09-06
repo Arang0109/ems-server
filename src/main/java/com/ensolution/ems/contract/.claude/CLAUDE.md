@@ -88,13 +88,13 @@
   파라미터만 선언하고 쓰지 않으면 시그니처만 안전해 보입니다 — 실제로 그런 상태였던 적이 있습니다.
 - 소유권 불일치는 404 `NOT_FOUND`입니다.
 
-### 포트 위치 — `domain/port/` 잔존
+### 포트 위치
 
-`ContractRepository`가 아직 `domain/port/`에 있습니다. 표준 위치는 `application/port/out/`입니다(루트 규칙 4).
+`ContractRepository`는 `application/port/out/`에 있습니다(루트 규칙 4의 표준 위치).
 
-**이 위치 때문에 규칙 1 위반이 하나 딸려 있습니다** — `ContractRepository`가 목록 반환 타입으로
-`application/command/ContractListItem`을 참조해 `domain → application` 역방향 의존이 됩니다.
-포트를 `application/port/out/`으로 옮기면 이 문제도 함께 사라집니다.
+한때 `domain/port/`에 있었고, 그 탓에 목록 반환 타입인 `application/command/ContractListItem`을
+참조해 **`domain → application` 역방향 의존**(루트 규칙 1 위반)이 딸려 있었습니다. 포트를 표준 위치로
+옮기면서 함께 사라졌습니다. `domain/`에는 이제 `Contract` 하나만 있습니다.
 
 ### presentation 구조
 
@@ -105,7 +105,6 @@
 
 ## 향후 과제
 
-- `ContractRepository`를 `application/port/out/`으로 이관 (역방향 의존 동시 해소)
 - `ContractController`를 `presentation/controller/`로 이동
 - `ContractQueryUseCase.deleteContracts`는 이름이 `Query`인데 삭제를 수행합니다.
   이벤트 캐스케이드 전용 계약이므로 `ContractLifecycleUseCase` 같은 이름이 정확합니다

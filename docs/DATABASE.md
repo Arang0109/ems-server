@@ -19,8 +19,9 @@ tenants (테넌트/고객사)
 ├── stack_pollutant    (시설별 측정물질)   tenant_id, stack_id, pollutant_id
 ├── contract           (계약)              tenant_id, workplace_id
 └── schedules          (측정계획 메타)     tenant_id, stack_id, team_id
-    ├── schedule_documents (MongoDB 세부 스냅샷)  scheduleId 로 연결
-    └── analysis_records   (MongoDB 실험분석정보) scheduleId 로 연결
+    └── schedule_documents (MongoDB 세부 스냅샷)  scheduleId 로 연결
+        ├── samplingData.sheets[]  측정 시트
+        └── items[].analysis       실험분석정보
 ```
 
 **전역(테넌트 비종속) 테이블**
@@ -338,20 +339,57 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
 
 > 생애주기는 `status` 하나로 관리합니다. 업무가 실재했으나 무산된 건은 **취소**(`CANCELED`)로 목록에
 > 남기고, 애초에 잘못 등록된 건은 **삭제**로 지웁니다 — 삭제는 행을 지우는 물리 삭제이며
-> 세부 문서(`schedule_documents`)와 실험분석정보(`analysis_records`)도 함께 지워 되돌릴 수 없습니다.
+> 세부 문서(`schedule_documents`)도 함께 지워 되돌릴 수 없습니다 — 실험분석정보는 그 문서 안에 있습니다.
 
-> 시료접수·분석완료·성적서발행 일자와 채취 시작/종료 시각은 MySQL이 아니라
-> MongoDB `schedule_documents.basicInfo`에 있습니다. MySQL의 날짜 컬럼은 `sampled_at` 하나뿐입니다.
+> **성적서 기본정보 표의 값은 전부 이 테이블이 진실입니다** — 관리번호·측정분야·측정용도와
+> 채취일자·시료접수일자·분석완료일자·성적서발행일자. 세부 문서에는 사본을 두지 않으므로
+> 두 저장소가 어긋날 일이 없습니다(2PC를 쓸 수 없는 구조에서 사본은 곧 모호함입니다).
+> 성적서 출력은 메타와 문서를 읽어 합칩니다(`ScheduleExportAssembler`).
+>
+> 채취 시작/종료 시각은 그 회차 현장의 사실이라 문서 쪽(`schedule_documents.samplingData`)에 있습니다.
 
-### 측정 시트 동시 편집 (낙관적 락)
+#### 어느 컬럼을 어느 경로가 고치는가
+
+같은 테이블이지만 **수정 경로가 둘로 갈리고 null의 뜻도 다릅니다.** 한 경로가 다른 경로의 컬럼을
+건드리면 사용자가 다른 탭에서 넣은 값이 조용히 사라집니다.
+
+| 컬럼 | 수정 경로 | null |
+|---|---|---|
+| `sampled_at` | `PUT /api/schedules/{id}` | 필수 — 비울 수 없음(측정 건수 집계 기준일) |
+| `schedule_purpose` · `reference_number` | `PUT /api/schedules/{id}` | **지움**(단독 소유 화면이라 빈 칸 = 지웠다) |
+| `received_at` · `analyzed_at` · `issued_at` | `PATCH /api/schedules/{id}/basic-info` | **유지**(두 화면이 공유하는 경로라 부분 갱신) |
+| `measurement_field` · `stack_id` · `team_id` | 생성 시에만 | 수정 불가 |
+| `status` | 상태 전이 경로(`completion`·`cancellation`·`reopen`)와 자동 전진 | — |
+
+> `received_at`·`analyzed_at`·`issued_at`은 `PATCH` 경로로 **비울 수 없습니다.** 잘못 넣었으면 다른
+> 날짜로 고칩니다. 비우기가 필요해지면 화면별로 경로를 쪼개는 것이 해법입니다(모듈 문서 참고).
+
+### 측정계획 문서 동시 편집 (낙관적 락)
 
 한 측정계획을 두 명 이상이 동시에 입력할 수 있으므로, `PUT /api/schedules/{id}/sheets`는
 요청 시트를 보관본에 **병합**합니다(`SheetMerge`). 전체 배열을 통째로 덮어쓰지 않습니다.
 
 | 단위 | 토큰 | 위치 |
 |------|------|------|
-| 시트(`MeasurementSheet`) | `version` (Long, 신규는 null → 0) | 문서 안 `sheets[].version` |
+| 시트(`SamplingSheet`) | `version` (Long, 신규는 null → 0) | 문서 안 `samplingData.sheets[].version` |
 | 문서(`ScheduleDocument`) | `@Version version` (Spring Data MongoDB) | `schedule_documents.version` |
+
+**문서 락을 공유하는 경로가 여섯입니다.** 실험분석정보를 `items[].analysis`로 문서에 합치면서
+기록지 저장뿐 아니라 분석 결과·채취시각 저장과 항목 편집이 같은 `@Version`을 놓고 경합합니다.
+전부 `SnapshotWriter`를 지나며, 각 경로는 **자기 소유 필드만** 씁니다 — 재적용이 남의 입력을
+되돌리지 않는 근거가 그것뿐입니다.
+
+| 경로 | 쓰는 필드 |
+|---|---|
+| `PUT /{id}/sheets` | `samplingData.sheets` |
+| `PUT /{id}/analyses/results` | `items[].analysis` 의 실험실 입력 4필드 |
+| `PUT /{id}/analyses/sampling-times` | `items[].analysis` 의 채취시각 2필드 |
+| `PATCH /{id}/items` · `PUT /{id}/items/order` · `PATCH /{id}/items/{pollutantId}` | `items` 집합·순서·조건 |
+
+분석 결과에는 시트 `version` 같은 2층 토큰이 없습니다. 실험·분석 탭과 성적서 탭이 쓰는 필드가
+겹치지 않아 논리 충돌이 성립하지 않기 때문이며, 그것이 두 저장 경로가 나뉘어 있는 이유입니다.
+현장 입력과 실험실 입력은 상태 머신이 갈라 줍니다 — `ANALYZING`부터는 기록지가 잠깁니다
+(`Schedule.requireSheetEditable()`).
 
 - **충돌 판정 단위는 시트**입니다. 시트에는 식별자가 없고 `category`(GAS/HEAVY_METAL/DUST/MERCURY)가
   자연키이므로 이를 키로 삼습니다. 두 사람이 서로 다른 시트를 나눠 입력하면 충돌이 나지 않고
@@ -360,7 +398,7 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
   (`SheetRef{category, version}`)로 명시해야 합니다 — 요청에서 빠졌다는 것만으로는 "내가 지웠다"와
   "다른 사용자가 방금 추가했다"를 구분할 수 없기 때문입니다. 삭제도 편집이므로 version을 함께 판정합니다.
 - **문서 `@Version`은 물리적 동시 저장을 막는 안전망**입니다. 여기 걸리면 논리적 충돌이 아니라 저장이
-  겹친 것이므로, 서버가 문서를 다시 읽어 병합을 재시도합니다(최대 3회, `ScheduleService.mergeAndSaveSheets`).
+  겹친 것이므로, 서버가 문서를 다시 읽어 변경을 재적용합니다(최대 3회, `SnapshotWriter`).
 - 버전 도입 전에 저장된 **시트**(`sheets[].version == null`)는 판정 대상이 아니며, 첫 저장에서 0을 받습니다.
 - ⚠️ **문서 `version` 은 배포 전 백필이 필수입니다.** Spring Data 는 `@Version` 이 null 인 문서를
   *신규*로 판정해 `insert` 를 시도하므로, 필드가 없는 기존 문서는 같은 `_id` 로 insert 가 나가
@@ -370,9 +408,12 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
   ```bash
   mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-18-schedule-document-version.js
   ```
-- 클라이언트는 응답의 `snapshot.sheets[].version`을 그대로 되돌려 보내야 합니다.
-  `version`·`createdAt`은 도메인 스냅샷(`ScheduleSnapshot`)이 왕복시키며, 저장할 때마다
-  `@LastModifiedDate`가 `modifiedAt`만 새로 채웁니다.
+- 클라이언트는 응답의 `snapshot.samplingData.sheets[].version`을 그대로 되돌려 보내야 합니다.
+  문서 `version`은 도메인 스냅샷(`ScheduleSnapshot`)이 왕복시킵니다. `createdAt`은 저장 메타라
+  도메인이 들고 다니지 않고 **어댑터가 저장 직전에 기존 값을 읽어 되돌립니다** —
+  `@CreatedDate`는 신규 문서(`version == null`)에만 값을 채우는데 `save()`는 문서 전체를
+  치환하므로, 그대로 두면 저장할 때마다 생성 시각이 지워집니다.
+  `modifiedAt`은 `@LastModifiedDate`가 매번 새로 채웁니다.
 - **문서 단위 `version`은 응답에 나가지 않습니다.** 물리 충돌은 서버가 다시 읽어 재시도로 흡수하므로
   클라이언트가 왕복시킬 필요가 없습니다. 응답이 왕복시키는 낙관적 락 토큰은 `sheets[].version` 하나뿐입니다.
 
@@ -397,18 +438,22 @@ SCHEDULED ──> MEASURING ──> ANALYZING ──> REPORT_COMPLETED  (종단)
 
 | 전이 | 트리거 | 처리 위치 |
 |------|--------|-----------|
-| `SCHEDULED → MEASURING` | 채취 시작시각(`basicInfo.samplingStartedAt`) **또는** 측정점 실측값(`ts`·`pv`·`ps` 중 하나) | `ScheduleProgress.advance` 자동 |
-| `MEASURING → ANALYZING` | 시료접수일자(`basicInfo.receivedAt`) | `ScheduleProgress.advance` 자동 |
+| `SCHEDULED → MEASURING` | 채취 시작시각(`samplingData.samplingStartedAt`) **또는** 측정점 실측값(`gasTemperature`·`dynamicPressure`·`staticPressure` 중 하나) | `ScheduleProgress.advance` 자동 |
+| `MEASURING → ANALYZING` | 시료접수일자(`schedules.received_at`) | `ScheduleProgress.advance` 자동 |
 | `ANALYZING → REPORT_COMPLETED` | 사용자 확정 | `POST /api/schedules/{id}/completion` |
 | `* → CANCELED` | 사용자 확정 | `POST /api/schedules/{id}/cancellation` |
 | 종단 → `SCHEDULED` → 재도출 | 사용자 확정 | `POST /api/schedules/{id}/reopen` |
 
 - **시트를 저장한 것만으로는 전진하지 않습니다.** 틀만 있고 측정점 값이 비어 있으면 `SCHEDULED`에 머뭅니다.
-- 자동 전진은 `updateBasicInfo`·`saveSheets`·`changeEquipments`·`changeClient`·`changeItems`·`updateItem`
-  **6개 경로 모두**에서 판정되며, 멱등하고 역행하지 않습니다. 한 번의 판정에서 2단계를 건너뛰지 않고
-  순차 적용하므로 두 신호가 동시에 충족되면 `SCHEDULED → ANALYZING`까지 연쇄 전진합니다.
+- 자동 전진은 `updateBasicInfo`·`saveSheets`·`changeEquipments`·`changeClient`·`changeItems`·
+  `reorderItems`·`updateItem` **7개 경로 모두**에서 판정되며, 멱등하고 역행하지 않습니다. 한 번의
+  판정에서 2단계를 건너뛰지 않고 순차 적용하므로 두 신호가 동시에 충족되면 `SCHEDULED → ANALYZING`까지
+  연쇄 전진합니다.
 - `REPORT_COMPLETED`·`CANCELED`는 종단 상태이며 `canEdit() == false`입니다. 모든 수정 경로가
   `Schedule.requireEditable()`에서 409(`SCHEDULE_NOT_EDITABLE`)로 차단됩니다.
+- **`ANALYZING`부터는 채취 기록지가 추가로 잠깁니다**(`canEditSheets() == false`).
+  `PUT /{id}/sheets`만 409(`SCHEDULE_SHEET_NOT_EDITABLE`)로 거부하며, 성적서 발행일 입력이나 항목
+  정정은 이 단계에서도 열려 있습니다. 실험실 입력과 현장 입력이 시간축에서 겹치지 않게 하는 경계입니다.
   **삭제는 별개 규칙(`canDelete()`)** 이라 `SCHEDULED`·`CANCELED`에서만 허용됩니다.
 - 측정 건수 통계(`countCompleted` 등)는 `REPORT_COMPLETED`이면서 `sampled_at`이 있는 건만 집계합니다.
   재개방하면 상태가 종단을 벗어나므로 통계에서도 자동으로 빠집니다.
@@ -442,81 +487,107 @@ mysql -u <user> -p ems < docs/migration/2026-08-25-schedule-drop-status-log.sql
 
 ---
 
-## analysis_records — 실험분석정보 (MongoDB)
+## schedule_documents.items[].analysis — 실험분석정보 (MongoDB)
 
-한 측정계획의 측정항목 하나에 대한 **성적서용 기록**입니다. **측정항목 하나당 문서 하나**로 저장하며,
-현장 측정값(측정 시트)이 아니라 측정이 끝난 뒤 별도로 입력됩니다.
+한 측정계획의 측정항목 하나에 대한 **성적서용 기록**입니다. 현장 측정값(측정 시트)이 아니라
+측정이 끝난 뒤 별도로 입력되며, **측정항목 스냅샷 안에** 함께 저장됩니다.
 
-**한 문서를 두 화면이 필드를 나눠 소유합니다.** 실험·분석 탭은 실험실 입력값
+**측정항목 안에 두는 이유**는 판정 근거와 결과값이 갈라지지 않게 하기 위해서입니다.
+별도 컬렉션이던 시절에는 `allowance`·`oxygenApplicable`이 항목과 분석 기록 양쪽에 사본으로 있어
+한 회차 안에서 두 값이 어긋날 수 있었고, 그래서 항목을 정정할 때 분석 기록까지 따라 고치는
+동기화 경로가 필요했습니다. 사본이 하나가 되면서 그 경로와 둘을 잇는 색인이 함께 사라졌습니다.
+
+**한 항목을 두 화면이 필드를 나눠 소유합니다.** 실험·분석 탭은 실험실 입력값
 (`analysisValue`·`unit`·`analysisMethod`·`analysisEquipment`)만, 성적서 탭은 채취시간
 (`samplingStartedAt`·`samplingEndedAt`)만 씁니다. 저장 경로도 갈라져 있어
 (`PUT /analyses/results` vs `PUT /analyses/sampling-times`) 두 탭을 동시에 열어도
-서로의 입력을 덮어쓰지 않습니다.
+서로의 입력을 덮어쓰지 않습니다 — 같은 문서를 쓰게 된 뒤에도 그렇습니다.
+문서 단위 락을 공유하는 경로 전체는 위 "측정계획 문서 동시 편집" 절을 보세요.
 
-**두 일괄 저장 모두 `pollutantId`를 키로 upsert 합니다.** 문서 id로 신규·기존을 판별하게 두면
-한 탭이 문서를 만든 사실을 다른 탭이 모른 채 등록을 시도해 409로 막힙니다(화면이 탭을 언마운트하지
-않아 목록을 다시 읽지 않습니다). 실제 불변식이 "한 계획의 한 측정항목 = 문서 하나"이므로
-대리키가 아니라 자연키로 쓰는 편이 맞습니다.
+**두 일괄 저장 모두 `pollutantId`를 키로 upsert 합니다.** 실제 불변식이
+"한 계획의 한 측정항목 = 결과 하나"이므로 대리키가 아니라 자연키로 씁니다.
 
-| 필드 | 타입 | 설명 |
+| 필드 (`items[].analysis`) | 타입 | 설명 |
 |------|------|------|
-| _id | ObjectId | 문서 id. API 경로의 `analysisId` |
-| tenantId | Long | 소속 테넌트 |
-| scheduleId | Long | 소속 측정계획. **조회의 축** |
-| stackPollutantId | Long | 원장(`stack_pollutant`) 연결키. 스냅샷에서 복사 |
-| pollutantId | Long | 측정물질. **계획 안에서 분석 기록의 유일성 축** |
-| pollutantName | String | 측정물질명. 스냅샷에서 복사 |
-| allowance | Decimal | **허용기준치**. 측정 시점 원장 사본(스냅샷) |
-| oxygenApplicable | Boolean | **기준산소농도 보정 적용 여부**. 측정 시점 원장 사본(스냅샷) |
 | analysisValue | Decimal | **측정분석값** |
 | unit | String | **측정단위** |
 | analysisMethod | String | **측정분석방법** |
 | analysisEquipment | String | **분석장비** |
 | samplingStartedAt | Time | **채취 시작시각**. 성적서 탭 작성분 |
 | samplingEndedAt | Time | **채취 종료시각**. 성적서 탭 작성분 |
-| createdAt / modifiedAt | DateTime | `@CreatedDate` / `@LastModifiedDate` |
 
-- **INDEX** `idx_analysis_tenant_schedule` (tenantId, scheduleId)
-- `allowance`·`oxygenApplicable`은 등록 시 `schedule_documents.items[]`(측정 시점 stack_pollutant 사본)에서
-  복사하며 **수정 대상이 아닙니다.** 원장의 허용기준이 개정되어도 과거 회차의 초과 판정이 뒤집히면 안 되기 때문이며,
-  `measurement_records.result`가 같은 이유로 판정 근거를 행에 고정하는 것과 같은 방침입니다.
-- 계획의 측정항목이 아닌 물질은 400(`SCHEDULE_ITEM_NOT_IN_SCHEDULE`), 같은 항목 중복 등록은
-  409(`SCHEDULE_ANALYSIS_ALREADY_EXISTS`)로 거부합니다. 재분석은 등록이 아니라 수정(PUT)으로 처리합니다.
-- **`schedule_documents`와 컬렉션을 분리한 이유**: 실험실 입력이 측정 시트 저장의 문서 단위 낙관적 락
-  (`schedule_documents.version`)과 부딪히지 않게 하기 위해서입니다. 현장 측정과 실험실 분석은
-  서로 다른 시점·다른 담당자가 입력합니다.
-- 완료·취소된 계획에는 등록·수정·삭제가 모두 막힙니다(`Schedule.requireEditable()`).
-- `analysisValue`는 **필수가 아닙니다.** 성적서 탭이 채취시간만 먼저 저장해 둔 문서가 정상 상태이기 때문입니다.
-- **채취시간은 현장 채취 기록지(`schedule_documents.sheets[]`)에서 서버가 자동으로 옮겨오지 않습니다.**
+- **`analysis` 자체가 없으면(null) 아직 분석 전**이며 정상 상태입니다. 여섯 필드가 모두 비어 있는
+  것(입력했다가 전부 지움)과 뜻이 다르므로 구분해 다룹니다.
+- 판정 근거(`allowance`·`oxygenApplicable`)와 물질 식별(`stackPollutantId`·`pollutantId`·`nameKr`)은
+  **항목 자신**이 갖습니다. 측정 시점 원장 사본이며 이 경로의 수정 대상이 아닙니다 — 원장의 허용기준이
+  개정되어도 과거 회차의 초과 판정이 뒤집히면 안 되기 때문이고, `measurement_records.result`가 같은
+  이유로 판정 근거를 행에 고정하는 것과 같은 방침입니다. 정정이 필요하면
+  `PATCH /api/schedules/{id}/items/{pollutantId}`를 씁니다.
+- 계획의 측정항목이 아닌 물질은 400(`SCHEDULE_ITEM_NOT_IN_SCHEDULE`), 한 요청에 같은 항목이 두 번
+  담기면 400(`SCHEDULE_ANALYSIS_DUPLICATE_ITEM`)으로 거부합니다.
+- 완료·취소된 계획에는 저장이 막힙니다(`Schedule.requireEditable()`).
+- `analysisValue`는 **필수가 아닙니다.** 성적서 탭이 채취시간만 먼저 저장해 둔 상태가 정상이기 때문입니다.
+- **채취시간은 현장 채취 기록지(`schedule_documents.samplingData.sheets[]`)에서 서버가 자동으로 옮겨오지 않습니다.**
   기록지는 알데히드류를 `VOCs`로 통칭해 시료 한 건으로 적지만 성적서는 포름알데히드·아세트알데히드를
   각각 씁니다(시료 1건 ↔ 항목 N건).
-  그 대응은 시료 행의 `pollutantIds`(→ `sheets[].samples[].pollutantIds`)에 기록되므로 데이터로
+  그 대응은 시료 행의 `pollutantIds`(→ `sheets[].gaseousSamplings[].pollutantIds`)에 기록되므로 데이터로
   존재하며, 성적서 탭의 "기록지 채취시각 가져오기"가 그것을 펴서 항목별 행에 채웁니다.
   다만 **옮기는 시점은 사용자가 정합니다** — 자동 복사는 실험실에서 고쳐 둔 시각을 조용히
   되돌려 틀린 값을 성적서에 남깁니다. 통칭 규칙 자체도 서버가 고정하지 않습니다(어느 병에 무엇을
   담을지는 업체와 현장이 정하고, 화면에서 행을 쪼개거나 합칠 수 있습니다).
-- 채취시간 일괄 저장은 **전달한 항목만** 갱신합니다. 전달한 항목의 빈 시각은 기존 값을 지우며
-  (표의 빈 칸 = "지웠다"), 요청에 없는 항목은 그대로 둡니다. 시각이 둘 다 비어 있고 기존 문서도 없으면
-  문서를 만들지 않습니다. 한 요청에 같은 항목이 두 번 담기면 400(`SCHEDULE_ANALYSIS_DUPLICATE_ITEM`)입니다.
+- 두 일괄 저장 모두 **전달한 항목만** 갱신합니다. 전달한 항목의 빈 값은 기존 값을 지우며
+  (표의 빈 칸 = "지웠다"), 요청에 없는 항목은 그대로 둡니다. 값이 전부 비어 있고 기존 결과도 없으면
+  결과를 만들지 않습니다 — 한 번도 손대지 않은 행까지 빈 결과로 채우면 쓸모없는 값만 쌓입니다.
 - 시작·종료 시각의 순서는 검증하지 않습니다 — 자정을 넘겨 채취하는 회차(23:00→01:00)가 정상적으로 있습니다.
 
 | 메서드 | 경로 |
 |--------|------|
-| POST | `/api/schedules/{scheduleId}/analyses` |
-| GET | `/api/schedules/{scheduleId}/analyses` |
-| GET | `/api/schedules/{scheduleId}/analyses/{analysisId}` |
-| PUT | `/api/schedules/{scheduleId}/analyses/{analysisId}` |
+| GET | `/api/schedules/{scheduleId}/analyses` — 측정항목과 그 분석 결과 목록 |
 | PUT | `/api/schedules/{scheduleId}/analyses/results` — 항목별 실험분석 결과 일괄 저장 |
 | PUT | `/api/schedules/{scheduleId}/analyses/sampling-times` — 성적서 항목별 채취시간 일괄 저장 |
-| DELETE | `/api/schedules/{scheduleId}/analyses/{analysisId}` |
 
-> `results`·`sampling-times`는 리터럴 경로라 같은 `PUT`의 `/{analysisId}`보다 먼저 매칭됩니다
-> (Spring `PathPattern` 특이성 우선). 컨트롤러에서도 위에 선언해 두었으니 순서를 바꾸지 마세요.
-> 회귀는 `AnalysisRecordControllerRoutingTest`가 잡습니다.
+> 단건 등록·수정·삭제 경로는 두지 않습니다. 두 탭 모두 항목 표 **전체**를 보내는 일괄 저장이 실제
+> 사용 방식이고, "빈 칸 = 지움" 규약이 있어 행 삭제가 빈 값 저장과 같은 뜻이 됩니다.
+> 분석 결과가 문서 안에 있어 대리키(`analysisId`)도 없습니다 — 식별 축은 `pollutantId`입니다.
+>
+> `GET /analyses`의 내용은 `GET /api/schedules/{id}`의 `snapshot.items[]`와 같습니다.
+> 실험·분석 화면이 계획 상세를 읽지 않고 열릴 수 있어 편의 경로로 남겨 둡니다.
 
-- 단건 `POST`·`PUT /{analysisId}`도 남아 있지만 화면은 쓰지 않습니다. 두 일괄 저장과 달리 `POST`는
-  같은 항목이 이미 있으면 409(`SCHEDULE_ANALYSIS_ALREADY_EXISTS`)로 거부하고, `PUT /{analysisId}`의
-  null은 "지움"이 아니라 "기존 값 유지"입니다 — 부분 수정용이라 규칙이 다릅니다.
+> **마이그레이션**: 옛 `analysis_records` 컬렉션은 `2026-08-29-analysis-records-embed.js`가
+> `items[].analysis`로 접붙이고, 확인 후 `2026-08-29-drop-analysis-records.js`가 드롭합니다.
+> 대응 항목이 없는 고아 레코드는 `orphan_analysis_records`로 대피시키며, 그것이 비어 있지 않으면
+> 드롭 스크립트가 멈춥니다.
+
+---
+
+### 애그리거트 재구성 마이그레이션 (2026-08-29)
+
+`ScheduleSnapshot`이 메타와 겹치는 값을 버리고, 채취 정보를 한 노드로 모으고, 실험분석정보를
+측정항목 안으로 들였습니다. 시트 내부 필드도 수식 약어에서 서술형으로 개명했습니다.
+**하위 호환이 없으므로 구버전을 먼저 내려야 합니다.**
+
+```bash
+# 0) 되돌릴 근거를 먼저 만든다 — 이 마이그레이션에는 역방향 스크립트가 없다
+mongodump --db ems --collection schedule_documents
+mongodump --db ems --collection analysis_records
+
+# 1) 구조 재배치 + 시트 키 개명 35건
+mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-schedule-snapshot-restructure.js
+
+# 2) analysis_records 를 items[].analysis 로 접붙이기 (원본은 남긴다)
+mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-analysis-records-embed.js
+
+# 3) 고객사 원장에 성적서 서명란 담당자 2필드
+mysql -u <user> -p ems < docs/migration/2026-08-29-tenant-report-staff.sql
+
+# 4) 신버전 백엔드 → ems-web 순으로 배포 (응답 키가 바뀌므로 같은 배포창에서)
+
+# 5) 성적서·이행 기록 확인 후, 며칠 뒤 원본 드롭
+mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analysis-records.js
+```
+
+세 JS 모두 멱등입니다 — 옛 키가 있고 새 키가 없을 때만 옮기므로 재실행해도 결과가 같습니다.
+덤프 복원본에 2회 연속 실행해 확인하는 것을 권합니다.
 
 ---
 

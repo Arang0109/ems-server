@@ -46,11 +46,33 @@
 - **`createUser`와 `updateUser` 양쪽에 적용합니다.** 수정 경로만 막으면 관리자가 운영자 계정을
   **새로 만들** 수 있습니다.
 - 판정 자체는 도메인이 소유합니다 — `Role.PLATFORM_ADMIN` 상수 + `Role.isPlatformAdmin()`.
+- **선택지에서도 빠집니다** — `GET /api/roles`(`RoleService.getAssignableRoles`)가 `PLATFORM_ADMIN`을 제외합니다.
+  부여를 막는 것과 목록에서 빼는 것은 층이 다릅니다: 앞은 보안 경계라 서버에만 둘 수 있고,
+  뒤는 UX이지만 **역시 서버가 합니다.** 클라이언트가 거르면 같은 규칙이 클라이언트 수만큼 복제되고,
+  서버는 "고를 수 없는 것을 선택지로 주는" 상태로 남습니다. 두 경로 모두 `Role.isPlatformAdmin()`을 봅니다.
+  회귀 방지는 `RoleServiceTest`·`UserValidatorTest`·`AuthServiceTest`가 맡습니다
 - **`UserCommandUseCase.createPlatformAdmin`이 이 제한을 받지 않는 유일한 경로**입니다.
   부트스트랩 전용이며, 이 예외가 없으면 서버 최초 기동이 `ROLE_NOT_ASSIGNABLE`로 실패합니다.
 
 > **"역할이 존재하는가"는 권한 검증이 아닙니다.** `roleRepository.findById(roleId)`가 통과한다는 것은
 > 그 역할이 DB에 있다는 뜻일 뿐입니다. 이 둘을 섞지 마세요.
+
+---
+
+## 인증 주체 조회 — `global`이 auth를 들여다보지 않는다
+
+스프링 시큐리티의 `UserDetailsService`(`global/security/user/CustomUserDetailsService`)는
+**`UserCredentialQueryUseCase` 하나만** 봅니다. 한때 이 클래스가 `UserEntity`·`RoleEntity`·
+`UserJpaRepository`를 직접 들고 있었고, 진단 리포트에 세 번 연속 이월된 유일한 모듈 경계 위반이었습니다.
+
+- `UserCredentialSummary`는 **암호화된 비밀번호를 담는 유일한 공개 VO**입니다. 그래서 일반 조회
+  계약(`UserQueryUseCase`)과 나눠 두었습니다 — 비밀번호가 필요한 곳은 시큐리티 하나뿐입니다.
+- **테넌트 이름은 이 VO에 없습니다.** 그것은 `platform`의 원장이고, auth가 조회하면
+  `platform → auth` 의존과 맞물려 순환이 됩니다. 두 모듈의 값을 합치는 일은 `global`이 합니다.
+- 그 순환은 실제로 한 번 발생했습니다. 지금은 세 가지로 끊겨 있습니다 —
+  `PasswordEncoder` 빈을 `SecurityConfig`에서 분리(`PasswordEncoderConfig`),
+  `platform`의 조회 계약 구현 분리(`TenantQueryService`), 그리고 위의 "auth는 테넌트를 모른다"는 규칙.
+  **셋 중 어느 하나라도 되돌리면 기동이 실패합니다.**
 
 ---
 
@@ -110,12 +132,22 @@ HTTP로 접속하는 개발 서버에 secure 쿠키를 내려보내면 **브라�
 
 | 계약 | 구현체 | 소비 모듈 |
 |---|---|---|
-| `UserQueryUseCase` — `getUser(userId, tenantId)`, `getUserList(tenantId)`, `existsByUsername` | `UserService` | `admin`, `client_management`(팀 사수·부사수 이름), `global`(예정) |
+| `UserQueryUseCase` — `getUser(userId, tenantId)`, `getUserList(tenantId)`, `existsByUsername` | `UserService` | `admin`, `client_management`(팀 사수·부사수 이름) |
 | `UserCommandUseCase` — `createUser`, `updateUser`, `deleteUser`, `createPlatformAdmin` | `AuthService` | `admin`, `platform` |
 | `RoleQueryUseCase` / `RoleCommandUseCase` | `RoleService` | `platform`(부트스트랩 역할 확보) |
+| `UserCredentialQueryUseCase` — `findCredentialByUsername` | `UserService` | `global`(스프링 시큐리티 `UserDetailsService`) |
 
 공개 VO는 `UserSummary`(`port/in`)이며 비밀번호를 담지 않습니다.
 `CreateUserCommand`·`UpdateUserCommand`도 공개 계약이라 `port/in`에 둡니다.
+
+**이 세 타입은 소비 모듈이 감싸지 않고 그대로 씁니다**(루트 `CLAUDE.md`의 공유 커널). `admin`이 그 예로,
+`MemberController`가 Request를 `CreateUserCommand`로 곧장 바꾸고 `UserSummary`를 `MemberResponse`로 옮깁니다.
+중간 도메인·커맨드를 두었다가 2026-09-06에 걷어냈습니다 — 필드가 같은 타입을 한 겹 더 두면 변환만 늘고,
+필드를 더할 때 양쪽을 고쳐야 했기 때문입니다.
+
+> **그래서 이 세 타입의 필드를 바꿀 때는 소비 모듈의 응답 계약을 함께 봅니다.** `admin`의 `MemberMapper`는
+> `unmappedTargetPolicy = ERROR`라 필드를 더하면 그쪽 컴파일이 깨집니다. 그 자리에서 `MemberResponse`에
+> 노출할지 결정하세요 — 조용히 누락되지 않게 하려고 일부러 그렇게 두었습니다.
 
 > `getUser(userId, tenantId)`는 **tenant 범위 조회**입니다. 소비 모듈이 tenant를 따로 대조할 필요가 없고,
 > 해서도 안 됩니다 — 대조 책임이 두 곳으로 갈리면 한쪽이 빠집니다.
@@ -133,13 +165,10 @@ HTTP로 접속하는 개발 서버에 secure 쿠키를 내려보내면 **브라�
   (로그인 시 테넌트를 지정하지 않으므로 username만으로 계정이 특정되어야 합니다).
 - `User` 단건 조회·삭제는 `(userId, tenantId)`입니다. 소유권 불일치는 `USER_NOT_FOUND`(404)로 은닉합니다.
 
-### 포트 위치 — `domain/port/` 잔존
+### 포트 위치
 
-이 모듈은 **아웃바운드 포트 6개가 아직 `domain/port/`에 있습니다.**
-`Authenticator` · `PasswordEncryptor` · `RoleRepository` · `TokenIssuer` · `TokenParser` · `UserRepository`
-
-표준 위치는 `application/port/out/`이며(루트 규칙 4) 향후 이관 예정입니다.
-**신규 포트는 `application/port/out/`에 만듭니다** — `RefreshTokenStore`가 이미 그렇습니다.
+아웃바운드 포트는 전부 `application/port/out/`에 있습니다. 한때 6개가 `domain/port/`에 남아
+루트 규칙 4를 어기고 있었으나 **2026-09-06에 이관을 마쳤고**, 그 패키지는 더 이상 없습니다.
 
 ### `Optional` 반환 — 이 모듈의 예외
 
@@ -167,9 +196,5 @@ HTTP로 접속하는 개발 서버에 secure 쿠키를 내려보내면 **브라�
 
 ## 향후 과제
 
-- `domain/port/` 6개를 `application/port/out/`으로 이관 (루트 규칙 4)
-- `AuthService.register`의 아이디 중복 검사가 `IllegalArgumentException`을 던집니다.
-  `USER_USERNAME_DUPLICATED` 같은 도메인 ErrorCode로 교체해야 규칙 12에 맞습니다
-- `GET /api/roles`가 `PLATFORM_ADMIN`을 포함한 전체 역할을 인증된 모든 사용자에게 노출합니다.
-  부여 자체는 막혀 있으나 목록 노출이 필요한지 재검토
-- 이 모듈에는 테스트가 없습니다. 역할 부여 제한과 tenant 격리는 회귀가 곧 취약점이므로 우선순위가 높습니다
+- `RoleService.getAssignableRoles`는 `PLATFORM_ADMIN`만 걸러냅니다. 앞으로 부여 불가 역할이 늘면
+  판정을 `Role`로 옮겨 한 곳에서 관리해야 합니다

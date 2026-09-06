@@ -1,8 +1,8 @@
 package com.ensolution.ems.schedule.application.calculation.step;
 
 import com.ensolution.ems.schedule.application.calculation.SheetContext;
-import com.ensolution.ems.schedule.domain.sheet.MeasurementSheet;
-import com.ensolution.ems.schedule.domain.sheet.QuantityData;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
+import com.ensolution.ems.schedule.domain.sampling.FlowRateData;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -13,38 +13,37 @@ public class ApplyResultStep implements SheetStep {
 
 	@Override
 	public void execute(SheetContext context) {
-		MeasurementSheet sheet = context.getSheet();
+		SamplingSheet sheet = context.getSheet();
 
-		MeasurementSheet updated = sheet.toBuilder()
+		SamplingSheet updated = sheet.toBuilder()
 			.weather(sheet.getWeather() == null ? null
-				: sheet.getWeather().toBuilder().Pa(context.getPa()).build())
+				: sheet.getWeather().toBuilder().atmosphericPressureMmHg(context.getPa()).build())
 			.moisture(sheet.getMoisture() == null ? null
 				: sheet.getMoisture().toBuilder()
-					.Pm_g(context.getPm_g())
-					.Pm_g_inch(context.getPm_g_inch())
-					.Tm_g(context.getTm_g())
-					.Vm_g(context.getVm_g())
-					.ma(context.getMa())
-					.Xw(context.getXw())
+					.gasMeterGaugePressureMmHg(context.getPm_g())
+					.gasMeterGaugePressureInH2O(context.getPm_g_inch())
+					.averageGasMeterTemperature(context.getTm_g())
+					.sampledDryGasVolume(context.getVm_g())
+					.absorbedMoistureMass(context.getMa())
+					.moistureRatio(context.getXw())
 				.build())
 			.exhaustGas(sheet.getExhaustGas() == null ? null
 				: sheet.getExhaustGas().toBuilder()
 					.standardGasDensity(context.getStandardGasDensity())
 					.o2CorrectionFactor(context.getOxygenCorrectionFactor())
 					.build())
-			.quantity((sheet.getQuantity() == null ? QuantityData.builder() : sheet.getQuantity().toBuilder())
-				.avgTg(context.getAvgTg())
-				.avgPv(context.getAvgPv())
-				.avgPs(context.getAvgPs())
+			.flowRate((sheet.getFlowRate() == null ? FlowRateData.builder() : sheet.getFlowRate().toBuilder())
+				.averageGasTemperatureKelvin(context.getAvgTg())
+				.averageDynamicPressure(context.getAvgPv())
+				.averageStaticPressure(context.getAvgPs())
 				.gasDensity(context.getGasDensity())
-				.area(context.getArea())
-				.Vs(context.getVs())
-				.quantity(context.getQuantity())
-				.standardQuantity(context.getStandardQuantity())
-				.Cp(context.getCp())
+				.stackArea(context.getArea())
+				.averageGasVelocity(context.getVs())
+				.wetGasFlowRate(context.getQuantity())
+				.standardDryGasFlowRate(context.getStandardQuantity())
+				.appliedPitotCoefficient(context.getCp())
 				.build())
-			.samplingPointCnt(context.getSamplingPointCnt())
-			.avgTm(context.getAvgTm())
+			.samplingPointCount(context.getSamplingPointCnt())
 			.build();
 
 		context.setSheet(updated);

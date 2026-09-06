@@ -1,8 +1,8 @@
 package com.ensolution.ems.schedule.application.calculation.step;
 
 import com.ensolution.ems.schedule.application.calculation.SheetContext;
-import com.ensolution.ems.schedule.domain.sheet.MoistureData;
-import com.ensolution.ems.schedule.domain.sheet.WeatherData;
+import com.ensolution.ems.schedule.domain.sampling.MoistureData;
+import com.ensolution.ems.schedule.domain.sampling.WeatherData;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -24,8 +24,8 @@ public class PressureStep implements SheetStep {
 	// Pa (mmH2O -> mmHg) 변환 후 Pa에 저장 (대기압)
 	private void setAtmospherePressure(SheetContext context) {
 		WeatherData weather = context.getSheet().getWeather();
-		if (weather == null || weather.getPressure() == null) return;
-		context.setPa(convertHpaToMmHg(weather.getPressure()));
+		if (weather == null || weather.getAtmosphericPressure() == null) return;
+		context.setPa(convertHpaToMmHg(weather.getAtmosphericPressure()));
 	}
 
 	// Pm_g (mmH2O -< mmHg) 변환 후 Pm_g에 저장 (가스미터게이지압)

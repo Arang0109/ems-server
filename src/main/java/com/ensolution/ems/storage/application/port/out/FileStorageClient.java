@@ -1,10 +1,12 @@
 package com.ensolution.ems.storage.application.port.out;
 
-import com.ensolution.ems.storage.domain.StorageProvider;
-
 /**
- * 파일 실물의 보관소. 구현체를 교체해 로컬 디스크·S3 등으로 저장 위치를 바꾼다.
- * 현재는 {@code LocalFileStorageAdapter}만 존재한다.
+ * 파일 실물의 보관소.
+ * <p>
+ * 구현체는 환경마다 하나만 등록된다({@code ems.storage.provider}). 서비스는 어느 보관소인지 모른 채
+ * {@code storageKey}만 넘기고, 키를 해석하는 방식은 구현체의 몫이다.
+ * <p>
+ * {@code storageKey}는 도메인({@code DocumentVersion})이 만든다. 구현체는 키를 만들지 않는다.
  */
 public interface FileStorageClient {
 
@@ -14,7 +16,4 @@ public interface FileStorageClient {
 
 	/** 대상이 이미 없어도 예외를 던지지 않는다. */
 	void delete(String storageKey);
-
-	/** 이 구현체가 저장한 파일에 기록될 보관소 종류. */
-	StorageProvider provider();
 }

@@ -17,7 +17,12 @@ public interface DocumentVersionJpaRepository extends JpaRepository<DocumentVers
 
 	List<DocumentVersionEntity> findAllByDocument_DocumentIdOrderByVersionNoDesc(Long documentId);
 
-	@Query("select v.storageKey from DocumentVersionEntity v where v.document.documentId = :documentId")
+	/** 삭제용 조회다. 엔티티 전체를 올리지 않고 저장소 키 한 컬럼만 뽑는다. */
+	@Query("""
+		select v.storageKey
+		from DocumentVersionEntity v
+		where v.document.documentId = :documentId
+		""")
 	List<String> findStorageKeysByDocumentId(@Param("documentId") Long documentId);
 
 	long countByDocument_DocumentId(Long documentId);

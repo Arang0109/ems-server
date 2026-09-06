@@ -1,6 +1,5 @@
 package com.ensolution.ems.storage.infrastructure.entity;
 
-import com.ensolution.ems.storage.domain.StorageProvider;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.OnDelete;
@@ -60,10 +59,6 @@ public class DocumentVersionEntity {
 
 	@Column(name = "content_type")
 	private String contentType;
-
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private StorageProvider provider;
 
 	@Column(name = "change_note", length = 500)
 	private String changeNote;

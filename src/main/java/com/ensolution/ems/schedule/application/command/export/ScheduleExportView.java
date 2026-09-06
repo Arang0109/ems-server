@@ -32,8 +32,8 @@ public class ScheduleExportView {
 	private final LocalTime samplingStartedAt;
 	private final LocalTime samplingEndedAt;
 	
-	private final String mentor;
-	private final String mentee;
+	private final String mentorName;
+	private final String menteeName;
 	private final String facilityManager;   // 배출시설관리자
 	private final String samplingWitness;   // 시료채취입회자(환경기술인)
 	private final String analyst;           // 시료분석검사자
@@ -49,13 +49,15 @@ public class ScheduleExportView {
 	private final String clientName;
 	private final String clientBizNumber;
 	private final String clientRepresentative;
-	private final String clientAddress;
+	private final String clientRoadAddress;
+	private final String clientDetailAddress;
 
 	// 사업장
 	private final String workplaceName;
 	private final String workplaceBizNumber;
 	private final String businessCategory;
-	private final String workplaceAddress;
+	private final String workplaceRoadAddress;
+	private final String workplaceDetailAddress;
 	private final String workplaceGrade;
 
 	// 측정시설(굴뚝)
@@ -71,6 +73,8 @@ public class ScheduleExportView {
 	private final Integer standardOxygen;
 
 	// 배출·방지시설 (jx:each 대상)
+	private final String facilityName;
+	private final String preventionName;
 	private final List<FacilityExportView> facilities;
 	private final List<PreventionExportView> preventions;
 
