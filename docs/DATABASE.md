@@ -64,6 +64,8 @@ tenants (테넌트/고객사)
 | created_at | DATETIME | NOT UPDATABLE | Auditing |
 | modified_at | DATETIME | | Auditing |
 
+- **INDEX** `idx_users_tenant_id` (tenant_id) — tenant 전원 조회(`findAllByTenantId`)가 채팅 연락처·대화방 목록에서 상시 호출됩니다
+
 ---
 
 ## roles — 역할

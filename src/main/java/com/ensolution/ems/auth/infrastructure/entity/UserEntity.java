@@ -16,7 +16,11 @@ import java.time.LocalDateTime;
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-@Table(name = "users")
+@Table(
+	name = "users",
+	// 채팅 연락처·대화방 목록이 getUserList(tenantId)를 상시 호출한다. 인덱스가 없으면 풀스캔이다.
+	indexes = @Index(name = "idx_users_tenant_id", columnList = "tenant_id")
+)
 public class UserEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
