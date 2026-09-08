@@ -4,9 +4,12 @@ import com.ensolution.ems.chat.application.FakeChatMessageRepository;
 import com.ensolution.ems.chat.application.FakeChatParticipantRepository;
 import com.ensolution.ems.chat.application.FakeChatRoomRepository;
 import com.ensolution.ems.chat.application.FakeUserQuery;
+import com.ensolution.ems.chat.application.RecordingChatEventBroadcaster;
 import com.ensolution.ems.chat.application.command.ChatMessageListItem;
 import com.ensolution.ems.chat.application.command.ChatMessagePage;
 import com.ensolution.ems.chat.application.command.SendMessageCommand;
+import com.ensolution.ems.chat.application.event.ChatMessagePayload;
+import com.ensolution.ems.chat.application.service.support.ChatEventPublisher;
 import com.ensolution.ems.chat.domain.ChatRoom;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
@@ -47,8 +50,11 @@ class ChatMessageServiceTest {
 	private final FakeChatMessageRepository messageRepository = new FakeChatMessageRepository();
 	private final FakeUserQuery userQuery = new FakeUserQuery();
 
+	private final RecordingChatEventBroadcaster broadcaster = new RecordingChatEventBroadcaster();
+
 	private final ChatMessageService chatMessageService = new ChatMessageService(
-		roomRepository, participantRepository, messageRepository, userQuery);
+		roomRepository, participantRepository, messageRepository, userQuery,
+		new ChatEventPublisher(broadcaster));
 
 	private final Long roomId;
 
@@ -260,6 +266,58 @@ class ChatMessageServiceTest {
 				chatMessageService.getMessages(roomId, ME, TENANT, null, 100_000).messages();
 
 			assertThat(messages).hasSize(3);
+		}
+	}
+
+	@Nested
+	@DisplayName("실시간 알림")
+	class Broadcasting {
+
+		@Test
+		@DisplayName("방 참가자 전원에게 간다 — 발신자 자신도 포함한다")
+		void 참가자_전원에게_간다() {
+			chatMessageService.sendMessage(sendCommand(TENANT, ME, "안녕"));
+
+			assertThat(broadcaster.messages()).singleElement()
+				.extracting(RecordingChatEventBroadcaster.Sent::recipients)
+				.asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.list(String.class))
+				// 발신자에게도 보낸다. 다른 탭·기기의 화면을 맞춰야 한다.
+				.containsExactlyInAnyOrder("user" + ME, "user" + PEER);
+		}
+
+		@Test
+		@DisplayName("본문을 그대로 싣는다 — 수신 측이 재조회하지 않아도 그릴 수 있어야 한다")
+		void 본문이_실린다() {
+			chatMessageService.sendMessage(
+				new SendMessageCommand(TENANT, roomId, ME, "3번 굴뚝 끝", "tmp-1"));
+
+			ChatMessagePayload payload = broadcaster.messages().get(0).payload();
+			assertThat(payload.roomId()).isEqualTo(roomId);
+			assertThat(payload.senderId()).isEqualTo(ME);
+			assertThat(payload.senderName()).isEqualTo("나");
+			assertThat(payload.content()).isEqualTo("3번 굴뚝 끝");
+			assertThat(payload.clientMessageId()).isEqualTo("tmp-1");
+			assertThat(payload.messageId()).isNotNull();
+		}
+
+		@Test
+		@DisplayName("전송이 거부되면 알림도 나가지 않는다")
+		void 실패하면_알리지_않는다() {
+			assertThatThrownBy(() -> chatMessageService.sendMessage(sendCommand(TENANT, STRANGER, "끼어들기")))
+				.isInstanceOf(CustomException.class);
+
+			assertThat(broadcaster.messages()).isEmpty();
+		}
+
+		@Test
+		@DisplayName("조회는 알림을 내지 않는다")
+		void 조회는_알리지_않는다() {
+			chatMessageService.sendMessage(sendCommand(TENANT, ME, "안녕"));
+			broadcaster.messages().clear();
+
+			chatMessageService.getMessages(roomId, ME, TENANT, null, 10);
+
+			assertThat(broadcaster.messages()).isEmpty();
 		}
 	}
 }

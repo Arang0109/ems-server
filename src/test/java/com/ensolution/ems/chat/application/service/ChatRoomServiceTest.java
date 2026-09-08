@@ -4,11 +4,13 @@ import com.ensolution.ems.chat.application.FakeChatMessageRepository;
 import com.ensolution.ems.chat.application.FakeChatParticipantRepository;
 import com.ensolution.ems.chat.application.FakeChatRoomRepository;
 import com.ensolution.ems.chat.application.FakeUserQuery;
+import com.ensolution.ems.chat.application.RecordingChatEventBroadcaster;
 import com.ensolution.ems.chat.application.command.ChatRoomDetail;
 import com.ensolution.ems.chat.application.command.ChatRoomListItem;
 import com.ensolution.ems.chat.application.command.MarkAsReadCommand;
 import com.ensolution.ems.chat.application.command.OpenDirectRoomCommand;
 import com.ensolution.ems.chat.application.service.assembler.ChatRoomListAssembler;
+import com.ensolution.ems.chat.application.service.support.ChatEventPublisher;
 import com.ensolution.ems.chat.application.service.support.DirectRoomWriter;
 import com.ensolution.ems.chat.application.validator.ChatRoomValidator;
 import com.ensolution.ems.chat.domain.ChatRoom;
@@ -48,13 +50,16 @@ class ChatRoomServiceTest {
 	private final FakeChatParticipantRepository participantRepository = new FakeChatParticipantRepository();
 	private final FakeChatMessageRepository messageRepository = new FakeChatMessageRepository();
 	private final FakeUserQuery userQuery = new FakeUserQuery();
+	private final RecordingChatEventBroadcaster broadcaster = new RecordingChatEventBroadcaster();
 
 	private final ChatRoomService chatRoomService = new ChatRoomService(
 		roomRepository,
 		participantRepository,
 		new ChatRoomValidator(userQuery),
 		new DirectRoomWriter(roomRepository, participantRepository),
-		new ChatRoomListAssembler(userQuery, messageRepository)
+		new ChatRoomListAssembler(userQuery, messageRepository),
+		userQuery,
+		new ChatEventPublisher(broadcaster)
 	);
 
 	ChatRoomServiceTest() {
@@ -332,6 +337,66 @@ class ChatRoomServiceTest {
 			chatRoomService.hideRoom(roomId, ME, TENANT);
 
 			assertThat(chatRoomService.getTotalUnreadCount(ME, TENANT)).isZero();
+		}
+	}
+
+	@Nested
+	@DisplayName("실시간 알림")
+	class Broadcasting {
+
+		@Test
+		@DisplayName("방을 열면 상대에게만 알린다 — 연 사람은 REST 응답으로 이미 받았다")
+		void 방_개설을_상대에게_알린다() {
+			Long roomId = chatRoomService.openDirectRoom(openCommand(TENANT, ME, PEER)).roomId();
+
+			assertThat(broadcaster.rooms()).singleElement()
+				.satisfies(sent -> {
+					assertThat(sent.recipients()).containsExactly("user" + PEER);
+					assertThat(sent.payload().roomId()).isEqualTo(roomId);
+					// 상대 입장에서 대화 상대는 방을 연 사람이다.
+					assertThat(sent.payload().peerUserId()).isEqualTo(ME);
+					assertThat(sent.payload().peerName()).isEqualTo("나");
+				});
+		}
+
+		@Test
+		@DisplayName("이미 있는 방을 다시 열면 알리지 않는다 — 상대 화면에 같은 방이 두 번 뜬다")
+		void 기존_방은_알리지_않는다() {
+			chatRoomService.openDirectRoom(openCommand(TENANT, ME, PEER));
+			broadcaster.rooms().clear();
+
+			chatRoomService.openDirectRoom(openCommand(TENANT, ME, PEER));
+
+			assertThat(broadcaster.rooms()).isEmpty();
+		}
+
+		@Test
+		@DisplayName("읽음은 상대에게만 알린다 — 읽은 사람 화면은 이미 알고 있다")
+		void 읽음을_상대에게_알린다() {
+			Long roomId = chatRoomService.openDirectRoom(openCommand(TENANT, ME, PEER)).roomId();
+			String messageId = messageRepository.given(TENANT, roomId, PEER, "안녕").getId();
+
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, messageId));
+
+			assertThat(broadcaster.reads()).singleElement()
+				.satisfies(sent -> {
+					assertThat(sent.recipients()).containsExactly("user" + PEER);
+					assertThat(sent.payload().readerId()).isEqualTo(ME);
+					assertThat(sent.payload().lastReadMessageId()).isEqualTo(messageId);
+				});
+		}
+
+		@Test
+		@DisplayName("커서가 움직이지 않으면 알리지 않는다")
+		void 커서가_그대로면_알리지_않는다() {
+			Long roomId = chatRoomService.openDirectRoom(openCommand(TENANT, ME, PEER)).roomId();
+			String messageId = messageRepository.given(TENANT, roomId, PEER, "안녕").getId();
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, messageId));
+			broadcaster.reads().clear();
+
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, messageId));
+
+			assertThat(broadcaster.reads()).isEmpty();
 		}
 	}
 }

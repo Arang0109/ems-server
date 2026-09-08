@@ -1,12 +1,17 @@
 package com.ensolution.ems.chat.application.service;
 
+import com.ensolution.ems.auth.application.port.in.UserQueryUseCase;
+import com.ensolution.ems.auth.application.port.in.UserSummary;
 import com.ensolution.ems.chat.application.command.ChatRoomDetail;
 import com.ensolution.ems.chat.application.command.ChatRoomListItem;
 import com.ensolution.ems.chat.application.command.MarkAsReadCommand;
 import com.ensolution.ems.chat.application.command.OpenDirectRoomCommand;
+import com.ensolution.ems.chat.application.event.ChatReadPayload;
+import com.ensolution.ems.chat.application.event.ChatRoomOpenedPayload;
 import com.ensolution.ems.chat.application.port.out.ChatParticipantRepository;
 import com.ensolution.ems.chat.application.port.out.ChatRoomRepository;
 import com.ensolution.ems.chat.application.service.assembler.ChatRoomListAssembler;
+import com.ensolution.ems.chat.application.service.support.ChatEventPublisher;
 import com.ensolution.ems.chat.application.service.support.DirectRoomWriter;
 import com.ensolution.ems.chat.application.validator.ChatRoomValidator;
 import com.ensolution.ems.chat.domain.ChatParticipant;
@@ -39,6 +44,8 @@ public class ChatRoomService {
 	private final ChatRoomValidator chatRoomValidator;
 	private final DirectRoomWriter directRoomWriter;
 	private final ChatRoomListAssembler assembler;
+	private final UserQueryUseCase userQueryUseCase;
+	private final ChatEventPublisher eventPublisher;
 
 	/**
 	 * 상대와의 대화방을 연다. <b>멱등하다</b> — 이미 있으면 그 방을 돌려준다.
@@ -57,6 +64,12 @@ public class ChatRoomService {
 		// 나갔던 방을 다시 열면 내 목록에 되돌린다.
 		if (me.isHidden()) {
 			me = chatParticipantRepository.save(me.reveal());
+		}
+
+		// 상대가 첫 메시지 전에도 목록에서 방을 볼 수 있어야 한다. 연 사람에게는 보내지 않는다 —
+		// 그쪽은 이 REST 응답으로 이미 방을 받았다.
+		if (result.created()) {
+			notifyRoomOpened(command, result.room().getId());
 		}
 
 		return new ChatRoomDetail(
@@ -118,6 +131,9 @@ public class ChatRoomService {
 		}
 
 		chatParticipantRepository.save(read);
+
+		// 읽은 사람 자신에게는 보내지 않는다 — 자기 화면은 이미 알고 있다.
+		notifyRead(command, read);
 		return true;
 	}
 
@@ -126,6 +142,26 @@ public class ChatRoomService {
 	public long getTotalUnreadCount(Long userId, Long tenantId) {
 		return assembler.totalUnread(tenantId, userId,
 			chatParticipantRepository.findAllVisibleByUserId(userId, tenantId));
+	}
+
+	/** 상대 입장에서는 "요청자"가 대화 상대다. 그 관점으로 payload 를 만든다. */
+	private void notifyRoomOpened(OpenDirectRoomCommand command, Long roomId) {
+		UserSummary requester = userQueryUseCase.getUser(command.requesterId(), command.tenantId());
+		UserSummary counterpart = userQueryUseCase.getUser(command.counterpartId(), command.tenantId());
+
+		eventPublisher.roomOpened(counterpart.username(), new ChatRoomOpenedPayload(
+			roomId, requester.userId(), requester.name(), requester.department()));
+	}
+
+	private void notifyRead(MarkAsReadCommand command, ChatParticipant read) {
+		Long peerId = peerIdOf(command.roomId(), command.readerId(), command.tenantId());
+		if (peerId == null) {
+			return;
+		}
+		eventPublisher.messagesRead(
+			userQueryUseCase.getUser(peerId, command.tenantId()).username(),
+			new ChatReadPayload(command.roomId(), command.readerId(),
+				read.getLastReadMessageId(), read.getLastReadAt()));
 	}
 
 	private Long peerIdOf(Long roomId, Long myUserId, Long tenantId) {
