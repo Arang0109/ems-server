@@ -1,5 +1,6 @@
 package com.ensolution.ems.chat.application.event;
 
+import com.ensolution.ems.chat.application.command.ChatAttachmentInfo;
 import com.ensolution.ems.chat.domain.ChatMessageType;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public record ChatMessagePayload(
 	String senderName,
 	ChatMessageType type,
 	String content,
+	ChatAttachmentInfo attachment,
 	String clientMessageId,
 	LocalDateTime sentAt
 ) {

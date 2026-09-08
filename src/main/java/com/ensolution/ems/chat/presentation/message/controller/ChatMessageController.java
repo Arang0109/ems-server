@@ -1,11 +1,16 @@
 package com.ensolution.ems.chat.presentation.message.controller;
 
+import com.ensolution.ems.chat.application.command.AttachmentUpload;
+import com.ensolution.ems.chat.application.command.ChatAttachmentFile;
 import com.ensolution.ems.chat.application.service.ChatMessageService;
 import com.ensolution.ems.chat.application.service.ChatRoomService;
 import com.ensolution.ems.chat.presentation.message.mapper.ChatMessageMapper;
+import com.ensolution.ems.chat.presentation.message.request.SendAttachmentRequest;
 import com.ensolution.ems.chat.presentation.message.request.SendMessageRequest;
 import com.ensolution.ems.chat.presentation.message.response.ChatMessagePageResponse;
 import com.ensolution.ems.chat.presentation.message.response.ChatMessageResponse;
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.global.security.user.CustomUserDetails;
 import com.ensolution.ems.global.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,9 +18,16 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 메시지 API.
@@ -52,6 +64,23 @@ public class ChatMessageController {
 		)));
 	}
 
+	@Operation(summary = "첨부 전송",
+		description = "파일과 함께(또는 파일만) 보냅니다. 10MB 를 넘을 수 없습니다. "
+			+ "본문은 캡션이라 생략할 수 있습니다.")
+	@PostMapping(value = "/rooms/{roomId}/messages/attachments",
+		consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<ApiResponse<ChatMessageResponse>> sendAttachment(
+		@PathVariable Long roomId,
+		@Valid @RequestPart("request") SendAttachmentRequest request,
+		@RequestPart("file") MultipartFile file,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(
+			chatMessageService.sendMessage(mapper.toSendCommand(
+				request, toUpload(file), roomId, principal.getUserId(), principal.getTenantId()))
+		)));
+	}
+
 	@Operation(summary = "대화 이력 조회",
 		description = "최신순입니다. 위로 더 읽으려면 응답의 nextCursor 를 before 로 넘깁니다. "
 			+ "offset 이 아니라 커서를 쓰는 이유는 읽는 동안 앞에 새 메시지가 붙어도 경계가 밀리지 않게 하기 위함입니다.")
@@ -67,6 +96,27 @@ public class ChatMessageController {
 		)));
 	}
 
+	/**
+	 * 첨부 다운로드. <b>이 엔드포인트만 {@code ApiResponse} 봉투를 쓰지 않습니다</b> —
+	 * 본문이 JSON 이 아니라 파일 바이트이기 때문입니다(루트 규칙 6의 예외).
+	 * {@code Content-Disposition} 파일명은 한글이 깨지지 않도록 URL 인코딩합니다.
+	 */
+	@Operation(summary = "첨부 다운로드")
+	@GetMapping("/rooms/{roomId}/messages/{messageId}/attachment")
+	public ResponseEntity<byte[]> downloadAttachment(
+		@PathVariable Long roomId,
+		@PathVariable String messageId,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ChatAttachmentFile file = chatMessageService.getAttachment(
+			roomId, messageId, principal.getUserId(), principal.getTenantId());
+
+		return ResponseEntity.ok()
+			.header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(file.filename()))
+			.contentType(mediaTypeOf(file.contentType()))
+			.body(file.content());
+	}
+
 	@Operation(summary = "전체 안 읽은 메시지 수", description = "화면 상단 배지에 씁니다. 감춰 둔 방은 세지 않습니다.")
 	@GetMapping("/unread-count")
 	public ResponseEntity<ApiResponse<Long>> getUnreadCount(
@@ -75,5 +125,31 @@ public class ChatMessageController {
 		return ResponseEntity.ok(ApiResponse.success(
 			chatRoomService.getTotalUnreadCount(principal.getUserId(), principal.getTenantId())
 		));
+	}
+
+	/**
+	 * {@code MultipartFile}을 application 페이로드로 바꾼다. 이 변환이 있어야 Spring Web 타입이
+	 * application·domain 으로 새지 않는다({@code storage}의 {@code UploadedFile}과 같은 이유).
+	 */
+	private static AttachmentUpload toUpload(MultipartFile file) {
+		try {
+			return new AttachmentUpload(
+				file.getOriginalFilename(), file.getContentType(), file.getSize(), file.getBytes());
+		} catch (IOException e) {
+			throw new CustomException(ErrorCode.STORAGE_READ_FAILED, "첨부 파일을 읽지 못했습니다.", e);
+		}
+	}
+
+	/** 브라우저가 해석하지 못하는 타입은 그냥 내려받게 둔다. */
+	private static MediaType mediaTypeOf(String contentType) {
+		return contentType == null
+			? MediaType.APPLICATION_OCTET_STREAM
+			: MediaType.parseMediaType(contentType);
+	}
+
+	/** Content-Disposition 헤더값 생성(파일명 UTF-8 인코딩). */
+	private static String contentDisposition(String filename) {
+		String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+		return "attachment; filename*=UTF-8''" + encoded;
 	}
 }

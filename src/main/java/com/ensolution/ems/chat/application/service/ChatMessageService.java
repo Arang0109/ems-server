@@ -2,6 +2,8 @@ package com.ensolution.ems.chat.application.service;
 
 import com.ensolution.ems.auth.application.port.in.UserQueryUseCase;
 import com.ensolution.ems.auth.application.port.in.UserSummary;
+import com.ensolution.ems.chat.application.command.ChatAttachmentFile;
+import com.ensolution.ems.chat.application.command.ChatAttachmentInfo;
 import com.ensolution.ems.chat.application.command.ChatMessageListItem;
 import com.ensolution.ems.chat.application.command.ChatMessagePage;
 import com.ensolution.ems.chat.application.command.SendMessageCommand;
@@ -9,7 +11,9 @@ import com.ensolution.ems.chat.application.event.ChatMessagePayload;
 import com.ensolution.ems.chat.application.port.out.ChatMessageRepository;
 import com.ensolution.ems.chat.application.port.out.ChatParticipantRepository;
 import com.ensolution.ems.chat.application.port.out.ChatRoomRepository;
+import com.ensolution.ems.chat.application.service.support.ChatAttachmentWriter;
 import com.ensolution.ems.chat.application.service.support.ChatEventPublisher;
+import com.ensolution.ems.chat.domain.ChatAttachment;
 import com.ensolution.ems.chat.domain.ChatMessage;
 import com.ensolution.ems.chat.domain.ChatParticipant;
 import com.ensolution.ems.chat.domain.ChatRoom;
@@ -57,6 +61,7 @@ public class ChatMessageService {
 	private final ChatMessageRepository chatMessageRepository;
 	private final UserQueryUseCase userQueryUseCase;
 	private final ChatEventPublisher eventPublisher;
+	private final ChatAttachmentWriter attachmentWriter;
 
 	public ChatMessageListItem sendMessage(SendMessageCommand command) {
 		// 참가자가 아니면 여기서 CHAT_ROOM_NOT_FOUND 다. 방의 존재조차 알려 주지 않는다.
@@ -67,10 +72,9 @@ public class ChatMessageService {
 		// ① 상대가 나가 둔 방이면 다시 드러낸다. 메시지가 왔는데 목록에 없으면 볼 방법이 없다.
 		revealForEveryone(command.roomId(), command.tenantId());
 
-		// ② 되돌릴 수 없는 쓰기.
-		ChatMessage saved = chatMessageRepository.save(ChatMessage.text(
-			command.tenantId(), command.roomId(), command.senderId(),
-			command.content(), command.clientMessageId()));
+		// ② 되돌릴 수 없는 쓰기. 파일이 먼저다 — 고아 파일은 무해하지만, 첨부 없는 첨부 메시지는
+		// 사용자에게 깨진 말풍선으로 보인다.
+		ChatMessage saved = chatMessageRepository.save(build(command));
 
 		// ③ 목록에 보여 줄 요약. 메시지 id가 있어야 하므로 ② 뒤에 온다.
 		chatRoomRepository.save(room.withLastMessage(saved.getId(), saved.preview(), saved.getSentAt()));
@@ -109,6 +113,35 @@ public class ChatMessageService {
 
 		String nextCursor = hasMore ? messages.get(messages.size() - 1).getId() : null;
 		return new ChatMessagePage(items, nextCursor, hasMore);
+	}
+
+	/**
+	 * 첨부가 있으면 실물을 먼저 보관소에 쓰고 그 메타를 담은 메시지를 만든다.
+	 * 첨부만 보내는 것도 허용하므로 본문 검사는 텍스트 경로에만 있다.
+	 */
+	private ChatMessage build(SendMessageCommand command) {
+		if (command.attachment() == null) {
+			return ChatMessage.text(command.tenantId(), command.roomId(), command.senderId(),
+				command.content(), command.clientMessageId());
+		}
+
+		ChatAttachment attachment =
+			attachmentWriter.store(command.tenantId(), command.roomId(), command.attachment());
+
+		return ChatMessage.withAttachment(command.tenantId(), command.roomId(), command.senderId(),
+			command.content(), attachment, command.clientMessageId());
+	}
+
+	/**
+	 * 첨부 실물을 내려보낸다. <b>방의 참가자인지 먼저 확인한다</b> — 메시지 id 만으로 열어 주면
+	 * 남의 대화에 붙은 파일을 받아 갈 수 있다.
+	 */
+	@Transactional(readOnly = true)
+	public ChatAttachmentFile getAttachment(Long roomId, String messageId, Long userId, Long tenantId) {
+		chatParticipantRepository.findByRoomIdAndUserId(roomId, userId, tenantId);
+
+		ChatMessage message = chatMessageRepository.findById(messageId, roomId, tenantId);
+		return attachmentWriter.load(message.requireAttachment());
 	}
 
 	/**
@@ -167,6 +200,7 @@ public class ChatMessageService {
 			senderName,
 			message.getType(),
 			message.getContent(),
+			toAttachmentInfo(message.getAttachment()),
 			message.getClientMessageId(),
 			message.getSentAt()
 		);
@@ -180,8 +214,18 @@ public class ChatMessageService {
 			senderName,
 			message.getType(),
 			message.getContent(),
+			toAttachmentInfo(message.getAttachment()),
 			message.getClientMessageId(),
 			message.getSentAt()
 		);
+	}
+
+	/** 보관소 키는 밖으로 내보내지 않는다 — 그 자체가 접근 경로가 된다. */
+	private static ChatAttachmentInfo toAttachmentInfo(ChatAttachment attachment) {
+		if (attachment == null) {
+			return null;
+		}
+		return new ChatAttachmentInfo(
+			attachment.getOriginalFilename(), attachment.getContentType(), attachment.getSize());
 	}
 }

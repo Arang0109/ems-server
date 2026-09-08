@@ -15,6 +15,7 @@ public record ChatMessageListItem(
 	String senderName,
 	ChatMessageType type,
 	String content,
+	ChatAttachmentInfo attachment,
 	String clientMessageId,
 	LocalDateTime sentAt
 ) {

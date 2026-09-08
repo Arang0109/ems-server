@@ -34,6 +34,10 @@ public class ChatMessage {
 	private Long senderId;
 	private ChatMessageType type;
 	private String content;
+
+	/** 첨부가 없으면 null 이다. 실물은 보관소에 있고 여기에는 키와 표시 정보만 있다 */
+	private ChatAttachment attachment;
+
 	private String clientMessageId;
 	private LocalDateTime sentAt;
 
@@ -61,6 +65,34 @@ public class ChatMessage {
 			case IMAGE -> "사진";
 			case FILE -> "파일";
 		};
+	}
+
+	/**
+	 * 첨부가 있는 메시지. 본문은 캡션이라 없어도 된다 — 그래서 {@link #text}와 달리 내용 검사를 하지 않는다.
+	 * 종류는 사용자가 고르지 않고 {@code contentType}이 정한다.
+	 */
+	public static ChatMessage withAttachment(Long tenantId, Long roomId, Long senderId, String content,
+		ChatAttachment attachment, String clientMessageId) {
+		return ChatMessage.builder()
+			.tenantId(tenantId)
+			.roomId(roomId)
+			.senderId(senderId)
+			.type(attachment.messageType())
+			.content(content)
+			.attachment(attachment)
+			.clientMessageId(clientMessageId)
+			.build();
+	}
+
+	/**
+	 * 첨부의 실물을 내려보낼 수 있는 메시지인지 확인한다.
+	 * 첨부 없는 메시지의 다운로드 요청은 잘못된 요청이지 서버 오류가 아니다.
+	 */
+	public ChatAttachment requireAttachment() {
+		if (attachment == null) {
+			throw new CustomException(ErrorCode.CHAT_ATTACHMENT_NOT_FOUND);
+		}
+		return attachment;
 	}
 
 	private static void requireContent(String content) {

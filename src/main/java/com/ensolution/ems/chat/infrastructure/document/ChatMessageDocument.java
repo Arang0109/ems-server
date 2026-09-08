@@ -1,5 +1,6 @@
 package com.ensolution.ems.chat.infrastructure.document;
 
+import com.ensolution.ems.chat.domain.ChatAttachment;
 import com.ensolution.ems.chat.domain.ChatMessageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,6 +51,9 @@ public class ChatMessageDocument {
 
 	/** 첨부만 있는 메시지는 비어 있을 수 있다 */
 	private String content;
+
+	/** 첨부가 없으면 null. 도메인 {@code ChatAttachment}를 그대로 임베드한다 */
+	private ChatAttachment attachment;
 
 	/** 클라이언트가 만든 UUID. 서버는 해석하지 않고 되돌려 주기만 한다 */
 	private String clientMessageId;

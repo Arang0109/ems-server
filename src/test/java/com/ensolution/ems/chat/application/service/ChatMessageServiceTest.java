@@ -5,11 +5,17 @@ import com.ensolution.ems.chat.application.FakeChatParticipantRepository;
 import com.ensolution.ems.chat.application.FakeChatRoomRepository;
 import com.ensolution.ems.chat.application.FakeUserQuery;
 import com.ensolution.ems.chat.application.RecordingChatEventBroadcaster;
+import com.ensolution.ems.chat.application.RecordingFileStorageClient;
+import com.ensolution.ems.chat.application.command.AttachmentUpload;
+import com.ensolution.ems.chat.application.command.ChatAttachmentFile;
+import com.ensolution.ems.chat.application.command.ChatAttachmentInfo;
 import com.ensolution.ems.chat.application.command.ChatMessageListItem;
 import com.ensolution.ems.chat.application.command.ChatMessagePage;
 import com.ensolution.ems.chat.application.command.SendMessageCommand;
 import com.ensolution.ems.chat.application.event.ChatMessagePayload;
+import com.ensolution.ems.chat.application.service.support.ChatAttachmentWriter;
 import com.ensolution.ems.chat.application.service.support.ChatEventPublisher;
+import com.ensolution.ems.chat.domain.ChatMessageType;
 import com.ensolution.ems.chat.domain.ChatRoom;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
@@ -52,9 +58,11 @@ class ChatMessageServiceTest {
 
 	private final RecordingChatEventBroadcaster broadcaster = new RecordingChatEventBroadcaster();
 
+	private final RecordingFileStorageClient fileStorage = new RecordingFileStorageClient();
+
 	private final ChatMessageService chatMessageService = new ChatMessageService(
 		roomRepository, participantRepository, messageRepository, userQuery,
-		new ChatEventPublisher(broadcaster));
+		new ChatEventPublisher(broadcaster), new ChatAttachmentWriter(fileStorage));
 
 	private final Long roomId;
 
@@ -70,7 +78,7 @@ class ChatMessageServiceTest {
 	}
 
 	private SendMessageCommand sendCommand(Long tenantId, Long senderId, String content) {
-		return new SendMessageCommand(tenantId, roomId, senderId, content, null);
+		return new SendMessageCommand(tenantId, roomId, senderId, content, null, null);
 	}
 
 	@Nested
@@ -92,7 +100,7 @@ class ChatMessageServiceTest {
 		@DisplayName("clientMessageId 는 해석하지 않고 그대로 돌려준다")
 		void 클라이언트_키는_그대로_돌아온다() {
 			ChatMessageListItem sent = chatMessageService.sendMessage(
-				new SendMessageCommand(TENANT, roomId, ME, "안녕", "tmp-uuid-1"));
+				new SendMessageCommand(TENANT, roomId, ME, "안녕", "tmp-uuid-1", null));
 
 			assertThat(sent.clientMessageId()).isEqualTo("tmp-uuid-1");
 		}
@@ -239,7 +247,7 @@ class ChatMessageServiceTest {
 			participantRepository.given(TENANT, otherRoom.getId(), ME);
 			participantRepository.given(TENANT, otherRoom.getId(), STRANGER);
 			chatMessageService.sendMessage(
-				new SendMessageCommand(TENANT, otherRoom.getId(), ME, "다른 방 메시지", null));
+				new SendMessageCommand(TENANT, otherRoom.getId(), ME, "다른 방 메시지", null, null));
 
 			ChatMessagePage page = chatMessageService.getMessages(roomId, ME, TENANT, null, 10);
 
@@ -289,7 +297,7 @@ class ChatMessageServiceTest {
 		@DisplayName("본문을 그대로 싣는다 — 수신 측이 재조회하지 않아도 그릴 수 있어야 한다")
 		void 본문이_실린다() {
 			chatMessageService.sendMessage(
-				new SendMessageCommand(TENANT, roomId, ME, "3번 굴뚝 끝", "tmp-1"));
+				new SendMessageCommand(TENANT, roomId, ME, "3번 굴뚝 끝", "tmp-1", null));
 
 			ChatMessagePayload payload = broadcaster.messages().get(0).payload();
 			assertThat(payload.roomId()).isEqualTo(roomId);
@@ -318,6 +326,164 @@ class ChatMessageServiceTest {
 			chatMessageService.getMessages(roomId, ME, TENANT, null, 10);
 
 			assertThat(broadcaster.messages()).isEmpty();
+		}
+	}
+
+	@Nested
+	@DisplayName("첨부")
+	class Attachments {
+
+		private static final byte[] BYTES = "hello".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+		private SendMessageCommand attachmentCommand(String filename, String contentType, long size) {
+			return new SendMessageCommand(TENANT, roomId, ME, null, null,
+				new AttachmentUpload(filename, contentType, size, BYTES));
+		}
+
+		@Test
+		@DisplayName("이미지면 IMAGE, 아니면 FILE 이다 — 사용자가 고르는 값이 아니다")
+		void 종류는_contentType이_정한다() {
+			assertThat(chatMessageService.sendMessage(
+				attachmentCommand("사진.png", "image/png", 5L)).type())
+				.isEqualTo(ChatMessageType.IMAGE);
+
+			assertThat(chatMessageService.sendMessage(
+				attachmentCommand("보고서.pdf", "application/pdf", 5L)).type())
+				.isEqualTo(ChatMessageType.FILE);
+		}
+
+		@Test
+		@DisplayName("본문 없이 파일만 보낼 수 있다 — 본문은 캡션이다")
+		void 파일만_보낼_수_있다() {
+			ChatMessageListItem sent = chatMessageService.sendMessage(
+				attachmentCommand("보고서.pdf", "application/pdf", 5L));
+
+			assertThat(sent.content()).isNull();
+			assertThat(sent.attachment().filename()).isEqualTo("보고서.pdf");
+			assertThat(sent.attachment().size()).isEqualTo(5L);
+		}
+
+		@Test
+		@DisplayName("실물이 보관소에 쓰인다")
+		void 실물이_보관된다() {
+			chatMessageService.sendMessage(attachmentCommand("보고서.pdf", "application/pdf", 5L));
+
+			assertThat(fileStorage.stored()).hasSize(1);
+			assertThat(fileStorage.stored().keySet()).allSatisfy(key ->
+				// 문서 보관소와 섞이지 않도록 chat/ 아래에 두고, 원본 파일명은 경로에 넣지 않는다.
+				assertThat(key).startsWith("chat/" + TENANT + "/" + roomId + "/")
+					.doesNotContain("보고서")
+					.endsWith(".pdf"));
+		}
+
+		@Test
+		@DisplayName("보관소 키는 응답에 나가지 않는다 — 그 자체가 접근 경로가 된다")
+		void 보관소_키는_노출되지_않는다() {
+			ChatMessageListItem sent = chatMessageService.sendMessage(
+				attachmentCommand("보고서.pdf", "application/pdf", 5L));
+
+			assertThat(sent.attachment().filename()).isEqualTo("보고서.pdf");
+			assertThat(sent.attachment().contentType()).isEqualTo("application/pdf");
+			// ChatAttachmentInfo 에는 storageKey 필드가 없다. 목록 응답도 같은 타입을 쓴다.
+			assertThat(ChatAttachmentInfo.class.getRecordComponents())
+				.extracting(java.lang.reflect.RecordComponent::getName)
+				.containsExactly("filename", "contentType", "size");
+		}
+
+		@Test
+		@DisplayName("10MB 를 넘으면 거부하고 보관소에도 쓰지 않는다")
+		void 크기_상한을_넘으면_거부한다() {
+			assertThatThrownBy(() -> chatMessageService.sendMessage(
+				attachmentCommand("큰파일.zip", "application/zip", 10L * 1024 * 1024 + 1)))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_ATTACHMENT_TOO_LARGE);
+
+			assertThat(fileStorage.stored()).isEmpty();
+		}
+
+		@Test
+		@DisplayName("참가자가 아니면 첨부를 보낼 수 없다 — 보관소에도 쓰지 않는다")
+		void 참가자가_아니면_보낼_수_없다() {
+			SendMessageCommand command = new SendMessageCommand(TENANT, roomId, STRANGER, null, null,
+				new AttachmentUpload("보고서.pdf", "application/pdf", 5L, BYTES));
+
+			assertThatThrownBy(() -> chatMessageService.sendMessage(command))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_ROOM_NOT_FOUND);
+
+			assertThat(fileStorage.stored()).isEmpty();
+		}
+
+		@Test
+		@DisplayName("참가자는 실물을 받을 수 있다")
+		void 참가자는_받을_수_있다() {
+			String messageId = chatMessageService.sendMessage(
+				attachmentCommand("보고서.pdf", "application/pdf", 5L)).messageId();
+
+			ChatAttachmentFile file =
+				chatMessageService.getAttachment(roomId, messageId, PEER, TENANT);
+
+			assertThat(file.filename()).isEqualTo("보고서.pdf");
+			assertThat(file.contentType()).isEqualTo("application/pdf");
+			assertThat(file.content()).isEqualTo(BYTES);
+		}
+
+		@Test
+		@DisplayName("참가자가 아니면 실물도 받을 수 없다")
+		void 참가자가_아니면_받을_수_없다() {
+			String messageId = chatMessageService.sendMessage(
+				attachmentCommand("보고서.pdf", "application/pdf", 5L)).messageId();
+
+			assertThatThrownBy(() ->
+				chatMessageService.getAttachment(roomId, messageId, STRANGER, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_ROOM_NOT_FOUND);
+		}
+
+		@Test
+		@DisplayName("첨부 없는 메시지의 다운로드는 잘못된 요청이지 서버 오류가 아니다")
+		void 첨부가_없으면_404다() {
+			String messageId = chatMessageService.sendMessage(sendCommand(TENANT, ME, "그냥 텍스트")).messageId();
+
+			assertThatThrownBy(() -> chatMessageService.getAttachment(roomId, messageId, ME, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_ATTACHMENT_NOT_FOUND);
+		}
+
+		@Test
+		@DisplayName("메타는 있는데 실물이 없으면 보관소 오류다 — 첨부 없음과 구분한다")
+		void 실물이_없으면_보관소_오류다() {
+			String messageId = chatMessageService.sendMessage(
+				attachmentCommand("보고서.pdf", "application/pdf", 5L)).messageId();
+			java.util.List.copyOf(fileStorage.stored().keySet()).forEach(fileStorage::evict);
+
+			assertThatThrownBy(() -> chatMessageService.getAttachment(roomId, messageId, ME, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.STORAGE_FILE_NOT_FOUND);
+		}
+
+		@Test
+		@DisplayName("다른 방의 messageId 로는 받을 수 없다 — 참가자 확인만으로는 부족하다")
+		void 다른_방의_첨부는_받을_수_없다() {
+			String messageId = chatMessageService.sendMessage(
+				attachmentCommand("보고서.pdf", "application/pdf", 5L)).messageId();
+
+			ChatRoom otherRoom = roomRepository.given(TENANT, ME, STRANGER);
+			participantRepository.given(TENANT, otherRoom.getId(), ME);
+			participantRepository.given(TENANT, otherRoom.getId(), STRANGER);
+
+			assertThatThrownBy(() ->
+				chatMessageService.getAttachment(otherRoom.getId(), messageId, ME, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_MESSAGE_NOT_FOUND);
+		}
+
+		@Test
+		@DisplayName("목록 요약에는 사진·파일로 나온다")
+		void 요약은_종류로_표시된다() {
+			chatMessageService.sendMessage(attachmentCommand("사진.png", "image/png", 5L));
+
+			assertThat(roomRepository.findById(roomId, TENANT).getLastMessagePreview()).isEqualTo("사진");
 		}
 	}
 }

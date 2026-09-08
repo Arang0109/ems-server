@@ -13,6 +13,7 @@ public record ChatMessageResponse(
 	String senderName,
 	ChatMessageType type,
 	String content,
+	ChatAttachmentResponse attachment,
 	@Schema(description = "요청에 실려 온 값 그대로. 임시 말풍선을 치환하는 키")
 	String clientMessageId,
 	LocalDateTime sentAt
