@@ -93,7 +93,7 @@ STOMP `SEND`를 쓰지 않습니다. 서버에 `applicationDestinationPrefixes`�
 | GET | `/api/chat/rooms/{roomId}` | — |
 | GET | `/api/chat/rooms/{roomId}/messages?before=&size=` | — 최신순. 기본 50, 상한 100 |
 | POST | `/api/chat/rooms/{roomId}/messages` | `{ content, clientMessageId }` |
-| POST | `/api/chat/rooms/{roomId}/messages/attachments` | `multipart`: `request`(JSON) + `file` |
+| POST | `/api/chat/rooms/{roomId}/messages/attachments` | `multipart`: `file` + (선택) `content`·`clientMessageId` |
 | GET | `/api/chat/rooms/{roomId}/messages/{messageId}/attachment` | — **바이너리**(봉투 없음) |
 | POST | `/api/chat/rooms/{roomId}/read` | `{ lastReadMessageId }` |
 | DELETE | `/api/chat/rooms/{roomId}` | — 내 목록에서만 감춤 |
@@ -111,15 +111,21 @@ STOMP `SEND`를 쓰지 않습니다. 서버에 `applicationDestinationPrefixes`�
 
 ```ts
 const form = new FormData();
-form.append("request", new Blob([JSON.stringify({ content, clientMessageId })],
-  { type: "application/json" }));
 form.append("file", file);
+// 아래 둘은 선택. 파일만 보내는 것이 정상 경로다.
+if (content) form.append("content", content);
+if (clientMessageId) form.append("clientMessageId", clientMessageId);
 ```
 
+- **파일만 보내도 됩니다.** `content`는 캡션이라 생략할 수 있고, 빈 JSON 파트 같은 것을 만들 필요가 없습니다.
 - **10MB 한도**입니다. 넘으면 `413 CHAT_ATTACHMENT_TOO_LARGE`.
-- `content`는 캡션이라 **없어도 됩니다.**
+  서블릿 한도(20MB)까지 넘으면 같은 413에 `"첨부 파일이 너무 큽니다."`가 옵니다.
 - `type`(IMAGE/FILE)은 서버가 `contentType`으로 정합니다. 클라이언트가 지정하지 않습니다.
 - 다운로드 응답에는 `Content-Disposition`이 붙습니다(파일명 UTF-8 인코딩).
+
+> **이미지 인라인 표시**: 다운로드에는 `Authorization` 헤더가 필요해 `<img src="...">`로 바로 그릴 수
+> 없습니다. `fetch` → `blob` → `URL.createObjectURL`로 감싸고, 화면에서 벗어날 때 `revokeObjectURL`
+> 하세요. presigned URL 은 아직 없습니다.
 
 ---
 

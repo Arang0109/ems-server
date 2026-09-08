@@ -173,7 +173,7 @@ Redis 릴레이를 끼우면 되고 서비스 코드는 바뀌지 않습니다.
 | 메서드 | 경로 | 비고 |
 |---|---|---|
 | POST | `/rooms/{roomId}/messages` | 텍스트 |
-| POST | `/rooms/{roomId}/messages/attachments` | multipart. 10MB 한도 |
+| POST | `/rooms/{roomId}/messages/attachments` | multipart. **`file` 만 필수**, `content`·`clientMessageId` 는 폼 파라미터. 10MB 한도 |
 | GET | `/rooms/{roomId}/messages?before=&size=` | 커서 페이징. 기본 50, 상한 100 |
 | GET | `/rooms/{roomId}/messages/{messageId}/attachment` | **`ResponseEntity<byte[]>`** |
 | GET | `/unread-count` | 전역 배지 |
@@ -220,6 +220,14 @@ tenant 범위 조회가 담당합니다.
   기능에는 영향이 없습니다.
 - 메시지 종류(`IMAGE`/`FILE`)는 사용자가 고르지 않고 업로드된 `contentType`이 정합니다.
 - 본문은 캡션이라 **없어도 됩니다.** 그래서 내용 검사는 텍스트 경로(`ChatMessage.text`)에만 있습니다.
+- **텍스트 부분을 JSON 파트가 아니라 폼 파라미터(`@RequestParam`)로 받습니다.** JSON 파트로 두면
+  파일만 보내려는 클라이언트도 빈 파트를 만들어야 하고, 만들지 않으면 400이 아니라 **500**입니다
+  (`MissingServletRequestPartException`이 포괄 핸들러에 잡힙니다). 파트를 보내더라도 그 파트에
+  `Content-Type: application/json`을 붙이지 않으면 역시 500입니다. 파일만 보내는 것이 가장 흔한
+  사용이라 그 경로가 가장 단순해야 하고, `admin`의 문서 업로드도 같은 형태입니다.
+- **서블릿 한도(20MB)를 넘으면 컨트롤러에 닿기 전에 터집니다.** 그래서 도메인의 10MB 검사가
+  실행되지 않고, `GlobalExceptionHandler`의 `MaxUploadSizeExceededException` 핸들러가 413으로
+  번역합니다. 그것이 없으면 500이 나가 클라이언트가 "파일이 큼"과 "서버 장애"를 구분하지 못합니다.
 
 ### port/in을 두지 않습니다
 

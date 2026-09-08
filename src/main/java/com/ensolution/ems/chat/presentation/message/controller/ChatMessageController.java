@@ -5,7 +5,7 @@ import com.ensolution.ems.chat.application.command.ChatAttachmentFile;
 import com.ensolution.ems.chat.application.service.ChatMessageService;
 import com.ensolution.ems.chat.application.service.ChatRoomService;
 import com.ensolution.ems.chat.presentation.message.mapper.ChatMessageMapper;
-import com.ensolution.ems.chat.presentation.message.request.SendAttachmentRequest;
+
 import com.ensolution.ems.chat.presentation.message.request.SendMessageRequest;
 import com.ensolution.ems.chat.presentation.message.response.ChatMessagePageResponse;
 import com.ensolution.ems.chat.presentation.message.response.ChatMessageResponse;
@@ -17,11 +17,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +44,7 @@ import java.nio.charset.StandardCharsets;
  */
 @Tag(name = "Chat Message", description = "대화 메시지 API")
 @SecurityRequirement(name = "bearerAuth")
+@Validated
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
@@ -64,20 +67,33 @@ public class ChatMessageController {
 		)));
 	}
 
+	/**
+	 * 첨부 전송.
+	 * <p>
+	 * <b>텍스트 부분을 JSON 파트가 아니라 폼 파라미터로 받습니다.</b> JSON 파트로 두면 파일만 보내려는
+	 * 클라이언트도 빈 파트를 만들어야 하고, 만들지 않으면 400이 아니라 <b>500</b>이 납니다
+	 * ({@code MissingServletRequestPartException}이 포괄 핸들러에 잡힙니다). 파트를 보내더라도
+	 * {@code Content-Type: application/json}을 파트에 명시하지 않으면 역시 500입니다.
+	 * <p>
+	 * 파일만 보내는 것이 가장 흔한 사용이므로 그 경로가 가장 단순해야 하고, 이 저장소의 다른 multipart
+	 * 엔드포인트({@code admin}의 문서 업로드)도 같은 형태입니다.
+	 */
 	@Operation(summary = "첨부 전송",
-		description = "파일과 함께(또는 파일만) 보냅니다. 10MB 를 넘을 수 없습니다. "
-			+ "본문은 캡션이라 생략할 수 있습니다.")
+		description = "파일만 보내도 됩니다 — content 는 캡션이라 생략할 수 있습니다. 10MB 를 넘을 수 없습니다.")
 	@PostMapping(value = "/rooms/{roomId}/messages/attachments",
 		consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<ChatMessageResponse>> sendAttachment(
 		@PathVariable Long roomId,
-		@Valid @RequestPart("request") SendAttachmentRequest request,
+		@RequestParam(required = false) @Size(max = 4000, message = "메시지는 4000자를 넘을 수 없습니다.")
+		String content,
+		@RequestParam(required = false) @Size(max = 64) String clientMessageId,
 		@RequestPart("file") MultipartFile file,
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(
 			chatMessageService.sendMessage(mapper.toSendCommand(
-				request, toUpload(file), roomId, principal.getUserId(), principal.getTenantId()))
+				content, clientMessageId, toUpload(file),
+				roomId, principal.getUserId(), principal.getTenantId()))
 		)));
 	}
 
