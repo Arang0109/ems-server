@@ -52,6 +52,13 @@ public enum ErrorCode {
   STORAGE_FILE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "저장된 파일을 찾을 수 없습니다."),
   STORAGE_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 저장에 실패했습니다."),
   STORAGE_READ_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일을 읽지 못했습니다."),
+  // 채팅. 참가자가 아닌 경우도 CHAT_ROOM_NOT_FOUND 다 — 코드를 나누면 방의 존재가 드러난다(규칙 13).
+  CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 대화방입니다."),
+  CHAT_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 메시지입니다."),
+  CHAT_SELF_ROOM_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신과는 대화할 수 없습니다."),
+  CHAT_MESSAGE_EMPTY(HttpStatus.BAD_REQUEST, "내용이나 첨부 파일 중 하나는 있어야 합니다."),
+  CHAT_ATTACHMENT_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "첨부 파일은 10MB를 넘을 수 없습니다."),
+  CHAT_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "첨부 파일이 없는 메시지입니다."),
 
   // 범용 HTTP 상태
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
