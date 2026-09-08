@@ -104,6 +104,7 @@ public class AuthService implements UserCommandUseCase {
 		);
 
 		return new SignInResult(
+				tokenResult.userId(),
 				tokenResult.accessToken(),
 				tokenResult.refreshToken(),
 				tokenResult.tenantId(),
