@@ -22,6 +22,8 @@ dependencies {
     // Spring
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    // STOMP over WebSocket (채팅 실시간 수신). SimpleBroker 는 spring-messaging 에 포함된다.
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
     // Database
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

@@ -67,6 +67,10 @@ public class SecurityConfig {
             // SSE 등 비동기 응답의 ASYNC 재디스패치와 ERROR 디스패치는 최초 REQUEST에서 이미 인가를 통과했다.
             // 이때 SecurityContext는 비어 있으므로 다시 인가하면 Access Denied가 된다.
             .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+            // WebSocket 핸드셰이크. 브라우저 WebSocket API 는 Authorization 헤더를 붙일 수 없어
+            // 여기서 막으면 연결 자체가 401 이 된다. 인가는 STOMP CONNECT 프레임에서 하며
+            // (StompAuthChannelInterceptor), 인증되지 않은 세션은 어떤 목적지도 구독하지 못한다.
+            .requestMatchers("/ws/**").permitAll()
             .requestMatchers("/api/platform/**").hasRole("PLATFORM_ADMIN")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             // 공개 회원가입은 제공하지 않는다. 회원 생성은 /api/admin/members(ADMIN 전용)가 담당한다.
@@ -91,13 +95,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of(
-			"http://localhost:5173",
-			"http://127.0.0.1:5173",
-			"http://54.180.112.112:3000",
-			"https://env-bridge.co.kr",
-			"https://www.env-bridge.co.kr"
-    ));
+    config.setAllowedOrigins(AllowedOrigins.PATTERNS);
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true);
