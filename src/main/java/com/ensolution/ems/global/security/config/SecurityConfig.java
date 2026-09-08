@@ -35,6 +35,7 @@ public class SecurityConfig {
   
   private final AuthenticationConfiguration authenticationConfiguration;
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final CorsProperties corsProperties;
   
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -95,7 +96,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(AllowedOrigins.PATTERNS);
+    config.setAllowedOrigins(corsProperties.allowedOrigins());
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true);

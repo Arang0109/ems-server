@@ -1,5 +1,6 @@
 package com.ensolution.ems;
 
+import com.ensolution.ems.global.security.config.CorsProperties;
 import com.ensolution.ems.global.security.domain.AuthCookieProperties;
 import com.ensolution.ems.global.security.domain.JwtProperties;
 import com.ensolution.ems.global.storage.StorageProperties;
@@ -8,7 +9,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
-@EnableConfigurationProperties({JwtProperties.class, StorageProperties.class, AuthCookieProperties.class})
+@EnableConfigurationProperties({
+	JwtProperties.class, StorageProperties.class, AuthCookieProperties.class, CorsProperties.class
+})
 @EnableJpaAuditing
 @SpringBootApplication
 public class EmsApplication {

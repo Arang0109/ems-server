@@ -1,6 +1,6 @@
 package com.ensolution.ems.global.websocket;
 
-import com.ensolution.ems.global.security.config.AllowedOrigins;
+import com.ensolution.ems.global.security.config.CorsProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,13 +41,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	private static final long HEARTBEAT_INTERVAL_MS = 25_000L;
 
 	private final StompAuthChannelInterceptor stompAuthChannelInterceptor;
+	private final CorsProperties corsProperties;
 
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
 		// SockJS 폴백은 쓰지 않는다. 폴백 경로(XHR-streaming 등)가 생기면 토큰 전달과 CORS 처리가
 		// 이원화되고, 지원 대상 브라우저에서 네이티브 WebSocket 이 이미 동작한다.
 		registry.addEndpoint("/ws")
-			.setAllowedOriginPatterns(AllowedOrigins.PATTERNS.toArray(String[]::new));
+			.setAllowedOriginPatterns(corsProperties.allowedOrigins().toArray(String[]::new));
 	}
 
 	@Override
