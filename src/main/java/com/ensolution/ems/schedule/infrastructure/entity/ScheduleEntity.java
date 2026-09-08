@@ -52,6 +52,17 @@ public class ScheduleEntity {
 	@Column(name = "team_id", nullable = false)
 	private Long teamId;
 
+	/**
+	 * 이 회차에 나가는 측정자(사수·부사수)의 user id. 팀 원장의 사수·부사수와 별개이며
+	 * 미지정이면 null이다 — 그 경우 성적서 표기는 팀 원장의 이름으로 채워진다.
+	 * 유니크 제약(대상·팀·채취일자)에는 들어가지 않는다.
+	 */
+	@Column(name = "mentor_id")
+	private Long mentorId;
+
+	@Column(name = "mentee_id")
+	private Long menteeId;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "measurement_field", nullable = false)
 	private MeasurementField measurementField;

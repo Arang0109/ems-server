@@ -264,8 +264,7 @@ public class ScheduleController {
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		ScheduleDetail detail = sheetService.saveSheets(
-			scheduleId, principal.getTenantId(),
-			new EditorRef(principal.getUsername(), principal.getName()),
+			scheduleId, principal.getTenantId(), new EditorRef(principal.getUsername(), principal.getName()),
 			request.sheets(), request.deletedSheets()
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));

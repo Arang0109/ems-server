@@ -7,10 +7,7 @@ import com.ensolution.ems.schedule.application.event.EditorRef;
 import com.ensolution.ems.schedule.application.event.SheetsSavedEvent;
 import com.ensolution.ems.schedule.application.port.out.ScheduleEventBroadcaster;
 import com.ensolution.ems.schedule.application.port.out.ScheduleRepository;
-import com.ensolution.ems.schedule.application.service.support.PreviousSheetFinder;
-import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
-import com.ensolution.ems.schedule.application.service.support.SnapshotSheetRecalculator;
-import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
+import com.ensolution.ems.schedule.application.service.support.*;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleProgress;
 import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
@@ -43,7 +40,7 @@ public class ScheduleSheetService {
 
 	private final ScheduleRepository scheduleRepository;
 	private final SnapshotWriter snapshotWriter;
-	private final SnapshotSheetRecalculator reCalculator;
+	private final SnapshotSheetReCalculator reCalculator;
 	private final PreviousSheetFinder previousSheetFinder;
 	private final ScheduleEventBroadcaster eventBroadcaster;
 	private final ScheduleStatusTransitioner statusTransitioner;
@@ -117,7 +114,7 @@ public class ScheduleSheetService {
 	                                            List<SamplingSheet> sheets, List<SheetRef> deletedSheets) {
 		return snapshotWriter.write(id, tenantId, snapshot -> {
 			List<SamplingSheet> merged = SheetMerge.merge(snapshot.sheets(), sheets, deletedSheets);
-			return snapshot.withSheets(reCalculator.recalculate(snapshot, merged));
+			return snapshot.withSheets(reCalculator.reCalculate(snapshot, merged));
 		});
 	}
 

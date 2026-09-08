@@ -128,11 +128,33 @@ HTTP로 접속하는 개발 서버에 secure 쿠키를 내려보내면 **브라�
 
 ---
 
+## 사용자 조회 — 관리 화면과 나눕니다
+
+| 경로 | 컨트롤러 | 권한 | 응답 |
+|---|---|---|---|
+| `GET /api/users` | `auth`의 `UserController` | `authenticated()` | `UserListResponse` — `userId`·`name`·`department`·`role` |
+| `GET /api/admin/members` | `admin`의 `MemberController` | `hasRole("ADMIN")` | `MemberResponse` — 전체 필드 |
+
+**같은 원장을 두 경로로 여는 것은 소비자와 필드 범위가 다르기 때문입니다.**
+측정계획 등록처럼 사람을 고르는 화면은 역할과 무관하게 목록이 필요하지만 이름·부서·역할이면 충분하고,
+회원 관리 화면은 ADMIN만 보되 로그인 아이디·연락처까지 필요합니다.
+하나로 합치면 둘 중 하나가 **과한 권한이거나 과한 노출**이 됩니다.
+
+- `/api/users`에서 빠지는 것: `username`(로그인 아이디)·`email`·`tel`·`roleId`·`tenantId`.
+  이 제외가 엔드포인트의 존재 이유이므로 `UserListResponseMappingTest`가 응답 필드 목록 자체를 고정합니다.
+  필드를 더하기 전에 "같은 테넌트의 모든 사용자가 봐도 되는가"를 먼저 답하세요.
+- **`/api/users`는 조회만 갖습니다.** 여기에 생성·수정·삭제를 더하면 "공개 가입을 두지 않는다"가 무너집니다.
+- `SecurityConfig`에는 규칙을 추가하지 않았습니다 — `anyRequest().authenticated()`에 걸립니다.
+- 컨트롤러가 `UserQueryUseCase`가 아니라 `UserService`를 직접 주입합니다.
+  타 모듈 소비자가 없는 경로라 UseCase 인터페이스를 두지 않는다는 루트 규칙이며, `RoleController`와 같습니다.
+
+---
+
 ## 타 모듈 공개 계약 (`application/port/in`)
 
 | 계약 | 구현체 | 소비 모듈 |
 |---|---|---|
-| `UserQueryUseCase` — `getUser(userId, tenantId)`, `getUserList(tenantId)`, `existsByUsername` | `UserService` | `admin`, `client_management`(팀 사수·부사수 이름) |
+| `UserQueryUseCase` — `getUser(userId, tenantId)`, `getUserList(tenantId)`, `existsByUsername` | `UserService` | `admin`, `client_management`(팀 사수·부사수 이름), `schedule`(회차별 측정자 검증·이름) |
 | `UserCommandUseCase` — `createUser`, `updateUser`, `deleteUser`, `createPlatformAdmin` | `AuthService` | `admin`, `platform` |
 | `RoleQueryUseCase` / `RoleCommandUseCase` | `RoleService` | `platform`(부트스트랩 역할 확보) |
 | `UserCredentialQueryUseCase` — `findCredentialByUsername` | `UserService` | `global`(스프링 시큐리티 `UserDetailsService`) |

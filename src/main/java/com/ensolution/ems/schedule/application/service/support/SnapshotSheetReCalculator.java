@@ -5,6 +5,7 @@ import com.ensolution.ems.equipment.domain.spec.ParticleSamplerSpec;
 import com.ensolution.ems.equipment.domain.spec.PitotTubeSpec;
 import com.ensolution.ems.schedule.application.calculation.SheetCalculator;
 import com.ensolution.ems.schedule.application.calculation.StackData;
+import com.ensolution.ems.schedule.application.service.ScheduleService;
 import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
@@ -23,12 +24,12 @@ import java.util.List;
  */
 @Component
 @RequiredArgsConstructor
-public class SnapshotSheetRecalculator {
+public class SnapshotSheetReCalculator {
 
 	private final SheetCalculator sheetCalculator;
 
 	/** 스냅샷의 장비 spec·측정시설 정보를 계산 입력으로 삼아 시트를 재계산한다. */
-	public List<SamplingSheet> recalculate(ScheduleSnapshot snapshot, List<SamplingSheet> sheets) {
+	public List<SamplingSheet> reCalculate(ScheduleSnapshot snapshot, List<SamplingSheet> sheets) {
 		if (sheets == null || sheets.isEmpty()) return sheets;
 
 		StackData stackData = resolveStackData(snapshot);
