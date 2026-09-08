@@ -2,6 +2,7 @@ package com.ensolution.ems.chat.application.service;
 
 import com.ensolution.ems.chat.application.command.ChatRoomDetail;
 import com.ensolution.ems.chat.application.command.ChatRoomListItem;
+import com.ensolution.ems.chat.application.command.MarkAsReadCommand;
 import com.ensolution.ems.chat.application.command.OpenDirectRoomCommand;
 import com.ensolution.ems.chat.application.port.out.ChatParticipantRepository;
 import com.ensolution.ems.chat.application.port.out.ChatRoomRepository;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -97,6 +99,33 @@ public class ChatRoomService {
 	public void hideRoom(Long roomId, Long userId, Long tenantId) {
 		ChatParticipant me = chatParticipantRepository.findByRoomIdAndUserId(roomId, userId, tenantId);
 		chatParticipantRepository.save(me.hide());
+	}
+
+	/**
+	 * 읽음 위치를 보고한다. <b>커서는 앞으로만 간다</b> — 위로 스크롤해 옛 메시지를 보는 것은
+	 * 읽음 취소가 아니고, 여러 탭의 보고가 뒤바뀐 순서로 도착할 수도 있다. 되돌아가면 이미 읽은
+	 * 메시지가 다시 안 읽음으로 살아난다.
+	 *
+	 * @return 커서가 실제로 움직였는가. 움직였을 때만 상대에게 읽음 확인을 알릴 값어치가 있다
+	 */
+	public boolean markAsRead(MarkAsReadCommand command) {
+		ChatParticipant me = chatParticipantRepository.findByRoomIdAndUserId(
+			command.roomId(), command.readerId(), command.tenantId());
+
+		ChatParticipant read = me.readUpTo(command.lastReadMessageId(), LocalDateTime.now());
+		if (read == me) {
+			return false;
+		}
+
+		chatParticipantRepository.save(read);
+		return true;
+	}
+
+	/** 전역 배지용 합계. 감춰 둔 방은 세지 않는다 — 목록에 없는 방의 배지는 눌러 볼 곳이 없다. */
+	@Transactional(readOnly = true)
+	public long getTotalUnreadCount(Long userId, Long tenantId) {
+		return assembler.totalUnread(tenantId, userId,
+			chatParticipantRepository.findAllVisibleByUserId(userId, tenantId));
 	}
 
 	private Long peerIdOf(Long roomId, Long myUserId, Long tenantId) {

@@ -1,10 +1,12 @@
 package com.ensolution.ems.chat.application.service;
 
+import com.ensolution.ems.chat.application.FakeChatMessageRepository;
 import com.ensolution.ems.chat.application.FakeChatParticipantRepository;
 import com.ensolution.ems.chat.application.FakeChatRoomRepository;
 import com.ensolution.ems.chat.application.FakeUserQuery;
 import com.ensolution.ems.chat.application.command.ChatRoomDetail;
 import com.ensolution.ems.chat.application.command.ChatRoomListItem;
+import com.ensolution.ems.chat.application.command.MarkAsReadCommand;
 import com.ensolution.ems.chat.application.command.OpenDirectRoomCommand;
 import com.ensolution.ems.chat.application.service.assembler.ChatRoomListAssembler;
 import com.ensolution.ems.chat.application.service.support.DirectRoomWriter;
@@ -44,6 +46,7 @@ class ChatRoomServiceTest {
 
 	private final FakeChatRoomRepository roomRepository = new FakeChatRoomRepository();
 	private final FakeChatParticipantRepository participantRepository = new FakeChatParticipantRepository();
+	private final FakeChatMessageRepository messageRepository = new FakeChatMessageRepository();
 	private final FakeUserQuery userQuery = new FakeUserQuery();
 
 	private final ChatRoomService chatRoomService = new ChatRoomService(
@@ -51,7 +54,7 @@ class ChatRoomServiceTest {
 		participantRepository,
 		new ChatRoomValidator(userQuery),
 		new DirectRoomWriter(roomRepository, participantRepository),
-		new ChatRoomListAssembler(userQuery)
+		new ChatRoomListAssembler(userQuery, messageRepository)
 	);
 
 	ChatRoomServiceTest() {
@@ -217,6 +220,118 @@ class ChatRoomServiceTest {
 			assertThatThrownBy(() -> chatRoomService.hideRoom(roomId, STRANGER, TENANT))
 				.isInstanceOf(CustomException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_ROOM_NOT_FOUND);
+		}
+	}
+
+	@Nested
+	@DisplayName("읽음과 미읽음")
+	class Unread {
+
+		private Long roomId;
+
+		Unread() {
+			this.roomId = chatRoomService.openDirectRoom(openCommand(TENANT, ME, PEER)).roomId();
+		}
+
+		private String sendFromPeer(String content) {
+			return messageRepository.given(TENANT, roomId, PEER, content).getId();
+		}
+
+		@Test
+		@DisplayName("상대가 보낸 메시지는 안 읽음으로 잡힌다")
+		void 상대_메시지는_미읽음이다() {
+			sendFromPeer("첫 번째");
+			sendFromPeer("두 번째");
+
+			assertThat(chatRoomService.getRoomList(ME, TENANT))
+				.singleElement()
+				.extracting(ChatRoomListItem::unreadCount)
+				.isEqualTo(2L);
+		}
+
+		@Test
+		@DisplayName("내가 보낸 메시지는 세지 않는다")
+		void 내_메시지는_세지_않는다() {
+			messageRepository.given(TENANT, roomId, ME, "내가 보낸 것");
+
+			assertThat(chatRoomService.getRoomList(ME, TENANT))
+				.singleElement()
+				.extracting(ChatRoomListItem::unreadCount)
+				.isEqualTo(0L);
+		}
+
+		@Test
+		@DisplayName("읽음을 보고하면 그 뒤의 것만 남는다")
+		void 읽은_뒤의_것만_남는다() {
+			sendFromPeer("읽을 것");
+			String cursor = sendFromPeer("여기까지 읽음");
+			sendFromPeer("아직 안 읽음");
+
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, cursor));
+
+			assertThat(chatRoomService.getRoomList(ME, TENANT))
+				.singleElement()
+				.extracting(ChatRoomListItem::unreadCount)
+				.isEqualTo(1L);
+		}
+
+		@Test
+		@DisplayName("이전 위치를 다시 보고해도 커서는 되돌아가지 않는다")
+		void 커서는_되돌아가지_않는다() {
+			String first = sendFromPeer("첫 번째");
+			String second = sendFromPeer("두 번째");
+
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, second));
+			boolean moved = chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, first));
+
+			assertThat(moved).isFalse();
+			assertThat(chatRoomService.getRoomList(ME, TENANT))
+				.singleElement()
+				.extracting(ChatRoomListItem::unreadCount)
+				.isEqualTo(0L);
+		}
+
+		@Test
+		@DisplayName("커서가 실제로 움직였을 때만 true 를 돌려준다 — 상대에게 알릴지 가른다")
+		void 움직였을_때만_알린다() {
+			String messageId = sendFromPeer("첫 번째");
+
+			assertThat(chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, messageId)))
+				.isTrue();
+			assertThat(chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, messageId)))
+				.isFalse();
+		}
+
+		@Test
+		@DisplayName("참가자가 아니면 읽음을 보고할 수 없다")
+		void 참가자가_아니면_읽을_수_없다() {
+			String messageId = sendFromPeer("첫 번째");
+
+			assertThatThrownBy(() ->
+				chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, STRANGER, messageId)))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_ROOM_NOT_FOUND);
+		}
+
+		@Test
+		@DisplayName("전역 배지는 방들의 미읽음을 더한 값이다")
+		void 배지는_합계다() {
+			sendFromPeer("1");
+			sendFromPeer("2");
+
+			Long otherRoomId = chatRoomService.openDirectRoom(openCommand(TENANT, ME, STRANGER)).roomId();
+			messageRepository.given(TENANT, otherRoomId, STRANGER, "3");
+
+			assertThat(chatRoomService.getTotalUnreadCount(ME, TENANT)).isEqualTo(3L);
+		}
+
+		@Test
+		@DisplayName("감춘 방의 미읽음은 배지에 들어가지 않는다 — 목록에 없는 방은 눌러 볼 곳이 없다")
+		void 감춘_방은_배지에서_빠진다() {
+			sendFromPeer("1");
+			chatRoomService.hideRoom(roomId, ME, TENANT);
+
+			assertThat(chatRoomService.getTotalUnreadCount(ME, TENANT)).isZero();
 		}
 	}
 }

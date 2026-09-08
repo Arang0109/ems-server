@@ -2,6 +2,8 @@ package com.ensolution.ems.chat.presentation.room.controller;
 
 import com.ensolution.ems.chat.application.service.ChatRoomService;
 import com.ensolution.ems.chat.presentation.room.mapper.ChatRoomMapper;
+import com.ensolution.ems.chat.presentation.message.mapper.ChatMessageMapper;
+import com.ensolution.ems.chat.presentation.room.request.MarkAsReadRequest;
 import com.ensolution.ems.chat.presentation.room.request.OpenDirectRoomRequest;
 import com.ensolution.ems.chat.presentation.room.response.ChatRoomListResponse;
 import com.ensolution.ems.chat.presentation.room.response.ChatRoomResponse;
@@ -34,6 +36,8 @@ public class ChatRoomController {
 
 	private final ChatRoomService chatRoomService;
 	private final ChatRoomMapper mapper;
+	/** 읽음 커맨드 변환은 메시지 매퍼가 갖는다 — MarkAsReadCommand 가 메시지 id 를 다루기 때문이다. */
+	private final ChatMessageMapper messageMapper;
 
 	@Operation(summary = "1:1 대화방 열기",
 		description = "이미 두 사람의 대화방이 있으면 새로 만들지 않고 그 방을 반환합니다(멱등).")
@@ -67,6 +71,19 @@ public class ChatRoomController {
 		return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(
 			chatRoomService.getRoom(roomId, principal.getUserId(), principal.getTenantId())
 		)));
+	}
+
+	@Operation(summary = "읽음 처리",
+		description = "여기까지 읽었다고 보고합니다. 커서는 앞으로만 가므로 이전 위치를 보내면 무시됩니다.")
+	@PostMapping("/{roomId}/read")
+	public ResponseEntity<ApiResponse<Void>> markAsRead(
+		@PathVariable Long roomId,
+		@Valid @RequestBody MarkAsReadRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		chatRoomService.markAsRead(messageMapper.toMarkAsReadCommand(
+			request, roomId, principal.getUserId(), principal.getTenantId()));
+		return ResponseEntity.ok(ApiResponse.success());
 	}
 
 	@Operation(summary = "대화방 나가기",
