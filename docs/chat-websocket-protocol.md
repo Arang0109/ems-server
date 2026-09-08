@@ -12,8 +12,13 @@
 ```ts
 import { Client } from "@stomp/stompjs";
 
+// VITE_WS_URL: dev "ws://localhost:8080/ws" (절대) / prod "/ws" (상대 — 같은 오리진의 nginx 경유)
+const wsUrl = import.meta.env.VITE_WS_URL.startsWith("/")
+  ? `${location.origin.replace(/^http/, "ws")}${import.meta.env.VITE_WS_URL}`
+  : import.meta.env.VITE_WS_URL;
+
 const client = new Client({
-  brokerURL: `${WS_BASE}/ws`,                                      // wss://{API_HOST}/ws
+  brokerURL: wsUrl,
   connectHeaders: { Authorization: `Bearer ${getAccessToken()}` },
   reconnectDelay: 1000,
   heartbeatIncoming: 25000,
@@ -21,6 +26,9 @@ const client = new Client({
 });
 client.activate();
 ```
+
+> `VITE_API_URL`에서 파생시키지 마세요 — dev 는 절대(`http://localhost:8080/api`), prod 는
+> 상대(`/api`)라 형태가 다릅니다. WS 전용 변수를 따로 둡니다.
 
 - **라이브러리는 `@stomp/stompjs` 하나입니다.** `sockjs-client`는 넣지 않습니다 — 서버가 SockJS 폴백을
   켜지 않습니다.
@@ -79,6 +87,13 @@ client.onConnect = () => {
 
 `chat.messages`는 **본문을 그대로 싣습니다** — 받고 나서 다시 조회할 필요가 없습니다.
 `senderId`가 내 `userId`와 같으면 내가 보낸 메아리입니다.
+
+> **내 `userId`는 로그인 응답(`POST /api/auth/sign-in`)의 `userId` 필드입니다.** 액세스 토큰
+> claim 에는 없으니 디코드해도 얻을 수 없고, `username`(문자열)으로는 `senderId`(숫자)와 비교할 수
+> 없습니다. 이 값을 로그인 시 저장해 두세요.
+>
+> 이 필드는 나중에 추가됐습니다 — 그 전에 로그인해 둔 사용자는 저장된 값에 `userId`가 없으므로,
+> 없으면 재로그인을 유도하는 처리가 필요합니다.
 
 ---
 
@@ -154,8 +169,13 @@ GET /api/chat/rooms/12/messages?before={nextCursor}&size=50   → 그 위 50건
    서버 세션의 principal은 CONNECT 시점에 고정되므로, 갱신 없이 두면 만료된 신원으로 계속 붙어 있게 됩니다.
 5. **로그아웃 시 반드시 `deactivate()`.** 서버가 Redis의 Refresh Token을 지워도 이미 열린 소켓은
    끊기지 않습니다.
-6. **재연결 후 놓친 메시지는 REST로 메꿉니다** — 열려 있는 방의 마지막 `messageId` 이후를
-   `GET /messages`로 조회합니다. 알림은 유실될 수 있고 **조회 결과가 늘 진실의 원천**입니다.
+6. **재연결 후 놓친 메시지는 REST로 메꿉니다** — 열려 있는 방의 **최신 페이지를 다시 받아**
+   이미 가진 것과 병합합니다(`messageId` 기준 중복 제거). 알림은 유실될 수 있고
+   **조회 결과가 늘 진실의 원천**입니다.
+
+   > 커서는 `before`(과거 방향)뿐이라 "내가 가진 마지막 id **이후**"를 직접 요청할 수는 없습니다.
+   > 끊긴 사이에 한 페이지(기본 50건)를 넘게 쌓였다면 `nextCursor`로 위로 더 읽어 이어 붙입니다.
+   > `after` 커서는 향후 과제입니다.
 
 ---
 
@@ -219,11 +239,23 @@ location /ws {
 }
 ```
 
-`Upgrade`/`Connection` 헤더가 없으면 핸드셰이크가 **조용히** 실패합니다 — API 호출에는 아무 흔적이
-남지 않아 원인을 찾기 어렵습니다.
+`Upgrade`/`Connection` 헤더가 없으면 핸드셰이크가 **조용히** 실패합니다 — `/ws` 요청이 SPA 폴백
+(`try_files $uri /index.html`)에 잡혀 **HTML 200**이 돌아오고, API 호출에는 아무 흔적이 남지 않아
+원인을 찾기 어렵습니다. 프록시가 붙었는지는 이렇게 확인합니다.
 
-허용 오리진은 서버의 `global/security/config/AllowedOrigins`가 REST(CORS)와 핸드셰이크 양쪽에
-같은 값을 공급합니다. 새 오리진을 추가할 때는 그 한 곳만 고치면 됩니다.
+```bash
+curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" http://<host>/ws
+# 101 또는 400 → 프록시 통과.  200 text/html → 아직 SPA 폴백에 잡히는 중
+```
+
+### 허용 오리진
+
+서버의 `app.cors.allowed-origins`(환경변수 `CORS_ALLOWED_ORIGINS`, 쉼표 구분)가 REST(CORS)와
+핸드셰이크 양쪽에 같은 값을 공급합니다. 새 오리진은 그 한 곳만 고치면 됩니다.
+
+> **배포 호스트를 바꾸면 반드시 함께 바꿉니다.** REST 는 nginx 를 통한 동일 오리진이라
+> 프리플라이트가 없어 누락돼도 멀쩡히 동작하지만, **WebSocket 은 동일 오리진이어도 `Origin` 을
+> 검사**하므로 채팅만 붙지 않습니다. 증상이 "채팅만 안 된다"로 나타나 프록시 문제로 오인하기 쉽습니다.
 
 ---
 
