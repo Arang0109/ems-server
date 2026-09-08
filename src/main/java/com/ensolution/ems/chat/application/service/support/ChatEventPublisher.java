@@ -1,6 +1,7 @@
 package com.ensolution.ems.chat.application.service.support;
 
 import com.ensolution.ems.chat.application.event.ChatMessagePayload;
+import com.ensolution.ems.chat.application.event.ChatPresencePayload;
 import com.ensolution.ems.chat.application.event.ChatReadPayload;
 import com.ensolution.ems.chat.application.event.ChatRoomOpenedPayload;
 import com.ensolution.ems.chat.application.port.out.ChatEventBroadcaster;
@@ -44,6 +45,14 @@ public class ChatEventPublisher {
 
 	public void roomOpened(String recipientUsername, ChatRoomOpenedPayload payload) {
 		afterCommit(() -> broadcaster.publishRoomOpened(recipientUsername, payload));
+	}
+
+	/**
+	 * 프레즌스는 트랜잭션 밖(세션 이벤트)에서 불리는 것이 정상이라 대개 즉시 발행된다.
+	 * 같은 경로를 쓰는 이유는 발행 지점을 한 곳에 모으기 위함이다.
+	 */
+	public void presenceChanged(List<String> recipientUsernames, ChatPresencePayload payload) {
+		afterCommit(() -> broadcaster.publishPresenceChanged(recipientUsernames, payload));
 	}
 
 	private void afterCommit(Runnable publish) {

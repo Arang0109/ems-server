@@ -3,6 +3,7 @@ package com.ensolution.ems.chat.application.service;
 import com.ensolution.ems.chat.application.FakeChatMessageRepository;
 import com.ensolution.ems.chat.application.FakeChatParticipantRepository;
 import com.ensolution.ems.chat.application.FakeChatRoomRepository;
+import com.ensolution.ems.chat.application.FakePresenceStore;
 import com.ensolution.ems.chat.application.FakeUserQuery;
 import com.ensolution.ems.chat.application.RecordingChatEventBroadcaster;
 import com.ensolution.ems.chat.application.command.ChatRoomDetail;
@@ -51,13 +52,14 @@ class ChatRoomServiceTest {
 	private final FakeChatMessageRepository messageRepository = new FakeChatMessageRepository();
 	private final FakeUserQuery userQuery = new FakeUserQuery();
 	private final RecordingChatEventBroadcaster broadcaster = new RecordingChatEventBroadcaster();
+	private final FakePresenceStore presenceStore = new FakePresenceStore();
 
 	private final ChatRoomService chatRoomService = new ChatRoomService(
 		roomRepository,
 		participantRepository,
 		new ChatRoomValidator(userQuery),
 		new DirectRoomWriter(roomRepository, participantRepository),
-		new ChatRoomListAssembler(userQuery, messageRepository),
+		new ChatRoomListAssembler(userQuery, messageRepository, presenceStore),
 		userQuery,
 		new ChatEventPublisher(broadcaster)
 	);

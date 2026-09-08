@@ -1,6 +1,7 @@
 package com.ensolution.ems.chat.application;
 
 import com.ensolution.ems.chat.application.event.ChatMessagePayload;
+import com.ensolution.ems.chat.application.event.ChatPresencePayload;
 import com.ensolution.ems.chat.application.event.ChatReadPayload;
 import com.ensolution.ems.chat.application.event.ChatRoomOpenedPayload;
 import com.ensolution.ems.chat.application.port.out.ChatEventBroadcaster;
@@ -23,6 +24,7 @@ public class RecordingChatEventBroadcaster implements ChatEventBroadcaster {
 	private final List<Sent<ChatMessagePayload>> messages = new ArrayList<>();
 	private final List<Sent<ChatReadPayload>> reads = new ArrayList<>();
 	private final List<Sent<ChatRoomOpenedPayload>> rooms = new ArrayList<>();
+	private final List<Sent<ChatPresencePayload>> presences = new ArrayList<>();
 
 	public List<Sent<ChatMessagePayload>> messages() {
 		return messages;
@@ -34,6 +36,10 @@ public class RecordingChatEventBroadcaster implements ChatEventBroadcaster {
 
 	public List<Sent<ChatRoomOpenedPayload>> rooms() {
 		return rooms;
+	}
+
+	public List<Sent<ChatPresencePayload>> presences() {
+		return presences;
 	}
 
 	@Override
@@ -49,5 +55,10 @@ public class RecordingChatEventBroadcaster implements ChatEventBroadcaster {
 	@Override
 	public void publishRoomOpened(String recipientUsername, ChatRoomOpenedPayload payload) {
 		rooms.add(new Sent<>(List.of(recipientUsername), payload));
+	}
+
+	@Override
+	public void publishPresenceChanged(List<String> recipientUsernames, ChatPresencePayload payload) {
+		presences.add(new Sent<>(List.copyOf(recipientUsernames), payload));
 	}
 }

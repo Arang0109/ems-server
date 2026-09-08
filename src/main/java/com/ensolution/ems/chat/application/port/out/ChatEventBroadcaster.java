@@ -1,6 +1,7 @@
 package com.ensolution.ems.chat.application.port.out;
 
 import com.ensolution.ems.chat.application.event.ChatMessagePayload;
+import com.ensolution.ems.chat.application.event.ChatPresencePayload;
 import com.ensolution.ems.chat.application.event.ChatReadPayload;
 import com.ensolution.ems.chat.application.event.ChatRoomOpenedPayload;
 
@@ -31,4 +32,10 @@ public interface ChatEventBroadcaster {
 
 	/** 방이 열렸다는 사실을 상대 한 사람에게. */
 	void publishRoomOpened(String recipientUsername, ChatRoomOpenedPayload payload);
+
+	/**
+	 * 접속 상태 변화를 같은 테넌트의 <b>접속 중인</b> 사람들에게. 오프라인인 사람에게 보내 봐야
+	 * 브로커가 버리고, 그 사람은 다음 접속 때 연락처 목록을 새로 받는다.
+	 */
+	void publishPresenceChanged(List<String> recipientUsernames, ChatPresencePayload payload);
 }

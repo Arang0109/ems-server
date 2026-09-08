@@ -1,6 +1,7 @@
 package com.ensolution.ems.chat.infrastructure.stomp;
 
 import com.ensolution.ems.chat.application.event.ChatMessagePayload;
+import com.ensolution.ems.chat.application.event.ChatPresencePayload;
 import com.ensolution.ems.chat.application.event.ChatReadPayload;
 import com.ensolution.ems.chat.application.event.ChatRoomOpenedPayload;
 import com.ensolution.ems.chat.application.port.out.ChatEventBroadcaster;
@@ -38,6 +39,7 @@ public class StompChatEventBroadcaster implements ChatEventBroadcaster {
 	private static final String MESSAGES = "/queue/chat.messages";
 	private static final String READS = "/queue/chat.reads";
 	private static final String ROOMS = "/queue/chat.rooms";
+	private static final String PRESENCE = "/queue/chat.presence";
 
 	private final SimpMessagingTemplate messagingTemplate;
 
@@ -56,6 +58,13 @@ public class StompChatEventBroadcaster implements ChatEventBroadcaster {
 	@Override
 	public void publishRoomOpened(String recipientUsername, ChatRoomOpenedPayload payload) {
 		send(recipientUsername, ROOMS, payload);
+	}
+
+	@Override
+	public void publishPresenceChanged(List<String> recipientUsernames, ChatPresencePayload payload) {
+		for (String username : recipientUsernames) {
+			send(username, PRESENCE, payload);
+		}
 	}
 
 	/**
