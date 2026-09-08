@@ -12,7 +12,7 @@ src/main/java/com/ensolution/ems/
 ├── platform/                  # 플랫폼 운영자의 고객사(테넌트) 생명주기 관리
 ├── schedule/                  # 측정계획·측정 시트·실험분석정보·주기 이행 이력 (MySQL + MongoDB)
 ├── storage/                   # 문서 저장·버전 관리
-└── global/                    # 공통: 보안 설정, Swagger, 공유 enum, ApiResponse, 예외
+└── global/                    # 공통: 보안 설정, Swagger, 공유 enum, ApiResponse, 예외, 파일 보관소 SPI
 ```
 
 모듈별 세부 규칙은 각 모듈의 `.claude/CLAUDE.md`에 있습니다 (`global` 제외 전 모듈 보유).

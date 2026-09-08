@@ -1,9 +1,7 @@
-package com.ensolution.ems.storage.infrastructure.adapter;
+package com.ensolution.ems.global.storage;
 
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
-import com.ensolution.ems.storage.application.port.out.FileStorageClient;
-import com.ensolution.ems.storage.infrastructure.config.StorageProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -46,8 +44,8 @@ public class LocalFileStorageAdapter implements FileStorageClient {
 		try {
 			return Files.readAllBytes(target);
 		} catch (NoSuchFileException e) {
-			log.error("메타는 있으나 실물 파일이 없습니다. storageKey={}", storageKey);
-			throw new CustomException(ErrorCode.DOCUMENT_FILE_NOT_FOUND);
+			log.error("보관소에 실물 파일이 없습니다. storageKey={}", storageKey);
+			throw new CustomException(ErrorCode.STORAGE_FILE_NOT_FOUND);
 		} catch (IOException e) {
 			log.error("파일을 읽지 못했습니다. storageKey={}", storageKey, e);
 			throw new CustomException(ErrorCode.STORAGE_READ_FAILED);

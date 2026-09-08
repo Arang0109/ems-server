@@ -9,7 +9,7 @@ import com.ensolution.ems.storage.application.command.DocumentFile;
 import com.ensolution.ems.storage.application.port.in.AddDocumentVersionCommand;
 import com.ensolution.ems.storage.application.port.in.CreateDocumentCommand;
 import com.ensolution.ems.storage.application.port.in.UploadedFile;
-import com.ensolution.ems.storage.application.port.out.FileStorageClient;
+import com.ensolution.ems.global.storage.FileStorageClient;
 import com.ensolution.ems.storage.application.validator.DocumentValidator;
 import com.ensolution.ems.storage.domain.Document;
 import org.junit.jupiter.api.DisplayName;
@@ -309,7 +309,7 @@ class DocumentServiceTest {
 		public byte[] load(String storageKey) {
 			byte[] content = stored.get(storageKey);
 			if (content == null) {
-				throw new CustomException(ErrorCode.DOCUMENT_FILE_NOT_FOUND);
+				throw new CustomException(ErrorCode.STORAGE_FILE_NOT_FOUND);
 			}
 			return content;
 		}

@@ -1,8 +1,7 @@
-package com.ensolution.ems.storage.infrastructure.adapter;
+package com.ensolution.ems.global.storage;
 
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
-import com.ensolution.ems.storage.infrastructure.config.StorageProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -168,11 +167,11 @@ class S3FileStorageAdapterTest {
 		private final S3FileStorageAdapter store = new S3FileStorageAdapter(s3, properties("documents"));
 
 		@Test
-		@DisplayName("오브젝트가 없으면 로컬 보관소와 같은 DOCUMENT_FILE_NOT_FOUND")
+		@DisplayName("오브젝트가 없으면 로컬 보관소와 같은 STORAGE_FILE_NOT_FOUND")
 		void 없는_오브젝트는_파일_없음으로_번역한다() {
 			assertThatThrownBy(() -> store.load(STORAGE_KEY))
 				.isInstanceOf(CustomException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.DOCUMENT_FILE_NOT_FOUND);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.STORAGE_FILE_NOT_FOUND);
 		}
 
 		@Test

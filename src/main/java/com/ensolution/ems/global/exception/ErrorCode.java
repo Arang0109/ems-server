@@ -49,7 +49,7 @@ public enum ErrorCode {
   DOCUMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 같은 이름의 문서가 존재합니다."),
   DOCUMENT_LAST_VERSION_NOT_DELETABLE(HttpStatus.CONFLICT, "마지막 남은 버전은 삭제할 수 없습니다."),
   DOCUMENT_FILE_EMPTY(HttpStatus.BAD_REQUEST, "빈 파일은 업로드할 수 없습니다."),
-  DOCUMENT_FILE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "문서의 실제 파일을 찾을 수 없습니다."),
+  STORAGE_FILE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "저장된 파일을 찾을 수 없습니다."),
   STORAGE_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 저장에 실패했습니다."),
   STORAGE_READ_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일을 읽지 못했습니다."),
 
@@ -64,4 +64,4 @@ public enum ErrorCode {
 
   private final HttpStatus status;
   private final String message;
-}
+}

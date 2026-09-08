@@ -51,7 +51,7 @@
 | `platform` | 플랫폼 운영자의 고객사(테넌트) 생명주기 관리 | `platform/.claude/CLAUDE.md` |
 | `schedule` | 측정계획·측정 시트·실험분석정보·주기 이행 이력 (MySQL + MongoDB) | `schedule/.claude/CLAUDE.md` |
 | `storage` | 문서 저장·버전 관리 | `storage/.claude/CLAUDE.md` |
-| `global` | 공통 인프라: 보안 설정, Swagger, 공유 enum, `ApiResponse`, 예외 | — |
+| `global` | 공통 인프라: 보안 설정, Swagger, 공유 enum, `ApiResponse`, 예외, 파일 보관소 SPI(`global/storage/`) | — |
 
 작업 전에 해당 모듈의 `.claude/CLAUDE.md`를 먼저 읽습니다. 루트 규칙과 충돌하면 루트가 우선하며,
 모듈 문서가 **명시적 예외**로 근거와 함께 선언한 것만 예외입니다.

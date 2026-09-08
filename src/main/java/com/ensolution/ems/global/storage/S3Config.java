@@ -1,6 +1,5 @@
-package com.ensolution.ems.storage.infrastructure.config;
+package com.ensolution.ems.global.storage;
 
-import com.ensolution.ems.storage.infrastructure.adapter.S3FileStorageAdapter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -49,7 +48,7 @@ public class S3Config {
 			builder.forcePathStyle(true);
 		}
 
-		log.info("S3 문서 보관소를 사용합니다. bucket={}, region={}", s3.bucket(), s3.region());
+		log.info("S3 파일 보관소를 사용합니다. bucket={}, region={}", s3.bucket(), s3.region());
 
 		return builder.build();
 	}

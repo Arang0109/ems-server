@@ -1,9 +1,9 @@
-package com.ensolution.ems.storage.infrastructure.config;
+package com.ensolution.ems.global.storage;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 문서 보관소 설정.
+ * 파일 보관소 설정.
  * <p>
  * 어느 보관소를 쓸지는 {@code ems.storage.provider}가 정하지만, 그 값은 이 record에 바인딩하지 않는다.
  * 보관소 구현체의 {@code @ConditionalOnProperty}가 Environment에서 직접 읽어 빈 등록 시점에 판단한다.
