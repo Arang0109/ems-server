@@ -32,6 +32,9 @@ import java.util.stream.Collectors;
  *   <li>미읽음 — 방마다 count를 날리면 N+1입니다. 방별 커서를 한꺼번에 넘겨 집계 한 번으로 받습니다.</li>
  *   <li>접속 상태 — 상대들의 id 를 모아 한 번에 묻습니다. 방마다 물으면 여기서 또 N번이 붙습니다.</li>
  * </ul>
+ *
+ * <p>참가자 행은 호출자({@code ChatRoomService.getRoomList})가 이미 한 번에 읽어 넘깁니다 —
+ * 그쪽이 방마다 조회하면 여기서 아무리 아껴도 N+1 입니다.
  */
 @Component
 @RequiredArgsConstructor

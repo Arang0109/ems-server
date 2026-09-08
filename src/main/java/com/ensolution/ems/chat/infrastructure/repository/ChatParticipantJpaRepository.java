@@ -14,6 +14,8 @@ public interface ChatParticipantJpaRepository extends JpaRepository<ChatParticip
 
 	List<ChatParticipantEntity> findAllByRoomIdAndTenantId(Long roomId, Long tenantId);
 
+	List<ChatParticipantEntity> findAllByRoomIdInAndTenantId(List<Long> roomIds, Long tenantId);
+
 	List<ChatParticipantEntity> findAllByUserIdAndTenantId(Long userId, Long tenantId);
 
 	List<ChatParticipantEntity> findAllByUserIdAndTenantIdAndHiddenFalse(Long userId, Long tenantId);

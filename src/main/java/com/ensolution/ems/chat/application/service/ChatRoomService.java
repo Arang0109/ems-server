@@ -90,9 +90,10 @@ public class ChatRoomService {
 
 		List<Long> roomIds = myParticipation.stream().map(ChatParticipant::getRoomId).toList();
 		List<ChatRoom> rooms = chatRoomRepository.findAllByIds(roomIds, tenantId);
-		List<ChatParticipant> allParticipants = roomIds.stream()
-			.flatMap(roomId -> chatParticipantRepository.findAllByRoomId(roomId, tenantId).stream())
-			.toList();
+		// 방마다 묻지 않는다 — 방 30개면 쿼리가 30번 나가고, 어셈블러가 "조회 횟수 고정"이라고
+		// 적어 둔 약속이 여기서 깨진다.
+		List<ChatParticipant> allParticipants =
+			chatParticipantRepository.findAllByRoomIds(roomIds, tenantId);
 
 		return assembler.assemble(tenantId, userId, myParticipation, rooms, allParticipants);
 	}

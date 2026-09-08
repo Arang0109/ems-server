@@ -19,6 +19,13 @@ public interface ChatParticipantRepository {
 	/** 방의 참가자 전원. 1:1이므로 2건이다. */
 	List<ChatParticipant> findAllByRoomId(Long roomId, Long tenantId);
 
+	/**
+	 * 여러 방의 참가자 전원을 <b>한 번에</b>.
+	 * <p>
+	 * 목록 조회가 방마다 {@link #findAllByRoomId}를 부르면 방 수만큼 쿼리가 나간다 — 방 30개면 30번이다.
+	 */
+	List<ChatParticipant> findAllByRoomIds(List<Long> roomIds, Long tenantId);
+
 	/** 내가 속한 방들. {@code hidden}인 것은 빼고 준다. */
 	List<ChatParticipant> findAllVisibleByUserId(Long userId, Long tenantId);
 

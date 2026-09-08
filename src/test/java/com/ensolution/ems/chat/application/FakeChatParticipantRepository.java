@@ -64,6 +64,14 @@ public class FakeChatParticipantRepository implements ChatParticipantRepository 
 	}
 
 	@Override
+	public List<ChatParticipant> findAllByRoomIds(List<Long> roomIds, Long tenantId) {
+		return participants.stream()
+			.filter(participant -> roomIds.contains(participant.getRoomId()))
+			.filter(participant -> Objects.equals(participant.getTenantId(), tenantId))
+			.toList();
+	}
+
+	@Override
 	public List<ChatParticipant> findAllVisibleByUserId(Long userId, Long tenantId) {
 		return findAllByUserId(userId, tenantId).stream()
 			.filter(participant -> !participant.isHidden())

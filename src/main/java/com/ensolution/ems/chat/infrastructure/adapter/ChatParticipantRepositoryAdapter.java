@@ -52,6 +52,16 @@ public class ChatParticipantRepositoryAdapter implements ChatParticipantReposito
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<ChatParticipant> findAllByRoomIds(List<Long> roomIds, Long tenantId) {
+		if (roomIds.isEmpty()) {
+			return List.of();
+		}
+		return mapper.toDomainList(
+			chatParticipantJpaRepository.findAllByRoomIdInAndTenantId(roomIds, tenantId));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<ChatParticipant> findAllVisibleByUserId(Long userId, Long tenantId) {
 		return mapper.toDomainList(
 			chatParticipantJpaRepository.findAllByUserIdAndTenantIdAndHiddenFalse(userId, tenantId));
