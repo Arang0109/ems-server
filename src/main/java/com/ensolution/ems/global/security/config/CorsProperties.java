@@ -31,4 +31,21 @@ import java.util.List;
 public record CorsProperties(
 	List<String> allowedOrigins
 ) {
+
+	/**
+	 * 비어 있으면 <b>기동을 막습니다.</b>
+	 * <p>
+	 * 빈 목록으로 뜨면 모든 오리진이 차단되어 채팅뿐 아니라 <b>프론트 전체가 죽습니다.</b>
+	 * 환경변수를 빈 문자열로 주면(예: compose 에서 {@code ${CORS_ALLOWED_ORIGINS:-}}) 서버 기본값이
+	 * 덮어써져 실제로 일어날 수 있는 사고이며, 그때 증상은 "배포했는데 화면이 아무것도 안 뜬다"입니다.
+	 * 원인을 찾기 어려운 런타임 장애보다 부팅 실패가 낫습니다
+	 * ({@code S3Config}가 버킷이 비었을 때 기동을 막는 것과 같은 판단).
+	 */
+	public CorsProperties {
+		if (allowedOrigins == null || allowedOrigins.isEmpty()) {
+			throw new IllegalStateException(
+				"app.cors.allowed-origins(환경변수 CORS_ALLOWED_ORIGINS)가 비어 있습니다. "
+					+ "비워 두면 모든 오리진이 차단되어 프론트가 서버에 붙지 못합니다.");
+		}
+	}
 }
