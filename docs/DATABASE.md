@@ -327,6 +327,8 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
 | tenant_id | BIGINT | NOT NULL | 소속 테넌트(plain 컬럼, FK 제약 없음) |
 | stack_id | BIGINT | NOT NULL | 측정 대상 시설(plain 컬럼, FK 제약 없음) |
 | team_id | BIGINT | NOT NULL | 측정 팀(plain 컬럼, FK 제약 없음) |
+| mentor_id | BIGINT | | 이 회차의 사수(user id, plain 컬럼). 미지정 시 NULL |
+| mentee_id | BIGINT | | 이 회차의 부사수(user id, plain 컬럼). 미지정 시 NULL |
 | measurement_field | VARCHAR | NOT NULL, ENUM(String) | `MeasurementField` |
 | sampled_at | DATE | NOT NULL | 측정(채취) 일자. 측정 건수 집계 기준일 |
 | schedule_purpose | VARCHAR | | 측정 용도(자가측정용 등) |
@@ -336,6 +338,14 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
 
 - **UNIQUE** `uk_schedules_stack_team_date` (tenant_id, stack_id, team_id, sampled_at)
 - **INDEX** `idx_schedules_tenant_id` (tenant_id)
+
+> **`mentor_id`·`mentee_id`는 이 회차에 나가는 측정자**이며 팀 원장(`teams.mentor_user_id`)과 별개입니다.
+> 팀 소속과 무관하게 테넌트 사용자 중에서 고르므로 계획이 소유합니다. 유니크 제약에는 넣지 않습니다 —
+> 중복 판정 기준은 여전히 대상·팀·채취일자입니다.
+>
+> 성적서에 인쇄되는 이름은 `schedule_documents`의 `team.mentorName`·`menteeName`이고 이후 자유 편집됩니다.
+> 두 값은 `team_id`(메타)와 `team.teamName`(문서)의 관계와 같습니다 — **id는 배정 사실, 이름은 회차의 표기**입니다.
+> 편집 뒤 둘이 갈릴 수 있으며 그것이 의도입니다.
 
 > 생애주기는 `status` 하나로 관리합니다. 업무가 실재했으나 무산된 건은 **취소**(`CANCELED`)로 목록에
 > 남기고, 애초에 잘못 등록된 건은 **삭제**로 지웁니다 — 삭제는 행을 지우는 물리 삭제이며

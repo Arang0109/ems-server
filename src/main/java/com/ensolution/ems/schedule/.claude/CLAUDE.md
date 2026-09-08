@@ -97,8 +97,9 @@ history는 여전히 별개 애그리거트지만 같은 모듈에 둡니다 —
 
 - **외부에서 이 모듈을 참조하는 것은 `ScheduleStatisticsUseCase` 하나**뿐입니다(`dashboard`가 사용).
   사실상 말단(leaf) 모듈이라 쪼개도 다른 모듈이 얻는 이득이 없습니다
-- 반대로 이 모듈 → 외부는 `client_management`·`equipment`·`platform`의 `port/in`으로 나갑니다.
-  진입점은 사실상 `ScheduleSnapshotAssembler` 한 곳입니다
+- 반대로 이 모듈 → 외부는 `client_management`·`equipment`·`platform`·`auth`의 `port/in`으로 나갑니다.
+  진입점은 사실상 `ScheduleSnapshotAssembler` 한 곳이며, 예외는 `ScheduleValidator`가 측정자의 tenant
+  소속을 확인하려고 `auth`의 `UserQueryUseCase`를 보는 것뿐입니다
 
 ---
 
@@ -178,6 +179,24 @@ MySQL(메타)과 MongoDB(세부)에 걸쳐 있고 **2PC를 쓸 수 없으므로*
 > `menteeName`)는 원장이 기본값을 갖지만 회차별로 다를 수 있어 스냅샷에서 덮어씁니다. 사본이 아니라
 > **이 회차의 값**이므로 위 표의 중복에 해당하지 않습니다.
 
+**측정자(사수·부사수)는 id와 이름이 서로 다른 것을 가리킵니다.**
+
+| 값 | 위치 | 뜻 |
+|---|---|---|
+| `mentorId`·`menteeId` | 메타(`schedules`) | 등록 시 **배정된 사람** |
+| `team.mentorName`·`menteeName` | 스냅샷 | 성적서에 **인쇄될 표기** |
+
+`teamId`(메타)와 `team.teamName`(스냅샷)의 관계와 같습니다. 표기는 `PATCH /{id}/basic-info`로 자유 편집되므로
+편집 뒤 둘이 갈릴 수 있고, **그것이 의도입니다** — 같은 사실의 사본이 아니기 때문입니다.
+
+- 측정자는 팀 원장의 사수·부사수가 아니라 **테넌트 사용자 전체에서 고르는 값**입니다. 그래서 팀이 아니라
+  계획이 소유하고, tenant 소속 확인을 `ScheduleValidator.requireMeasurersInTenant`가 따로 합니다.
+- **미배정(null)이면 팀 원장의 이름이 표기의 기본값**입니다(`TeamSnapshot.withMembers`의 부분 갱신 시맨틱).
+  이 폴백이 없으면 사수·부사수를 보내지 않던 클라이언트의 성적서 표기가 빈칸이 됩니다.
+  회귀는 `ScheduleSnapshotAssemblerTeamTest`가 고정합니다.
+- 배정은 등록 시점에만 받습니다. `PUT /{id}`로는 바꾸지 않습니다 — 바꿀 일이 생기면 표기를 고치는
+  `PATCH /{id}/basic-info`와 시맨틱이 겹치지 않는지 먼저 정하세요.
+
 **도메인 타입을 그대로 노출하는 예외 3곳**입니다. 각각 기존 결정이 있어 뒤집지 않았습니다.
 
 | 필드 | 근거 |
@@ -250,7 +269,7 @@ REPORT_COMPLETED · CANCELED ──reopen──► 스냅샷에서 재도출한 
 
 | 클래스 | 역할 |
 |---|---|
-| `ScheduleSnapshotAssembler` | 측정 시점 스냅샷 조립. `client_management`·`equipment`·`platform` 포트를 모으는 **유일한 크로스모듈 허브** |
+| `ScheduleSnapshotAssembler` | 측정 시점 스냅샷 조립. `client_management`·`equipment`·`platform`·`auth` 포트를 모으는 **유일한 크로스모듈 허브** |
 | `ScheduleExportAssembler` | 메타(MySQL)와 문서(Mongo)를 읽어 성적서 뷰로 합침 |
 | `FulfillmentBoardDetailAssembler` | 주기 이행 현황판 조립. 행 축(측정항목)은 원장에서, 셀 값(이행 사실)은 이력에서. 조회 **2회 고정** |
 
@@ -288,7 +307,7 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 
 | Validator | 메서드 |
 |---|---|
-| `ScheduleValidator` | `requireUniqueSchedule(tenantId, stackId, teamId, sampledAt)`, `requireExactItemOrder(items, orderedPollutantIds)` |
+| `ScheduleValidator` | `requireUniqueSchedule(tenantId, stackId, teamId, sampledAt)`, `requireMeasurersInTenant(mentorId, menteeId, tenantId)`, `requireExactItemOrder(items, orderedPollutantIds)` |
 
 시트 전용 validator는 없습니다 — `SheetMerge`가 버전 충돌 판정을 겸합니다.
 실험분석정보 validator도 없습니다 — 항목 유일성은 `items[]` 구조가 보장하고, 요청 내부 중복 검사는

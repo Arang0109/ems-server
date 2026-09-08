@@ -13,6 +13,8 @@ public record CreateScheduleRequest(
 	Long stackId,
 	@NotNull(message = "측정 팀은 필수 값입니다.")
 	Long teamId,
+	Long mentorId,
+	Long menteeId,
 	@NotNull(message = "측정 분야는 필수 값입니다.")
 	MeasurementField measurementField,
 	@NotNull(message = "측정 일자는 필수 값입니다.")

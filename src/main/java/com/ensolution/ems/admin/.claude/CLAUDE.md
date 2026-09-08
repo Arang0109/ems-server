@@ -62,6 +62,12 @@ auth가 `UserSummary`에 필드를 더하면 **컴파일이 깨져** 응답 계�
 
 `POST /` 등록 · `GET /` 목록 · `GET /{id}` 단건 · `PUT /{id}` 수정 · `DELETE /{id}` 삭제
 
+> **`GET /`는 관리 화면 전용입니다.** 선택지(드롭다운)용 사용자 목록은 `auth`의 `GET /api/users`가 담당하며
+> 전체 인증 사용자에게 열려 있습니다. 두 경로를 합치지 마세요 — 소비자와 필드 범위가 다릅니다.
+> `MemberResponse`는 로그인 아이디·연락처까지 담으므로 ADMIN 밖으로 나가면 안 되고,
+> 반대로 목록이 필요한 화면(측정계획 등록 등)의 사용자는 ADMIN이 아닙니다.
+> 근거는 `auth/.claude/CLAUDE.md`의 "사용자 조회 — 관리 화면과 나눕니다"에 있습니다.
+
 - **전 경로가 `@AuthenticationPrincipal`로 tenantId를 받아 Command에 싣습니다.** 단건 경로 3개
   (`GET`·`PUT`·`DELETE`)는 2026-08-25에 추가된 것으로, 그전에는 다른 테넌트의 계정을 조회·수정·삭제할
   수 있었습니다. **이 파라미터를 지우지 마세요.** 회귀는 `MemberControllerTest`가 잡습니다.
