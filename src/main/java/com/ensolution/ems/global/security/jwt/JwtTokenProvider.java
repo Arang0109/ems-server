@@ -1,8 +1,6 @@
 package com.ensolution.ems.global.security.jwt;
 
 import com.ensolution.ems.global.security.domain.JwtProperties;
-import com.ensolution.ems.global.security.domain.JwtToken;
-import com.ensolution.ems.global.security.user.CustomUserDetails;
 import com.ensolution.ems.global.security.user.CustomUserDetailsService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -36,18 +34,6 @@ public class JwtTokenProvider {
     this.customUserDetailsService = customUserDetailsService;
   }
   
-  public JwtToken createToken(Authentication authentication) {
-    CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-    String username = userDetails.getUsername();
-    
-    return new JwtToken(
-        "Bearer",
-        userDetails.getUsername(),
-        userDetails.getName(),
-        buildToken(username, AT_VALID),
-        buildToken(username, RT_VALID));
-  }
-  
   public String createAccessToken(String username, String tenant, String role) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("tenant", tenant);
@@ -66,12 +52,6 @@ public class JwtTokenProvider {
     return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
   }
   
-  /**
-   * 토큰의 주체(username)를 읽습니다. 서명 불일치·만료·형식 오류는 모두 빈 값입니다.
-   * <p>
-   * {@link #validateToken(String)} 후 다시 파싱하면 검증을 두 번 하게 되므로,
-   * "유효하면 누구인지"가 필요한 곳에서는 이 메서드 하나만 씁니다.
-   */
   public Optional<String> parseUsername(String token) {
     try {
       return Optional.ofNullable(parseClaims(token).getSubject());

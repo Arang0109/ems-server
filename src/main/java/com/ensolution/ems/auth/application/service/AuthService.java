@@ -35,14 +35,8 @@ public class AuthService implements UserCommandUseCase {
 	public void createUser(CreateUserCommand command) {
 		userValidator.requireAssignableRole(command.roleId());
 		register(
-			command.tenantId(),
-			command.roleId(),
-			command.username(),
-			command.password(),
-			command.name(),
-			command.department(),
-			command.email(),
-			command.tel()
+			command.tenantId(), command.roleId(), command.username(), command.password(),
+			command.name(), command.department(), command.email(), command.tel()
 		);
 	}
 
@@ -52,14 +46,8 @@ public class AuthService implements UserCommandUseCase {
 	 */
 	public void createPlatformAdmin(CreateUserCommand command) {
 		register(
-			command.tenantId(),
-			command.roleId(),
-			command.username(),
-			command.password(),
-			command.name(),
-			command.department(),
-			command.email(),
-			command.tel()
+			command.tenantId(), command.roleId(), command.username(), command.password(),
+			command.name(), command.department(), command.email(), command.tel()
 		);
 	}
 
@@ -71,11 +59,7 @@ public class AuthService implements UserCommandUseCase {
 		userValidator.requireAssignableRole(command.roleId());
 
 		User updated = user.update(
-			command.roleId(),
-			command.name(),
-			command.department(),
-			command.email(),
-			command.tel()
+			command.roleId(), command.name(), command.department(), command.email(), command.tel()
 		);
 
 		userRepository.save(updated);
@@ -88,14 +72,8 @@ public class AuthService implements UserCommandUseCase {
 	}
 
 	private void register(
-		Long tenantId,
-		Long roleId,
-		String username,
-		String rawPassword,
-		String name,
-		String department,
-		String email,
-		String tel
+		Long tenantId, Long roleId, String username, String rawPassword,
+		String name, String department, String email, String tel
 	) {
 		// 아이디는 로그인 식별자라 tenant와 무관하게 전역 유일하다.
 		if (userRepository.existsByUsername(username)) {
@@ -106,14 +84,8 @@ public class AuthService implements UserCommandUseCase {
 		String encodedPassword = passwordEncryptor.encode(rawPassword);
 
 		User user = User.signUp(
-			tenantId,
-			roleId,
-			username,
-			encodedPassword,
-			name,
-			department,
-			email,
-			tel
+			tenantId, roleId, username, encodedPassword,
+			name, department, email, tel
 		);
 
 		userRepository.save(user);

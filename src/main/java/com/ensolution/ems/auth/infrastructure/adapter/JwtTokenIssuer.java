@@ -28,13 +28,8 @@ public class JwtTokenIssuer implements TokenIssuer {
 		String refreshToken = jwtTokenProvider.createRefreshToken(username);
 
 		return new TokenResult(
-			accessToken,
-			refreshToken,
-			tenantId,
-			tenant,
-			username,
-			name,
-			role,
+			accessToken, refreshToken, tenantId, tenant,
+			username, name, role,
 			jwtProperties.refreshTokenValidity()
 		);
 	}
