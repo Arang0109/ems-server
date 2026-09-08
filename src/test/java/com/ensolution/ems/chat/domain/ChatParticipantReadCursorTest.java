@@ -1,11 +1,14 @@
 package com.ensolution.ems.chat.domain;
 
+import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 읽음 커서가 <b>앞으로만 간다</b>는 것을 고정한다.
@@ -79,5 +82,39 @@ class ChatParticipantReadCursorTest {
 	void 나가면_감춰진다() {
 		assertThat(participant().hide().isHidden()).isTrue();
 		assertThat(participant().hide().reveal().isHidden()).isFalse();
+	}
+
+	@Test
+	@DisplayName("메시지 id 형식이 아니면 저장하지 않는다 — 한 번 들어가면 되돌릴 수 없다")
+	void 잘못된_형식은_거부한다() {
+		// 가장 흔한 실수: clientMessageId(임시 말풍선 키)를 읽음 위치로 보낸다.
+		assertThatThrownBy(() -> participant().readUpTo("a3f1-9c2e-4b7d-8f10", NOW))
+			.isInstanceOf(CustomException.class)
+			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_INVALID_MESSAGE_ID);
+	}
+
+	@Test
+	@DisplayName("길이는 맞아도 16진이 아니면 거부한다 — 컬럼에 들어가 버리는 크기라 더 위험하다")
+	void 길이만_맞는_값도_거부한다() {
+		assertThatThrownBy(() -> participant().readUpTo("zzzzzzzzzzzzzzzzzzzzzzzz", NOW))
+			.isInstanceOf(CustomException.class)
+			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_INVALID_MESSAGE_ID);
+	}
+
+	@Test
+	@DisplayName("거부된 값은 기존 커서를 건드리지 않는다")
+	void 거부해도_기존_커서는_그대로다() {
+		ChatParticipant read = participant().readUpTo("665f0000000000000000000a", NOW);
+
+		assertThatThrownBy(() -> read.readUpTo("not-an-object-id", NOW.plusMinutes(1)))
+			.isInstanceOf(CustomException.class);
+		assertThat(read.getLastReadMessageId()).isEqualTo("665f0000000000000000000a");
+	}
+
+	@Test
+	@DisplayName("대문자 16진도 정상으로 받는다")
+	void 대문자_16진도_받는다() {
+		assertThat(participant().readUpTo("665F0000000000000000000A", NOW).getLastReadMessageId())
+			.isEqualTo("665F0000000000000000000A");
 	}
 }

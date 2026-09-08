@@ -9,6 +9,7 @@ import com.ensolution.ems.chat.infrastructure.repository.ChatMessageMongoReposit
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class ChatMessageRepositoryAdapter implements ChatMessageRepository {
@@ -93,9 +95,25 @@ public class ChatMessageRepositoryAdapter implements ChatMessageRepository {
 		return countByRoomId;
 	}
 
+	/**
+	 * 방 하나의 미읽음 조건.
+	 * <p>
+	 * 커서가 {@code null}이면 한 번도 읽지 않은 방이므로 조건 없이 전부 센다.
+	 * <p>
+	 * <b>형태가 어긋난 커서도 같은 취급을 한다.</b> 쓰기 경로가
+	 * {@link com.ensolution.ems.chat.domain.ChatMessage#requireValidId}로 막고 있어 정상적으로는
+	 * 나올 수 없지만, 검사가 생기기 전에 저장된 값이나 DB를 직접 고친 흔적이 남아 있을 수 있다.
+	 * 그때 {@code new ObjectId(...)}가 던지면 <b>그 사용자의 방 목록과 배지가 통째로 500</b>이 되고,
+	 * 커서는 앞으로만 가므로 스스로 회복되지도 않는다. 전부 안 읽음으로 보이는 편이 낫다.
+	 */
 	private static Criteria criteriaOf(UnreadCursor cursor) {
 		Criteria criteria = Criteria.where("roomId").is(cursor.roomId());
 		if (cursor.lastReadMessageId() == null) {
+			return criteria;
+		}
+		if (!ChatMessage.isValidId(cursor.lastReadMessageId())) {
+			log.warn("[CHAT] 읽음 커서 형식이 올바르지 않아 전부 안 읽음으로 셉니다. roomId={}, cursor={}",
+				cursor.roomId(), cursor.lastReadMessageId());
 			return criteria;
 		}
 		// _id 는 ObjectId 다. 문자열로 비교하면 타입이 달라 한 건도 걸리지 않는다.

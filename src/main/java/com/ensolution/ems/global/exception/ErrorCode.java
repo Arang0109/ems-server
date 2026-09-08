@@ -55,6 +55,7 @@ public enum ErrorCode {
   // 채팅. 참가자가 아닌 경우도 CHAT_ROOM_NOT_FOUND 다 — 코드를 나누면 방의 존재가 드러난다(규칙 13).
   CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 대화방입니다."),
   CHAT_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 메시지입니다."),
+  CHAT_INVALID_MESSAGE_ID(HttpStatus.BAD_REQUEST, "메시지 id 형식이 올바르지 않습니다."),
   CHAT_SELF_ROOM_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신과는 대화할 수 없습니다."),
   CHAT_MESSAGE_EMPTY(HttpStatus.BAD_REQUEST, "내용이나 첨부 파일 중 하나는 있어야 합니다."),
   CHAT_ATTACHMENT_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "첨부 파일은 10MB를 넘을 수 없습니다."),

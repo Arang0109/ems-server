@@ -66,16 +66,25 @@ public class FakeChatMessageRepository implements ChatMessageRepository {
 			.toList();
 	}
 
+	/**
+	 * 형태가 어긋난 커서를 <b>어댑터와 똑같이 "전부 안 읽음"으로 취급한다.</b>
+	 * 실제 어댑터는 여기서 {@code new ObjectId(...)}가 던지면 방 목록 전체가 500이 되고 스스로
+	 * 회복되지 않으므로 관용하도록 만들어 두었는데, Fake 가 그것을 흉내 내지 않으면
+     * 그 관용을 검증할 방법이 없다.
+	 */
 	@Override
 	public Map<Long, Long> countUnreadByRoom(Long tenantId, Long readerId, List<UnreadCursor> cursors) {
 		Map<Long, Long> countByRoomId = new HashMap<>();
 
 		for (UnreadCursor cursor : cursors) {
+			boolean countAll = cursor.lastReadMessageId() == null
+				|| !ChatMessage.isValidId(cursor.lastReadMessageId());
+
 			long count = messages.stream()
 				.filter(message -> Objects.equals(message.getTenantId(), tenantId))
 				.filter(message -> Objects.equals(message.getRoomId(), cursor.roomId()))
 				.filter(message -> !Objects.equals(message.getSenderId(), readerId))
-				.filter(message -> cursor.lastReadMessageId() == null
+				.filter(message -> countAll
 					|| message.getId().compareTo(cursor.lastReadMessageId()) > 0)
 				.count();
 

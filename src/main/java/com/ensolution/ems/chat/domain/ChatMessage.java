@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.regex.Pattern;
 
 /**
  * 대화 한 건. <b>한 번 기록되면 바뀌지 않으므로 {@code update()}를 두지 않습니다</b>
@@ -27,6 +28,15 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 public class ChatMessage {
+
+	/**
+	 * 메시지 id 의 형태 — MongoDB {@code ObjectId} 의 16진 표현.
+	 * <p>
+	 * <b>id 형식을 메시지가 소유하는 이유</b>: 이 값은 저장만 되는 것이 아니라 <b>다음 조회의 쿼리 인자</b>가
+	 * 된다. 읽음 커서로 잘못된 문자열이 한 번 저장되면 그 뒤의 모든 미읽음 집계가 터진다
+	 * ({@code new ObjectId(...)} 가 던진다). 그래서 저장 경로가 아니라 <b>값의 주인</b>이 형태를 지킨다.
+	 */
+	private static final Pattern ID_FORMAT = Pattern.compile("[0-9a-fA-F]{24}");
 
 	private String id;
 	private Long tenantId;
@@ -93,6 +103,23 @@ public class ChatMessage {
 			throw new CustomException(ErrorCode.CHAT_ATTACHMENT_NOT_FOUND);
 		}
 		return attachment;
+	}
+
+	/** 커서·참조로 오가는 메시지 id 가 쿼리에 넣어도 되는 형태인지. */
+	public static boolean isValidId(String messageId) {
+		return messageId != null && ID_FORMAT.matcher(messageId).matches();
+	}
+
+	/**
+	 * 형태가 아니면 저장 전에 막는다. 잘못된 값이 들어가면 되돌리기 어렵다 —
+	 * 임의 문자열은 실제 ObjectId(6·7 로 시작)보다 사전순으로 큰 경우가 많아
+	 * 앞으로만 가는 커서가 <b>다시는 덮어쓰지 못한다.</b>
+	 */
+	public static String requireValidId(String messageId) {
+		if (!isValidId(messageId)) {
+			throw new CustomException(ErrorCode.CHAT_INVALID_MESSAGE_ID);
+		}
+		return messageId;
 	}
 
 	private static void requireContent(String content) {

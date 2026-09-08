@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -330,6 +331,36 @@ class ChatRoomServiceTest {
 			messageRepository.given(TENANT, otherRoomId, STRANGER, "3");
 
 			assertThat(chatRoomService.getTotalUnreadCount(ME, TENANT)).isEqualTo(3L);
+		}
+
+		@Test
+		@DisplayName("clientMessageId 를 읽음 위치로 보내면 저장되지 않는다 — 프론트가 가장 밟기 쉬운 실수다")
+		void 잘못된_커서는_저장되지_않는다() {
+			sendFromPeer("안녕");
+
+			assertThatThrownBy(() -> chatRoomService.markAsRead(
+				new MarkAsReadCommand(TENANT, roomId, ME, "a3f1-9c2e-4b7d-8f10")))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_INVALID_MESSAGE_ID);
+
+			// 거부된 뒤에도 목록은 멀쩡해야 한다.
+			assertThat(chatRoomService.getRoomList(ME, TENANT))
+				.singleElement()
+				.extracting(ChatRoomListItem::unreadCount)
+				.isEqualTo(1L);
+		}
+
+		@Test
+		@DisplayName("이미 오염된 커서가 저장돼 있어도 목록이 죽지 않는다 — 죽으면 스스로 회복되지 않는다")
+		void 오염된_커서에도_목록은_산다() {
+			sendFromPeer("안녕");
+			// 검증이 생기기 전에 저장됐거나 DB 를 직접 고친 상황. 도메인을 거치지 않고 심는다.
+			participantRepository.save(participantRepository
+				.findByRoomIdAndUserId(roomId, ME, TENANT)
+				.toBuilder().lastReadMessageId("zzzzzzzzzzzzzzzzzzzzzzzz").build());
+
+			assertThatCode(() -> chatRoomService.getRoomList(ME, TENANT)).doesNotThrowAnyException();
+			assertThatCode(() -> chatRoomService.getTotalUnreadCount(ME, TENANT)).doesNotThrowAnyException();
 		}
 
 		@Test
