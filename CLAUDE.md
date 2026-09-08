@@ -29,7 +29,9 @@
 > | MySQL | 대부분 | 원장 테이블 전반 (`docs/DATABASE.md` 참고) |
 > | MongoDB | `equipment` | `equipments`, `equipment_inspection_records` |
 > | MongoDB | `schedule` | `schedule_documents` (측정 시트·실험분석정보 임베드) |
+> | MongoDB | `chat` | `chat_messages` (대화 본문·첨부 임베드) |
 > | Redis | `auth` | Refresh Token |
+> | Redis | `chat` | 접속 상태(`PRESENCE:*`) — TTL 로 스스로 만료되는 휘발성 상태 |
 >
 > 두 저장소에 걸친 저장은 2PC를 쓸 수 없으므로 **순서로 정합성을 확보**합니다.
 > `ARCHITECTURE.md`의 "폴리글랏 저장소" 절을 참고하세요.
@@ -38,12 +40,13 @@
 
 ## 모듈 지도
 
-기능 모듈 9개 + 공통 인프라(`global`)로 구성됩니다.
+기능 모듈 10개 + 공통 인프라(`global`)로 구성됩니다.
 
 | 모듈 | 역할 | 모듈 문서 |
 |---|---|---|
 | `auth` | 인증·인가, 사용자·역할, JWT/Refresh Token | `auth/.claude/CLAUDE.md` |
 | `admin` | 테넌트 관리자용 회원·문서 관리 (자체 원장 없음) | `admin/.claude/CLAUDE.md` |
+| `chat` | 사용자 간 1:1 대화 (MySQL + MongoDB + Redis) | `chat/.claude/CLAUDE.md` |
 | `client_management` | 의뢰기관·사업장·측정시설과 하위 설비·측정물질·측정팀 | `client_management/.claude/CLAUDE.md` |
 | `contract` | 계약 관리 | `contract/.claude/CLAUDE.md` |
 | `dashboard` | 통계·요약 조회 전용 (자체 원장 없음) | `dashboard/.claude/CLAUDE.md` |
@@ -236,8 +239,9 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | `{대상}Finder` | 단순 조회를 넘는 탐색 규칙 캡슐화 | `PreviousSheetFinder` |
 | `{대상}Indexer` | 두 애그리거트의 결합 규칙 캡슐화 | *(현재 없음 — `AnalysisRecordIndexer`는 실험분석정보를 측정항목 안으로 들이면서 사라졌습니다)* |
 | `{대상}Recalculator` | 도메인 계산 엔진과 애그리거트 사이의 어댑터 | `SnapshotSheetRecalculator` |
-| `{대상}Writer` | 동시 쓰기 정책(재읽기·재시도) 캡슐화 | `SnapshotWriter` |
+| `{대상}Writer` | 동시 쓰기 정책(재읽기·재시도)·되돌릴 수 없는 쓰기의 순서 캡슐화 | `SnapshotWriter`, `DirectRoomWriter`, `ChatAttachmentWriter` |
 | `{대상}Transitioner` | 상태 머신 전이 저장과 그 부수효과(이력 동기화·문서 저장 시점) 캡슐화 | `ScheduleStatusTransitioner` |
+| `{대상}Publisher` | 알림 발행의 트랜잭션 경계 정책(커밋 이후 발행) 캡슐화 | `ChatEventPublisher` |
 
 - `{대상}Detail`을 반환하는 어셈블러만 `{대상}DetailAssembler`로 씁니다 (`StackDetailAssembler`, `ContractDetailAssembler`).
 - **위치**: `{대상}Assembler`는 `application/service/assembler/`, 그 외 협력자
@@ -514,6 +518,7 @@ public Stack createStack(CreateStackCommand command) {
 | `docs/DATABASE.md` | **스키마의 단일 진실.** 테이블·컬럼·제약·Enum 값 |
 | `docs/migration/` | 수동 실행 DDL·백필 스크립트 (규칙 15) |
 | `docs/excel-template-guide.md` | **고객 대상** jxls 템플릿 작성 매뉴얼. `~ExportView`의 필드명이 곧 이 문서의 계약이라 변경하면 배포된 템플릿이 깨집니다 |
+| `docs/chat-websocket-protocol.md` | **프론트엔드 대상** 채팅 프로토콜 계약. STOMP 목적지·페이로드·재연결 규칙이 곧 `ems-web`과의 약속이라 바꾸면 프론트가 깨집니다 |
 | `docs/equipment/*.md` | equipment 도메인 모델 Mermaid 다이어그램 |
 | `docs/architecture-audit-*.md` | 아키텍처 규칙 준수 진단 리포트 (날짜별 이력) |
 

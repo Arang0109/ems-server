@@ -18,10 +18,13 @@ tenants (테넌트/고객사)
 ├── pollutants         (고객사 채택 물질)  tenant_id, catalog_id
 ├── stack_pollutant    (시설별 측정물질)   tenant_id, stack_id, pollutant_id
 ├── contract           (계약)              tenant_id, workplace_id
-└── schedules          (측정계획 메타)     tenant_id, stack_id, team_id
-    └── schedule_documents (MongoDB 세부 스냅샷)  scheduleId 로 연결
-        ├── samplingData.sheets[]  측정 시트
-        └── items[].analysis       실험분석정보
+├── schedules          (측정계획 메타)     tenant_id, stack_id, team_id
+│   └── schedule_documents (MongoDB 세부 스냅샷)  scheduleId 로 연결
+│       ├── samplingData.sheets[]  측정 시트
+│       └── items[].analysis       실험분석정보
+└── chat_rooms         (1:1 대화방)        tenant_id, pair_key
+    ├── chat_room_participants (참가자)     tenant_id, room_id, user_id
+    └── chat_messages  (MongoDB 대화 본문)  roomId 로 연결
 ```
 
 **전역(테넌트 비종속) 테이블**
@@ -30,7 +33,7 @@ tenants (테넌트/고객사)
 
 **`tenant_id` 연관 방식 두 가지**
 - **JPA 연관(@ManyToOne → TenantEntity)**: `clients`, `workplaces`, `stacks`, `facilities`, `preventions`, `pollutants`, `stack_pollutant` — 실제 FK(`fk_*_tenants`) + `ON DELETE CASCADE`.
-- **plain 컬럼(Long, FK 제약 없음)**: `users`, `contract` — `tenant_id`를 값으로만 보유(모듈 경계상 TenantEntity에 의존하지 않음). 애플리케이션이 정합성 보장.
+- **plain 컬럼(Long, FK 제약 없음)**: `users`, `contract`, `chat_rooms`, `chat_room_participants` — `tenant_id`를 값으로만 보유(모듈 경계상 TenantEntity에 의존하지 않음). 애플리케이션이 정합성 보장.
 
 ---
 
@@ -670,6 +673,93 @@ mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analy
 
 ---
 
+## chat_rooms — 1:1 대화방
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| room_id | BIGINT | PK, AUTO_INCREMENT | |
+| tenant_id | BIGINT | NOT NULL | 소속 테넌트(plain 컬럼, FK 제약 없음) |
+| pair_key | VARCHAR(64) | NOT NULL | `min(userId):max(userId)`. 도메인이 만듭니다 |
+| last_message_id | VARCHAR(24) | | 마지막 메시지의 Mongo `ObjectId` 문자열 |
+| last_message_preview | VARCHAR(200) | | 목록 한 줄에 보여 줄 요약. 본문은 Mongo에 있습니다 |
+| last_message_at | DATETIME | | 목록 정렬 축 |
+| created_at | DATETIME | NOT UPDATABLE | Auditing |
+| modified_at | DATETIME | | Auditing |
+
+- **UNIQUE** `uk_chat_rooms_tenant_pair` (tenant_id, pair_key)
+- **INDEX** `idx_chat_rooms_tenant_last_message` (tenant_id, last_message_at)
+
+> **`pair_key`의 UNIQUE 제약이 이 테이블의 존재 이유 절반입니다.** "같은 두 사람에게 방은 하나"를
+> 애플리케이션의 존재 검사로는 지킬 수 없습니다 — 두 사람이 동시에 대화를 시작하면 둘 다 "없다"를
+> 읽고 둘 다 만듭니다. 두 id를 **정렬해서** 키를 만들기 때문에 A가 만든 키와 B가 만든 키가 같습니다.
+> 충돌은 예외가 아니라 "다른 요청이 방금 만들었다"는 신호로 다뤄 재조회합니다(`DirectRoomWriter`).
+
+> `last_message_*` 세 컬럼은 **목록을 그리기 위한 비정규화 사본**입니다. 메시지의 진실은
+> `chat_messages`에 있습니다. 미읽음 수는 사본으로 두지 않습니다 — MySQL 카운터와 Mongo insert는
+> 2PC를 걸 수 없어 반드시 어긋나므로 매번 셉니다.
+
+---
+
+## chat_room_participants — 대화방 참가자
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| participant_id | BIGINT | PK, AUTO_INCREMENT | |
+| tenant_id | BIGINT | NOT NULL | plain 컬럼 |
+| room_id | BIGINT | NOT NULL | **plain 컬럼. JPA 연관을 두지 않습니다** |
+| user_id | BIGINT | NOT NULL | `users.user_id`. 모듈 경계를 넘으므로 plain 컬럼 |
+| last_read_message_id | VARCHAR(24) | | 읽음 커서. 이 뒤를 세어 미읽음을 구합니다 |
+| last_read_at | DATETIME | | |
+| hidden | BOOLEAN | NOT NULL | "나가기". 내 목록에서만 감춥니다 |
+| created_at | DATETIME | NOT UPDATABLE | Auditing |
+| modified_at | DATETIME | | Auditing |
+
+- **UNIQUE** `uk_chat_participants_room_user` (room_id, user_id)
+- **INDEX** `idx_chat_participants_tenant_user` (tenant_id, user_id) — "내 대화방 목록" 조회 축
+
+1:1이므로 방마다 정확히 2건입니다.
+
+> **`chat_rooms`와 JPA 연관을 두지 않는 이유**: 조회 방향이 언제나 **참가자 → 방**("내 대화방 목록")이라
+> 방에서 참가자를 객체 그래프로 끌 일이 없습니다. `schedules`가 연관관계를 하나도 두지 않은 것과
+> 같은 판단입니다.
+
+> **`hidden`은 삭제가 아닙니다.** 1:1 대화에서 한쪽이 나갔다고 상대의 대화 기록까지 사라지면 안 되므로
+> 방을 지우지 않고 내 참가 행만 감춥니다. 상대가 새 메시지를 보내면 다시 나타납니다.
+
+---
+
+## chat_messages — 대화 메시지 (MongoDB)
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| _id | ObjectId | **커서이자 정렬 축**. 도메인은 16진 문자열로 다룹니다 |
+| tenantId | Long | |
+| roomId | Long | |
+| senderId | Long | `users.user_id` |
+| type | String | `ChatMessageType` — TEXT · IMAGE · FILE |
+| content | String | 첨부만 있는 메시지는 비어 있을 수 있습니다 |
+| attachment | Object | 없으면 null. `storageKey`·`originalFilename`·`contentType`·`size` |
+| clientMessageId | String | 클라이언트가 만든 UUID. 서버는 해석하지 않고 되돌려 줍니다 |
+| sentAt | DateTime | `@CreatedDate` |
+
+- **복합 인덱스** `idx_chat_messages_tenant_room_id` — `{tenantId: 1, roomId: 1, _id: -1}`
+- **단일 인덱스** `tenantId`
+
+> **인덱스를 하나만 둡니다.** 대화 페이지 조회(`tenantId`+`roomId` 최신순)와 미읽음 집계(`_id > 커서`)가
+> 둘 다 이 복합 인덱스로 커버됩니다. `senderId`를 넣은 두 번째 인덱스는 집계에서 걸러 낼 뿐이라
+> 쓰기 비용만 늘립니다.
+
+> **`sentAt`이 아니라 `_id`가 커서인 이유**: `ObjectId`는 앞 4바이트가 초 단위 타임스탬프이고 뒤이어
+> 단조 증가 카운터가 오므로 문자열 사전순이 곧 생성순입니다. `sentAt`은 같은 밀리초에 두 건이 들어올
+> 수 있어 경계에서 메시지가 누락되거나 중복됩니다. `last_read_message_id` 비교도 같은 성질에 기댑니다.
+
+> **한 번 기록되면 바뀌지 않습니다.** 도메인에 `update()`가 없습니다
+> (`document_versions`·`equipment_inspection_records`와 같은 성격).
+
+> 인덱스 보정 스크립트: `docs/migration/2026-09-08-chat-message-index.js`
+
+---
+
 ## Enum 값 참조
 
 `@Enumerated(EnumType.STRING)`로 저장(계약의 `ContractAmountUnit` 제외).
@@ -687,6 +777,7 @@ mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analy
 | `Orientation` | VERTICAL, HORIZONTAL |
 | `ContractAmountUnit` | MONTH, QUARTER, SEMI_ANNUAL, ANNUAL, TOTAL |
 | `ScheduleStatus` | SCHEDULED(측정예정), MEASURING(측정중), ANALYZING(분석값입력중), REPORT_COMPLETED(성적서작성완료), CANCELED(취소) |
+| `ChatMessageType` | TEXT, IMAGE, FILE — 사용자가 고르지 않고 업로드된 `contentType`이 정합니다 |
 
 ---
 
@@ -706,6 +797,6 @@ mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analy
    -- SELECT COUNT(*) FROM pollutant_catalog;   -- 48
    ```
 2. **`contract.contract_amount_unit` ORDINAL 저장**: `@Enumerated(EnumType.STRING)` 부재. enum 순서 변경 시 데이터 깨짐 위험 → STRING 저장 권장.
-3. **Auditing 리스너 범위**: `@EntityListeners(AuditingEntityListener.class)`가 없으면 `created_at`/`modified_at`이 항상 null로 저장됩니다. `stacks`, `users`, `pollutant_catalog`, `pollutants`, `stack_pollutant`에는 부착돼 있으나, `clients`·`workplaces`·`facilities`·`preventions`·`teams` 등 나머지 테넌트 테이블은 아직 누락 상태입니다.
+3. **Auditing 리스너 범위**: `@EntityListeners(AuditingEntityListener.class)`가 없으면 `created_at`/`modified_at`이 항상 null로 저장됩니다. `stacks`, `users`, `pollutant_catalog`, `pollutants`, `stack_pollutant`, `chat_rooms`, `chat_room_participants`에는 부착돼 있으나, `clients`·`workplaces`·`facilities`·`preventions`·`teams` 등 나머지 테넌트 테이블은 아직 누락 상태입니다.
 4. **tenant_id 주입 경로**: 인증된 사용자의 `tenant_id`(`users.tenant_id`)를 `CustomUserDetails.tenantId`로 로드하여, 컨트롤러가 `@AuthenticationPrincipal`로 읽어 생성 커맨드에 주입합니다.
 5. **`target_substances` 테이블 수동 삭제 필요**: 측정대상물질은 `preventions.target_name`/`removal_efficiency`로 통합되어 엔티티가 제거됐지만, `ddl-auto: update`는 테이블/컬럼 삭제를 반영하지 않습니다. 기존 DB에 남아 있는 `target_substances` 테이블은 `DROP TABLE target_substances;`로 직접 정리해야 합니다.
