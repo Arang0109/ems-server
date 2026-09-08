@@ -162,9 +162,24 @@ GET /api/chat/rooms/12/messages?before={nextCursor}&size=50   → 그 위 50건
 | 대화방 | `GET /rooms/{id}/messages?size=50` → 위로 스크롤 시 `?before=` | `chat.messages`(해당 `roomId`만), `chat.reads` |
 | 전역 배지 | `GET /api/chat/unread-count` | `chat.messages` 수신 시 +1, read 전송 후 재조회 |
 
-읽음 처리: 방을 열고 스크롤이 바닥이면 `POST /rooms/{id}/read { lastReadMessageId }`.
-서버가 상대에게 `chat.reads`를 보냅니다. **커서는 앞으로만 갑니다** — 위로 스크롤해 옛 메시지를 봐도
-이전 위치를 보내지 마세요(보내도 서버가 무시합니다).
+### 읽음 표시
+
+읽음 커서는 **둘 다** 응답에 실립니다. 쓰임이 다릅니다.
+
+| 필드 | 쓰임 | 어디에 |
+|---|---|---|
+| `myLastReadMessageId` | **어디부터 보여 줄까** — 방에 들어갈 때 안 읽은 첫 메시지로 점프 | `GET /rooms`, `GET /rooms/{id}`, `POST /rooms` |
+| `peerLastReadMessageId` | **내 말풍선에 "읽음"을 붙일까** — 이 id 이하인 내 메시지에 표시 | 같음 |
+
+**둘을 바꿔 쓰지 마세요.** 뒤바뀌면 상대가 읽지 않은 메시지에 "읽음"이 붙습니다.
+같은 방이라도 누가 조회하느냐에 따라 두 값이 서로 뒤바뀌어 옵니다 — 언제나 `my`는 요청자 것입니다.
+
+보고: 방을 열고 스크롤이 바닥이면 `POST /rooms/{id}/read { lastReadMessageId }`.
+서버가 상대에게 `chat.reads`를 보냅니다.
+
+- **커서는 앞으로만 갑니다** — 위로 스크롤해 옛 메시지를 봐도 이전 위치를 보내지 마세요(서버가 무시합니다).
+- **`lastReadMessageId`는 서버가 준 24자 16진 메시지 id입니다.** `clientMessageId`(임시 말풍선 키)를
+  보내면 **400 `CHAT_INVALID_MESSAGE_ID`** 입니다. 가장 흔한 실수라 서버가 형식을 검사합니다.
 
 ---
 
@@ -174,6 +189,7 @@ GET /api/chat/rooms/12/messages?before={nextCursor}&size=50   → 그 위 50건
 |---|---|---|
 | `CHAT_ROOM_NOT_FOUND` | 404 | 방이 없거나, **내가 참가자가 아니거나**, 다른 테넌트의 방 |
 | `CHAT_MESSAGE_NOT_FOUND` | 404 | 메시지가 없거나 그 방의 메시지가 아님 |
+| `CHAT_INVALID_MESSAGE_ID` | 400 | 메시지 id 형식이 아님(24자 16진). `clientMessageId` 를 보낸 경우가 대부분 |
 | `CHAT_SELF_ROOM_NOT_ALLOWED` | 400 | 자기 자신과 대화방을 열려 함 |
 | `CHAT_MESSAGE_EMPTY` | 400 | 내용도 첨부도 없음 |
 | `CHAT_ATTACHMENT_TOO_LARGE` | 413 | 첨부 10MB 초과 |

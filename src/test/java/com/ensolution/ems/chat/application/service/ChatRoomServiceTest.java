@@ -432,4 +432,93 @@ class ChatRoomServiceTest {
 			assertThat(broadcaster.reads()).isEmpty();
 		}
 	}
+
+	@Nested
+	@DisplayName("읽음 커서 노출 — 내 것과 상대 것")
+	class ReadCursors {
+
+		private final Long roomId = chatRoomService.openDirectRoom(openCommand(TENANT, ME, PEER)).roomId();
+
+		private String send(Long senderId, String content) {
+			return messageRepository.given(TENANT, roomId, senderId, content).getId();
+		}
+
+		@Test
+		@DisplayName("두 커서가 각자의 자리에 들어간다 — 뒤바뀌면 안 읽은 메시지에 '읽음'이 붙는다")
+		void 두_커서가_제자리에_들어간다() {
+			String first = send(PEER, "상대가 보낸 것");
+			String second = send(ME, "내가 보낸 것");
+
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, first));
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, PEER, second));
+
+			ChatRoomDetail detail = chatRoomService.getRoom(roomId, ME, TENANT);
+
+			assertThat(detail.myLastReadMessageId()).isEqualTo(first);
+			assertThat(detail.peerLastReadMessageId()).isEqualTo(second);
+		}
+
+		@Test
+		@DisplayName("같은 방을 상대가 보면 두 커서가 서로 뒤바뀌어 보인다 — 관점에 따라 달라진다")
+		void 관점이_바뀌면_커서도_바뀐다() {
+			String first = send(PEER, "상대가 보낸 것");
+			String second = send(ME, "내가 보낸 것");
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, first));
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, PEER, second));
+
+			ChatRoomDetail asPeer = chatRoomService.getRoom(roomId, PEER, TENANT);
+
+			assertThat(asPeer.myLastReadMessageId()).isEqualTo(second);
+			assertThat(asPeer.peerLastReadMessageId()).isEqualTo(first);
+		}
+
+		@Test
+		@DisplayName("아무도 읽지 않았으면 둘 다 null 이다")
+		void 읽기_전에는_둘_다_null이다() {
+			send(PEER, "안녕");
+
+			ChatRoomDetail detail = chatRoomService.getRoom(roomId, ME, TENANT);
+
+			assertThat(detail.myLastReadMessageId()).isNull();
+			assertThat(detail.peerLastReadMessageId()).isNull();
+		}
+
+		@Test
+		@DisplayName("내가 읽어도 상대 커서는 움직이지 않는다")
+		void 내가_읽어도_상대_커서는_그대로다() {
+			String messageId = send(PEER, "안녕");
+
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, messageId));
+
+			ChatRoomDetail detail = chatRoomService.getRoom(roomId, ME, TENANT);
+			assertThat(detail.myLastReadMessageId()).isEqualTo(messageId);
+			assertThat(detail.peerLastReadMessageId()).isNull();
+		}
+
+		@Test
+		@DisplayName("목록에도 두 커서가 실린다 — 방을 누를 때마다 단건 조회를 더 하지 않기 위해서다")
+		void 목록에도_두_커서가_실린다() {
+			String first = send(PEER, "상대가 보낸 것");
+			String second = send(ME, "내가 보낸 것");
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, ME, first));
+			chatRoomService.markAsRead(new MarkAsReadCommand(TENANT, roomId, PEER, second));
+
+			assertThat(chatRoomService.getRoomList(ME, TENANT))
+				.singleElement()
+				.satisfies(item -> {
+					assertThat(item.myLastReadMessageId()).isEqualTo(first);
+					assertThat(item.peerLastReadMessageId()).isEqualTo(second);
+				});
+		}
+
+		@Test
+		@DisplayName("방을 막 열었을 때도 두 커서 자리가 비어 있을 뿐 응답은 정상이다")
+		void 새_방도_정상_응답이다() {
+			ChatRoomDetail opened = chatRoomService.openDirectRoom(openCommand(TENANT, ME, STRANGER));
+
+			assertThat(opened.peer().userId()).isEqualTo(STRANGER);
+			assertThat(opened.myLastReadMessageId()).isNull();
+			assertThat(opened.peerLastReadMessageId()).isNull();
+		}
+	}
 }

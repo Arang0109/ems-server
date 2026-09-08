@@ -6,7 +6,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record ChatRoomResponse(
 	Long roomId,
 	ChatRoomPeerResponse peer,
-	@Schema(description = "내가 마지막으로 읽은 메시지 id. 방을 열 때 이 위치부터 보여 준다")
-	String lastReadMessageId
+
+	@Schema(description = "**내가** 마지막으로 읽은 메시지 id. 방을 열 때 이 위치부터 보여 준다")
+	String myLastReadMessageId,
+
+	@Schema(description = "**상대가** 마지막으로 읽은 메시지 id. 이 id 이하인 내 메시지에 '읽음'을 붙인다. "
+		+ "상대가 한 번도 읽지 않았으면 null")
+	String peerLastReadMessageId
 ) {
 }

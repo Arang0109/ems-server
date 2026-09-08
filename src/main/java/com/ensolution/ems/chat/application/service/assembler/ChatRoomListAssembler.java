@@ -55,9 +55,16 @@ public class ChatRoomListAssembler {
 		Map<Long, UserSummary> userById = userQueryUseCase.getUserList(tenantId).stream()
 			.collect(Collectors.toMap(UserSummary::userId, Function.identity(), (a, b) -> a));
 
-		Map<Long, Long> peerIdByRoomId = allParticipants.stream()
+		// 상대 "행"을 들고 있는다 — 상대의 읽음 커서가 그 행에 있고, id 만 두면 다시 읽어야 한다.
+		Map<Long, ChatParticipant> peerByRoomId = allParticipants.stream()
 			.filter(participant -> !Objects.equals(participant.getUserId(), myUserId))
-			.collect(Collectors.toMap(ChatParticipant::getRoomId, ChatParticipant::getUserId, (a, b) -> a));
+			.collect(Collectors.toMap(ChatParticipant::getRoomId, Function.identity(), (a, b) -> a));
+
+		Map<Long, ChatParticipant> myParticipationByRoomId = myParticipations.stream()
+			.collect(Collectors.toMap(ChatParticipant::getRoomId, Function.identity(), (a, b) -> a));
+
+		Map<Long, Long> peerIdByRoomId = peerByRoomId.entrySet().stream()
+			.collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getUserId()));
 
 		Map<Long, ChatRoom> roomById = rooms.stream()
 			.collect(Collectors.toMap(ChatRoom::getId, Function.identity()));
@@ -76,7 +83,9 @@ public class ChatRoomListAssembler {
 				room,
 				userById.get(peerIdByRoomId.get(room.getId())),
 				unreadByRoomId.getOrDefault(room.getId(), 0L),
-				online.contains(peerIdByRoomId.get(room.getId()))))
+				online.contains(peerIdByRoomId.get(room.getId())),
+				myParticipationByRoomId.get(room.getId()),
+				peerByRoomId.get(room.getId())))
 			.toList();
 	}
 
@@ -102,14 +111,21 @@ public class ChatRoomListAssembler {
 		return chatMessageRepository.countUnreadByRoom(tenantId, myUserId, cursors);
 	}
 
-	private ChatRoomListItem toListItem(ChatRoom room, UserSummary peer, long unreadCount, boolean online) {
+	/**
+	 * 두 커서를 각자의 자리에 담는다 — 뒤바뀌면 내가 읽은 위치가 상대의 읽음 표시로 그려져,
+	 * 상대가 읽지 않은 메시지에 "읽음"이 붙는다.
+	 */
+	private ChatRoomListItem toListItem(ChatRoom room, UserSummary peer, long unreadCount, boolean online,
+		ChatParticipant myParticipation, ChatParticipant peerParticipation) {
 		return new ChatRoomListItem(
 			room.getId(),
 			toPeer(peer, online),
 			room.getLastMessageId(),
 			room.getLastMessagePreview(),
 			room.getLastMessageAt(),
-			unreadCount
+			unreadCount,
+			myParticipation == null ? null : myParticipation.getLastReadMessageId(),
+			peerParticipation == null ? null : peerParticipation.getLastReadMessageId()
 		);
 	}
 

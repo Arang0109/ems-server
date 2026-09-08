@@ -72,37 +72,38 @@ public class ChatRoomService {
 			notifyRoomOpened(command, result.room().getId());
 		}
 
-		return new ChatRoomDetail(
+		return toDetail(
 			result.room().getId(),
-			assembler.peerOf(command.tenantId(), command.counterpartId()),
-			me.getLastReadMessageId()
+			command.tenantId(),
+			me,
+			peerOf(result.room().getId(), command.requesterId(), command.tenantId())
 		);
 	}
 
 	@Transactional(readOnly = true)
 	public List<ChatRoomListItem> getRoomList(Long userId, Long tenantId) {
-		List<ChatParticipant> myParticipations =
+		List<ChatParticipant> myParticipation =
 			chatParticipantRepository.findAllVisibleByUserId(userId, tenantId);
-		if (myParticipations.isEmpty()) {
+		if (myParticipation.isEmpty()) {
 			return List.of();
 		}
 
-		List<Long> roomIds = myParticipations.stream().map(ChatParticipant::getRoomId).toList();
+		List<Long> roomIds = myParticipation.stream().map(ChatParticipant::getRoomId).toList();
 		List<ChatRoom> rooms = chatRoomRepository.findAllByIds(roomIds, tenantId);
 		List<ChatParticipant> allParticipants = roomIds.stream()
 			.flatMap(roomId -> chatParticipantRepository.findAllByRoomId(roomId, tenantId).stream())
 			.toList();
 
-		return assembler.assemble(tenantId, userId, myParticipations, rooms, allParticipants);
+		return assembler.assemble(tenantId, userId, myParticipation, rooms, allParticipants);
 	}
 
 	@Transactional(readOnly = true)
 	public ChatRoomDetail getRoom(Long roomId, Long userId, Long tenantId) {
 		// 반환값을 쓰지 않는 호출이 아니다 — 내 읽음 커서가 응답에 들어간다.
 		ChatParticipant me = chatParticipantRepository.findByRoomIdAndUserId(roomId, userId, tenantId);
-		Long peerId = peerIdOf(roomId, userId, tenantId);
+		ChatParticipant peer = peerOf(roomId, userId, tenantId);
 
-		return new ChatRoomDetail(roomId, assembler.peerOf(tenantId, peerId), me.getLastReadMessageId());
+		return toDetail(roomId, tenantId, me, peer);
 	}
 
 	/**
@@ -154,20 +155,39 @@ public class ChatRoomService {
 	}
 
 	private void notifyRead(MarkAsReadCommand command, ChatParticipant read) {
-		Long peerId = peerIdOf(command.roomId(), command.readerId(), command.tenantId());
-		if (peerId == null) {
+		ChatParticipant peer = peerOf(command.roomId(), command.readerId(), command.tenantId());
+		if (peer == null) {
 			return;
 		}
 		eventPublisher.messagesRead(
-			userQueryUseCase.getUser(peerId, command.tenantId()).username(),
+			userQueryUseCase.getUser(peer.getUserId(), command.tenantId()).username(),
 			new ChatReadPayload(command.roomId(), command.readerId(),
 				read.getLastReadMessageId(), read.getLastReadAt()));
 	}
 
-	private Long peerIdOf(Long roomId, Long myUserId, Long tenantId) {
+	/**
+	 * 방 단건 응답. <b>두 커서를 각자의 자리에</b> 담는다 — 뒤바뀌면 내가 읽은 위치가 상대의 읽음
+	 * 표시로 그려져, 상대가 읽지 않은 메시지에 "읽음"이 붙는다.
+	 */
+	private ChatRoomDetail toDetail(Long roomId, Long tenantId, ChatParticipant me, ChatParticipant peer) {
+		return new ChatRoomDetail(
+			roomId,
+			peer == null ? null : assembler.peerOf(tenantId, peer.getUserId()),
+			me.getLastReadMessageId(),
+			peer == null ? null : peer.getLastReadMessageId()
+		);
+	}
+
+	/**
+	 * 상대 참가자. <b>id 가 아니라 행을 돌려주는 이유</b>는 읽음 커서가 그 행에 있기 때문이다 —
+	 * id 만 받아 오면 커서를 얻으려고 같은 행을 한 번 더 읽게 된다.
+	 * <p>
+	 * 계정 삭제 등으로 상대 행이 없을 수 있으므로 {@code null} 을 돌려준다. 대화 기록은 남아야 하고,
+	 * 상대가 사라졌다고 방 조회가 실패해서는 안 된다.
+	 */
+	private ChatParticipant peerOf(Long roomId, Long myUserId, Long tenantId) {
 		return chatParticipantRepository.findAllByRoomId(roomId, tenantId).stream()
-			.map(ChatParticipant::getUserId)
-			.filter(id -> !Objects.equals(id, myUserId))
+			.filter(participant -> !Objects.equals(participant.getUserId(), myUserId))
 			.findFirst()
 			.orElse(null);
 	}
