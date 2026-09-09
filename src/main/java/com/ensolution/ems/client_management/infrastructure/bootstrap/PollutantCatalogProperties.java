@@ -14,6 +14,6 @@ public class PollutantCatalogProperties {
 
 	/** 시드 활성화 여부. 카탈로그가 비어 있으면 물질 선택 자체가 불가능하므로 기본값이 true다. */
 	private boolean seedEnabled = true;
-
+	
 	private String resourceLocation = "classpath:catalog/pollutant-catalog.json";
 }

@@ -60,6 +60,8 @@ public interface ScheduleMapper {
 	@Mapping(target = "tenantId", source = "meta.tenantId")
 	@Mapping(target = "stackId", source = "meta.stackId")
 	@Mapping(target = "teamId", source = "meta.teamId")
+	@Mapping(target = "mentorId", source = "meta.mentorId")
+	@Mapping(target = "menteeId", source = "meta.menteeId")
 	@Mapping(target = "measurementField", source = "meta.measurementField")
 	@Mapping(target = "sampledAt", source = "meta.sampledAt")
 	@Mapping(target = "receivedAt", source = "meta.receivedAt")

@@ -10,6 +10,8 @@ public record CreateScheduleCommand(
 	Long tenantId,
 	Long stackId,
 	Long teamId,
+	Long mentorId,
+	Long menteeId,
 	MeasurementField measurementField,
 	LocalDate sampledAt,
 	List<Long> pollutantIds,

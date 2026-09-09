@@ -29,6 +29,8 @@ public class Schedule {
 	private Long tenantId;
 	private Long stackId;
 	private Long teamId;
+	private Long mentorId;
+	private Long menteeId;
 	private MeasurementField measurementField;
 	private String schedulePurpose;
 	private String referenceNumber;
@@ -40,8 +42,19 @@ public class Schedule {
 	private LocalDateTime createdAt;
 	private LocalDateTime modifiedAt;
 
+	/**
+	 * 측정계획을 등록한다.
+	 * <p>
+	 * <b>사수·부사수는 팀 원장의 사수·부사수가 아니라 이 회차에 실제로 나가는 사람</b>이라 계획마다 다르며,
+	 * 테넌트의 아무 사용자나 지정할 수 있다. 그래서 팀이 아니라 계획이 소유한다.
+	 * 지정하지 않으면(null) 팀 원장의 사수·부사수 이름이 스냅샷 표기의 기본값이 된다
+	 * ({@code ScheduleSnapshotAssembler} → {@code TeamSnapshot.withMembers}).
+	 * <p>
+	 * 성적서에 인쇄되는 표기({@code TeamSnapshot.mentorName})는 이후 자유 편집되지만, 여기 남는 id는
+	 * <b>등록 시점에 배정된 사람</b>으로 고정된다 — {@code teamId}(메타)와 {@code teamName}(스냅샷)의 관계와 같다.
+	 */
 	public static Schedule register(
-		Long tenantId, Long stackId, Long teamId,
+		Long tenantId, Long stackId, Long teamId, Long mentorId, Long menteeId,
 		MeasurementField measurementField, String schedulePurpose, String referenceNumber,
 		LocalDate sampledAt
 	) {
@@ -49,6 +62,8 @@ public class Schedule {
 			.tenantId(tenantId)
 			.stackId(stackId)
 			.teamId(teamId)
+			.mentorId(mentorId)
+			.menteeId(menteeId)
 			.measurementField(measurementField)
 			.schedulePurpose(schedulePurpose)
 			.referenceNumber(referenceNumber)

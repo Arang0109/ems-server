@@ -238,14 +238,14 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | `{대상}Recorder` | 유스케이스 완료 시 파생 이력 기록 | `MeasurementRecordRecorder` |
 | `{대상}Finder` | 단순 조회를 넘는 탐색 규칙 캡슐화 | `PreviousSheetFinder` |
 | `{대상}Indexer` | 두 애그리거트의 결합 규칙 캡슐화 | *(현재 없음 — `AnalysisRecordIndexer`는 실험분석정보를 측정항목 안으로 들이면서 사라졌습니다)* |
-| `{대상}Recalculator` | 도메인 계산 엔진과 애그리거트 사이의 어댑터 | `SnapshotSheetRecalculator` |
+| `{대상}ReCalculator` | 도메인 계산 엔진과 애그리거트 사이의 어댑터 | `SnapshotSheetReCalculator` |
 | `{대상}Writer` | 동시 쓰기 정책(재읽기·재시도)·되돌릴 수 없는 쓰기의 순서 캡슐화 | `SnapshotWriter`, `DirectRoomWriter`, `ChatAttachmentWriter` |
 | `{대상}Transitioner` | 상태 머신 전이 저장과 그 부수효과(이력 동기화·문서 저장 시점) 캡슐화 | `ScheduleStatusTransitioner` |
 | `{대상}Publisher` | 알림 발행의 트랜잭션 경계 정책(커밋 이후 발행) 캡슐화 | `ChatEventPublisher` |
 
 - `{대상}Detail`을 반환하는 어셈블러만 `{대상}DetailAssembler`로 씁니다 (`StackDetailAssembler`, `ContractDetailAssembler`).
 - **위치**: `{대상}Assembler`는 `application/service/assembler/`, 그 외 협력자
-  (`Writer`·`Finder`·`Recorder`·`Recalculator`·`Transitioner` 등)는 `application/service/support/`에 둡니다.
+  (`Writer`·`Finder`·`Recorder`·`ReCalculator`·`Transitioner` 등)는 `application/service/support/`에 둡니다.
   **`service/` 직하에는 `@Service`만 남습니다.** (`client_management`에 미이관분이 남아 있으며 순차 이관합니다.)
 - 협력자로 뽑는 기준은 Validator와 같습니다 — 서비스 본문에 조립·탐색 절차가 남지 않는 것이 목표이며,
   단순 위임 래퍼를 만들기 위한 규칙이 아닙니다.

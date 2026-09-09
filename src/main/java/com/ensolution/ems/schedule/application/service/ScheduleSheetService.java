@@ -9,7 +9,7 @@ import com.ensolution.ems.schedule.application.port.out.ScheduleEventBroadcaster
 import com.ensolution.ems.schedule.application.port.out.ScheduleRepository;
 import com.ensolution.ems.schedule.application.service.support.PreviousSheetFinder;
 import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
-import com.ensolution.ems.schedule.application.service.support.SnapshotSheetRecalculator;
+import com.ensolution.ems.schedule.application.service.support.SnapshotSheetReCalculator;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleProgress;
@@ -45,7 +45,7 @@ public class ScheduleSheetService {
 
 	private final ScheduleRepository scheduleRepository;
 	private final SnapshotWriter snapshotWriter;
-	private final SnapshotSheetRecalculator recalculator;
+	private final SnapshotSheetReCalculator reCalculator;
 	private final PreviousSheetFinder previousSheetFinder;
 	private final ScheduleEventBroadcaster eventBroadcaster;
 	private final ScheduleStatusTransitioner statusTransitioner;
@@ -132,7 +132,7 @@ public class ScheduleSheetService {
 	) {
 		return snapshotWriter.write(id, tenantId, snapshot -> {
 			List<SamplingSheet> merged = SheetMerge.merge(snapshot.sheets(), sheets, deletedSheets);
-			ScheduleSnapshot withSheets = snapshot.withSheets(recalculator.recalculate(snapshot, merged));
+			ScheduleSnapshot withSheets = snapshot.withSheets(reCalculator.reCalculate(snapshot, merged));
 			return withSheets.withSampling(samplingOf(withSheets).update(
 				samplingStartedAt, samplingEndedAt, facilityManager, samplingWitness));
 		});

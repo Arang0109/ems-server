@@ -9,7 +9,7 @@ import com.ensolution.ems.schedule.application.command.update.UpdateScheduleItem
 import com.ensolution.ems.schedule.application.port.out.ScheduleRepository;
 import com.ensolution.ems.schedule.application.service.assembler.ScheduleSnapshotAssembler;
 import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
-import com.ensolution.ems.schedule.application.service.support.SnapshotSheetRecalculator;
+import com.ensolution.ems.schedule.application.service.support.SnapshotSheetReCalculator;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
 import com.ensolution.ems.schedule.application.validator.ScheduleValidator;
 import com.ensolution.ems.schedule.domain.Schedule;
@@ -44,7 +44,7 @@ public class ScheduleSnapshotService {
 
 	private final ScheduleRepository scheduleRepository;
 	private final ScheduleSnapshotAssembler snapshotAssembler;
-	private final SnapshotSheetRecalculator recalculator;
+	private final SnapshotSheetReCalculator reCalculator;
 	private final SnapshotWriter snapshotWriter;
 	private final ScheduleValidator scheduleValidator;
 	private final ScheduleStatusTransitioner statusTransitioner;
@@ -74,7 +74,7 @@ public class ScheduleSnapshotService {
 		ScheduleSnapshot saved = snapshotWriter.write(id, tenantId, snapshot -> {
 			// 재계산은 병합 후 스냅샷을 입력으로 해야 새 표준산소농도·굴뚝 형상이 반영된다.
 			ScheduleSnapshot changed = snapshot.applyClientChange(patch, snapshot.sheets());
-			return changed.withSheets(recalculator.recalculate(changed, changed.sheets()));
+			return changed.withSheets(reCalculator.reCalculate(changed, changed.sheets()));
 		});
 
 		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
@@ -139,7 +139,7 @@ public class ScheduleSnapshotService {
 			// 재계산은 교체 후 스냅샷을 입력으로 해야 새 피토관 계수·노즐경이 반영된다.
 			ScheduleSnapshot changed = snapshot.applyEquipmentChange(
 				snapshot.team().withEquipments(equipments), snapshot.sheets());
-			return changed.withSheets(recalculator.recalculate(changed, changed.sheets()));
+			return changed.withSheets(reCalculator.reCalculate(changed, changed.sheets()));
 		});
 		
 		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);

@@ -52,12 +52,21 @@ public class ScheduleService {
 	private final MeasurementRecordRecorder measurementRecordRecorder;
 	private final ScheduleStatusTransitioner statusTransitioner;
 
+	/**
+	 * 측정계획을 등록한다.
+	 * <p>
+	 * 사수·부사수는 <b>이 회차에 나가는 사람</b>이라 메타에 id로 남기고, 성적서에 인쇄될 이름은
+	 * 스냅샷이 갖는다({@code ScheduleSnapshotAssembler}가 auth에서 조회해 채운다).
+	 * 미지정이면 팀 원장의 사수·부사수 이름이 표기의 기본값이 된다.
+	 */
 	public ScheduleDetail createSchedule(CreateScheduleCommand command) {
 		scheduleValidator.requireUniqueSchedule(
 			command.tenantId(), command.stackId(), command.teamId(), command.sampledAt());
+		scheduleValidator.requireMeasurersInTenant(
+			command.mentorId(), command.menteeId(), command.tenantId());
 
 		Schedule saved = scheduleRepository.save(Schedule.register(
-			command.tenantId(), command.stackId(), command.teamId(),
+			command.tenantId(), command.stackId(), command.teamId(), command.mentorId(), command.menteeId(),
 			command.measurementField(), command.schedulePurpose(), command.referenceNumber(), command.sampledAt()
 		));
 

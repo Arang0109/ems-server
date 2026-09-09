@@ -18,15 +18,19 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 인증된 사용자면 누구나 부를 수 있는 사용자 조회. 측정계획 등록의 담당자 선택처럼
- * <b>선택지가 필요한 화면</b>이 소비한다.
+ * 테넌트 내 사용자 조회. <b>전체 인증 사용자</b>에게 열린다
+ * ({@code /api/users}는 {@code SecurityConfig}의 {@code anyRequest().authenticated()}에 걸린다).
  * <p>
- * <b>{@code /api/admin/members}와 목적이 다르다.</b> 그쪽은 ADMIN 전용 회원 관리(생성·수정·삭제)라
- * 로그인 아이디·이메일·연락처를 함께 내리고, 이 엔드포인트는 FIELD·LAB 같은 일반 역할도 부르므로
- * 이름·부서·역할만 내린다. 같은 원장을 보지만 노출 범위가 달라 경로를 합치지 않는다.
+ * <b>ADMIN 전용인 {@code /api/admin/members}와 별개인 이유는 소비자와 필드 범위가 다르기 때문이다.</b>
+ * 측정계획 등록처럼 사람을 고르는 화면은 역할과 무관하게 목록이 필요하지만 이름·부서·역할이면 충분하고,
+ * 회원 관리 화면은 ADMIN만 보되 로그인 아이디·연락처까지 필요하다. 하나의 엔드포인트로 합치면
+ * 둘 중 하나가 과한 권한이거나 과한 노출이 된다. 무엇을 빼는지는 {@link UserListResponse} 참고.
  * <p>
- * tenant 범위는 {@code principal.getTenantId()}로만 정한다({@code UserService.getUserList}가
- * WHERE 절에 싣는다). 조회 대상을 요청 파라미터로 받지 않는다.
+ * <b>여기에 생성·수정·삭제를 더하지 말 것.</b> 계정이 만들어지는 경로는
+ * {@code /api/admin/members}(ADMIN)와 {@code platform}의 테넌트 프로비저닝, 부트스트랩 셋뿐이며
+ * 공개 가입을 두지 않는다는 규칙(auth 모듈 문서)이 여기에 걸려 있다. 이 컨트롤러는 조회만 갖는다.
+ * <p>
+ * <b>{@code principal.getTenantId()}를 지우지 말 것.</b> 격리는 이 인자 하나에 달려 있다.
  */
 @Tag(name = "User", description = "사용자 조회 API")
 @SecurityRequirement(name = "bearerAuth")
@@ -38,7 +42,10 @@ public class UserController {
 	private final UserService userService;
 	private final UserMapper userMapper;
 
-	@Operation(summary = "사용자 목록 조회", description = "로그인한 사용자가 속한 테넌트의 사용자 목록입니다.")
+	@Operation(
+		summary = "테넌트 사용자 목록 조회",
+		description = "선택지 렌더링용입니다. 로그인 아이디·이메일·연락처는 포함되지 않습니다."
+	)
 	@GetMapping()
 	public ResponseEntity<ApiResponse<List<UserListResponse>>> getUserList(
 		@AuthenticationPrincipal CustomUserDetails principal

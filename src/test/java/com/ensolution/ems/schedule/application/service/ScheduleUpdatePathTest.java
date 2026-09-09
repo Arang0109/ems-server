@@ -15,7 +15,7 @@ import com.ensolution.ems.schedule.application.event.EditorRef;
 import com.ensolution.ems.schedule.application.event.SheetsSavedEvent;
 import com.ensolution.ems.schedule.application.port.out.ScheduleEventBroadcaster;
 import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
-import com.ensolution.ems.schedule.application.service.support.SnapshotSheetRecalculator;
+import com.ensolution.ems.schedule.application.service.support.SnapshotSheetReCalculator;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
@@ -113,7 +113,7 @@ class ScheduleUpdatePathTest {
 		sheetService = new ScheduleSheetService(
 			scheduleRepository,
 			new SnapshotWriter(documentRepository),
-			new SnapshotSheetRecalculator(null),
+			new SnapshotSheetReCalculator(null),
 			null,
 			NOOP_BROADCASTER,
 			new ScheduleStatusTransitioner(scheduleRepository, documentRepository, null));

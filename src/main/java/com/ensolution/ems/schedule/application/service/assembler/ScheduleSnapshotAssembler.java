@@ -1,5 +1,6 @@
 package com.ensolution.ems.schedule.application.service.assembler;
 
+import com.ensolution.ems.auth.application.port.in.UserQueryUseCase;
 import com.ensolution.ems.equipment.application.port.in.EquipmentQueryUseCase;
 import com.ensolution.ems.equipment.application.port.in.EquipmentSummary;
 import com.ensolution.ems.platform.application.port.in.TenantQueryUseCase;
@@ -10,6 +11,7 @@ import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingItemSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
 import com.ensolution.ems.client_management.application.port.in.*;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
@@ -37,6 +39,7 @@ public class ScheduleSnapshotAssembler {
 	private final TeamQueryUseCase teamQueryUseCase;
 	private final TenantQueryUseCase tenantQueryUseCase;
 	private final EquipmentQueryUseCase equipmentQueryUseCase;
+	private final UserQueryUseCase userQueryUseCase;
 	private final ScheduleSnapshotPortMapper snapshotMapper;
 
 	public ScheduleSnapshot assemble(Schedule meta, List<Long> pollutantIds) {
@@ -62,10 +65,44 @@ public class ScheduleSnapshotAssembler {
 			null,      // version은 저장 시 인프라(Spring Data)가 채운다.
 			snapshotMapper.toClientSnapshot(stackSummary),
 			snapshotMapper.toTenantSnapshot(tenantSummary),
-			snapshotMapper.toTeamSnapshot(teamSummary, snapshotMapper.toEquipmentSnapshots(equipmentSummaries)),
+			assembleTeam(meta, teamSummary, equipmentSummaries),
 			samplingData,
 			snapshotMapper.toItemSnapshots(selectedItems)
 		);
+	}
+
+	/**
+	 * 팀 스냅샷을 만들고 <b>이 회차의 측정자 표기</b>를 덮어쓴다.
+	 * <p>
+	 * 기본값은 팀 원장의 사수·부사수 이름이고, 계획에 따로 배정된 사람이 있으면 그 이름으로 바꾼다.
+	 * 측정자는 팀 소속과 무관하게 테넌트 사용자 중에서 고르므로 이름은 팀이 아니라 auth 원장에서 온다.
+	 * <p>
+	 * <b>미배정(null)은 {@link TeamSnapshot#merge}가 기존 값을 유지해 그대로 팀 기본값이 남는다.</b>
+	 * 이 폴백이 없으면 사수·부사수를 보내지 않던 기존 클라이언트의 성적서 표기가 빈칸이 된다.
+	 * <p>
+	 * 측정자 표기만 담은 patch를 넘긴다 — {@code teamId}·{@code teamName}·장비 목록은 방금 조립한
+	 * 값이므로 건드리지 않는다({@code PATCH /{id}/team}이 표기를 고칠 때와 같은 경로다).
+	 */
+	private TeamSnapshot assembleTeam(Schedule meta, TeamSummary teamSummary, List<EquipmentSummary> equipments) {
+		TeamSnapshot fromTeam = snapshotMapper.toTeamSnapshot(
+			teamSummary, snapshotMapper.toEquipmentSnapshots(equipments));
+
+		return fromTeam.merge(new TeamSnapshot(
+			null, null,
+			resolveMeasurerName(meta.getMentorId(), meta.getTenantId()),
+			resolveMeasurerName(meta.getMenteeId(), meta.getTenantId()),
+			null));
+	}
+
+	/**
+	 * 배정된 측정자의 이름을 auth 원장에서 읽는다. 미배정이면 null을 돌려 팀 기본값을 유지하게 한다.
+	 * <p>
+	 * 존재·tenant 소속은 등록 시 {@code ScheduleValidator.requireMeasurersInTenant}가 이미 확인했다.
+	 * 그럼에도 여기서 예외를 삼키지 않는 것은, 배정된 사용자가 지워진 채로 조립이 계속되면
+	 * 팀 기본값이 그 사람 이름인 것처럼 성적서에 찍히기 때문이다.
+	 */
+	private String resolveMeasurerName(Long userId, Long tenantId) {
+		return userId == null ? null : userQueryUseCase.getUser(userId, tenantId).name();
 	}
 
 	/**
