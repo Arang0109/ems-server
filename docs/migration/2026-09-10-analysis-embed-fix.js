@@ -13,12 +13,12 @@
  * 남겨 두면 2026-08-29-drop-analysis-records.js 의 "고아가 있으면 멈춘다" 가드가 뜻을 잃는다.
  * 진짜 고아(측정항목이 교체되며 빠진 것)는 그대로 남으므로, 그 가드는 계속 유효하다.
  *
- * 멱등하다. items[i] 에 analysis 키가 이미 있으면 건너뛴다(값이 null 인 것과 키가 없는 것을 구분).
+ * 멱등하다. items[i] 에 analysis 키가 이미 있으면 건너뛰고, 고아 목록은 이번 판정 결과로
+ * 동기화한다(덧붙이기만 하면 재실행할 때마다 이미 반영된 레코드가 고아로 되살아난다).
  * 원본 analysis_records 는 건드리지 않는다 — 확인 후 드롭 스크립트가 지운다.
  */
 
 const orphans = [];
-const graftedIds = [];
 let grafted = 0;
 let skipped = 0;
 let ops = [];
@@ -44,7 +44,13 @@ db.schedule_documents.find({ "items.0": { $exists: true } }).forEach(doc => {
   const matched = new Set();
   const items = doc.items.map(item => {
     if (!item) return item;
-    if (Object.prototype.hasOwnProperty.call(item, "analysis")) { skipped++; return item; }
+    // 이미 붙어 있으면 그대로 두되 짝을 찾았다고 표시한다 — 표시하지 않으면 재실행할 때마다
+    // 이미 반영된 레코드가 고아로 다시 분류된다.
+    if (Object.prototype.hasOwnProperty.call(item, "analysis")) {
+      skipped++;
+      matched.add(String(item.pollutantId));
+      return item;
+    }
 
     const key = String(item.pollutantId);
     const r = byPollutant.get(key);
@@ -52,7 +58,6 @@ db.schedule_documents.find({ "items.0": { $exists: true } }).forEach(doc => {
 
     matched.add(key);
     grafted++;
-    graftedIds.push(r._id);
     // 대리키·테넌시·판정 근거 사본은 상위 문서와 항목이 이미 갖고 있으므로 옮기지 않는다.
     return Object.assign({}, item, {
       analysis: {
@@ -77,17 +82,18 @@ db.schedule_documents.find({ "items.0": { $exists: true } }).forEach(doc => {
 });
 if (ops.length) db.schedule_documents.bulkWrite(ops, { ordered: false });
 
-// 접붙은 것은 고아가 아니다 — 원 스크립트가 남긴 잘못된 대피분을 걷어낸다.
-if (graftedIds.length > 0) {
-  const removed = db.orphan_analysis_records.deleteMany({ _id: { $in: graftedIds } });
-  print(`orphan_analysis_records 에서 ${removed.deletedCount}건을 걷어냈습니다(접붙은 레코드).`);
-}
-
+// 고아 목록을 이번 판정 결과와 동기화한다. 접붙었거나 이미 반영된 레코드가 예전 실행의 잘못된
+// 대피분으로 남아 있으면, 드롭 스크립트의 "고아가 있으면 멈춘다" 가드가 뜻을 잃는다.
+// 덧붙이기만 하지 않고 지우기까지 해야 몇 번을 실행해도 같은 목록으로 수렴한다.
 if (orphans.length > 0) {
   // 재실행 시 같은 레코드가 두 번 쌓이지 않도록 _id 를 그대로 쓴다.
   db.orphan_analysis_records.bulkWrite(
     orphans.map(o => ({ replaceOne: { filter: { _id: o._id }, replacement: o, upsert: true } })),
     { ordered: false });
+}
+const stale = db.orphan_analysis_records.deleteMany({ _id: { $nin: orphans.map(o => o._id) } });
+if (stale.deletedCount > 0) {
+  print(`orphan_analysis_records 에서 ${stale.deletedCount}건을 걷어냈습니다(접붙었거나 이미 반영된 레코드).`);
 }
 
 print(`보정 완료: grafted=${grafted}, 이미 처리됨=${skipped}, 남은 고아=${orphans.length}`);

@@ -47,7 +47,13 @@ db.schedule_documents.find({ "items.0": { $exists: true } }).forEach(doc => {
   const matched = new Set();
   const items = doc.items.map(item => {
     if (!item) return item;
-    if (Object.prototype.hasOwnProperty.call(item, "analysis")) { skipped++; return item; }
+    // 이미 붙어 있으면 그대로 두되 짝을 찾았다고 표시한다 — 표시하지 않으면 재실행할 때마다
+    // 이미 반영된 레코드가 고아로 다시 분류된다.
+    if (Object.prototype.hasOwnProperty.call(item, "analysis")) {
+      skipped++;
+      matched.add(String(item.pollutantId));
+      return item;
+    }
 
     const key = String(item.pollutantId);
     const r = byPollutant.get(key);
