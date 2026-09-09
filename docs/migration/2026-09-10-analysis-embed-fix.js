@@ -1,28 +1,24 @@
 /**
- * analysis_records 를 schedule_documents.items[].analysis 로 임베드한다 (2026-08-29).
+ * analysis_records 임베드 보정 (2026-09-10).
  *
- * 배포 순서: 2026-08-29-schedule-snapshot-restructure.js 다음, 신버전 배포 전.
- *   mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-analysis-records-embed.js
+ * 선행: 2026-08-29-analysis-records-embed.js 를 이미 실행했고 grafted=0 으로 끝난 환경.
+ *   mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-09-10-analysis-embed-fix.js
  *
- * 왜 옮기는가 — 판정 근거(허용기준치·산소보정)와 결과값이 서로 다른 컬렉션에 사본으로 있어
- * 한 회차 안에서 갈라질 수 있었다. 측정항목 안으로 넣으면 사본이 하나가 되고, 둘을 잇는 색인과
- * 동기화 경로가 함께 사라진다.
+ * 왜 필요한가 — 원 스크립트는 pollutantId 를 JS Map 의 키로 썼다. mongosh 에서 NumberLong 은
+ * 객체라 Map 이 값이 아니라 참조로 비교하고, 같은 값이라도 다른 인스턴스면 get() 이 undefined 다.
+ * 그래서 대응 항목이 멀쩡히 있는데도 모든 레코드가 POLLUTANT_NOT_IN_ITEMS 로 떨어졌다
+ * (운영 96건 전부). 키를 문자열로 바꿔 다시 붙인다.
  *
- * <b>원본 analysis_records 는 지우지 않는다.</b> 확인 후 별도 스크립트로 드롭한다
- * (2026-08-29-drop-analysis-records.js) — 접붙이기가 잘못돼도 되돌릴 근거를 남기기 위해서다.
- *
- * 고아 레코드(대응 items[] 항목이 없는 pollutantId, pollutantId 자체가 없는 레코드)는
- * orphan_analysis_records 로 대피시키고 건수를 출력한다. 조용히 버리면 실험실 입력이 사라진
- * 사실조차 드러나지 않는다.
+ * 접붙인 레코드는 orphan_analysis_records 에서 지운다. 원 스크립트가 잘못 대피시킨 것이라
+ * 남겨 두면 2026-08-29-drop-analysis-records.js 의 "고아가 있으면 멈춘다" 가드가 뜻을 잃는다.
+ * 진짜 고아(측정항목이 교체되며 빠진 것)는 그대로 남으므로, 그 가드는 계속 유효하다.
  *
  * 멱등하다. items[i] 에 analysis 키가 이미 있으면 건너뛴다(값이 null 인 것과 키가 없는 것을 구분).
- *
- * 2026-09-10 수정 — pollutantId 를 Map 키로 쓸 때 String() 으로 감싼다. mongosh 에서 NumberLong 은
- * 객체라 참조로 비교되어, 대응 항목이 있어도 전부 고아로 떨어졌다. 이 수정 전에 실행한 환경은
- * docs/migration/2026-09-10-analysis-embed-fix.js 로 보정한다.
+ * 원본 analysis_records 는 건드리지 않는다 — 확인 후 드롭 스크립트가 지운다.
  */
 
 const orphans = [];
+const graftedIds = [];
 let grafted = 0;
 let skipped = 0;
 let ops = [];
@@ -35,6 +31,7 @@ db.schedule_documents.find({ "items.0": { $exists: true } }).forEach(doc => {
   if (records.length === 0) return;
 
   // 등록순 정렬이므로 뒤엣것이 나중 기록이다(옛 AnalysisRecordIndexer 의 "나중 것 우선"과 같은 규칙).
+  // 키는 반드시 문자열이다 — NumberLong 을 그대로 키로 쓰면 참조 비교가 되어 영영 못 찾는다.
   const byPollutant = new Map();
   for (const r of records) {
     if (r.pollutantId === null || r.pollutantId === undefined) {
@@ -55,6 +52,7 @@ db.schedule_documents.find({ "items.0": { $exists: true } }).forEach(doc => {
 
     matched.add(key);
     grafted++;
+    graftedIds.push(r._id);
     // 대리키·테넌시·판정 근거 사본은 상위 문서와 항목이 이미 갖고 있으므로 옮기지 않는다.
     return Object.assign({}, item, {
       analysis: {
@@ -79,14 +77,21 @@ db.schedule_documents.find({ "items.0": { $exists: true } }).forEach(doc => {
 });
 if (ops.length) db.schedule_documents.bulkWrite(ops, { ordered: false });
 
+// 접붙은 것은 고아가 아니다 — 원 스크립트가 남긴 잘못된 대피분을 걷어낸다.
+if (graftedIds.length > 0) {
+  const removed = db.orphan_analysis_records.deleteMany({ _id: { $in: graftedIds } });
+  print(`orphan_analysis_records 에서 ${removed.deletedCount}건을 걷어냈습니다(접붙은 레코드).`);
+}
+
 if (orphans.length > 0) {
   // 재실행 시 같은 레코드가 두 번 쌓이지 않도록 _id 를 그대로 쓴다.
   db.orphan_analysis_records.bulkWrite(
     orphans.map(o => ({ replaceOne: { filter: { _id: o._id }, replacement: o, upsert: true } })),
     { ordered: false });
-  print(`⚠ 고아 분석 레코드 ${orphans.length}건을 orphan_analysis_records 로 대피시켰습니다. ` +
-        `드롭 스크립트를 실행하기 전에 내용을 확인하세요.`);
 }
 
-print(`접붙이기 완료: grafted=${grafted}, 이미 처리됨=${skipped}, 고아=${orphans.length}`);
-print("원본 analysis_records 는 그대로 두었습니다 — 확인 후 2026-08-29-drop-analysis-records.js 를 실행하세요.");
+print(`보정 완료: grafted=${grafted}, 이미 처리됨=${skipped}, 남은 고아=${orphans.length}`);
+print(`검증 — analysis 를 가진 문서 ${db.schedule_documents.countDocuments({ "items.analysis": { $exists: true } })}건 / ` +
+      `orphan 잔여 ${db.orphan_analysis_records.countDocuments({})}건 / ` +
+      `analysis_records 원본 ${db.analysis_records.countDocuments({})}건`);
+print("남은 고아는 측정항목이 교체되며 빠진 기록입니다. 내용을 확인하고 비운 뒤 드롭 스크립트를 실행하세요.");
