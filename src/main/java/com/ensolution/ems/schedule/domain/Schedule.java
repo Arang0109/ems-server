@@ -58,7 +58,12 @@ public class Schedule {
 	}
 	
 	/**
-	 * 측정계획의 메타정보를 수정한다. 측정일은 필수값이며, null이 전달되면 기존 측정일을 유지한다.
+	 * 측정계획을 정의하는 값(채취일자·측정용도·관리번호)을 수정한다. 측정정보 탭이 이 셋을 단독으로
+	 * 소유해 폼이 자기 필드 전부를 보내므로 <b>전체 채택</b>이다 — 빈 값은 "지웠다"는 뜻이다.
+	 * 단 채취일자는 DB NOT NULL이자 측정 건수 집계의 기준일이라 null이면 기존 값을 유지한다.
+	 * <p>
+	 * 성적서를 진행하며 채우는 일자 셋은 {@link #applyReportProgress}가 따로 맡는다.
+	 * 한 메서드에 두 시맨틱을 섞으면 자기 것이 아닌 칸에 null을 실은 호출자가 남의 값을 지운다.
 	 */
 	public Schedule updateMetadata(LocalDate sampledAt, String schedulePurpose, String referenceNumber) {
 		return this.toBuilder()
@@ -69,38 +74,41 @@ public class Schedule {
 	}
 	
 	/**
-	 * 보고서 진행 상태의 일자를 갱신한다. <b>부분 갱신</b>이므로 전달되지 않은(null) 일자는 기존 값을 유지한다 —
-	 * 현장 채취 탭과 실험·분석 탭이 이 경로를 공유해 서로 자기 것이 아닌 칸에 null을 실어 보내기 때문이다.
+	 * 성적서를 진행하며 채우는 일자 셋(시료접수·분석완료·성적서발행)을 갱신한다.
+	 * 실험·분석 탭이 이 셋을 <b>단독으로 소유</b>해 폼이 자기 필드 전부를 보내므로 <b>전체 채택</b>이다 —
+	 * 빈 칸은 "지웠다"는 뜻이고, 잘못 넣은 일자를 비울 수 있다.
 	 * <p>
-	 * 순서 검증은 <b>병합한 뒤의 값</b>으로 한다. 요청 인자만 보고 판정하면 미전달 칸 때문에 이미 저장된
-	 * 값과의 순서를 놓친다. 아직 채우지 않은 일자는 검사 대상이 아니며(진행하며 하나씩 채우는 값이다),
+	 * 한때 이 셋이 채취시각·담당자와 한 경로에 묶여 두 화면이 공유했고, 그래서 부분 갱신일 수밖에 없어
+	 * 비우기가 불가능했다. 화면별로 경로를 쪼개면서 단독 소유가 성립해 전체 채택으로 바뀌었다.
+	 * <p>
+	 * 아직 채우지 않은 일자는 순서 검사 대상이 아니며(진행하며 하나씩 채우는 값이다),
 	 * 같은 날 접수·분석·발행이 가능하므로 경계는 ≤ 다.
 	 */
 	public Schedule applyReportProgress(LocalDate receivedAt, LocalDate analyzedAt, LocalDate issuedAt) {
-		LocalDate mergedReceivedAt = keep(receivedAt, this.receivedAt);
-		LocalDate mergedAnalyzedAt = keep(analyzedAt, this.analyzedAt);
-		LocalDate mergedIssuedAt = keep(issuedAt, this.issuedAt);
-
-		requireChronological(sampledAt, mergedReceivedAt);
-		requireChronological(mergedReceivedAt, mergedAnalyzedAt);
-		requireChronological(mergedAnalyzedAt, mergedIssuedAt);
+		// 비어 있는 칸은 건너뛰되 사슬은 끊지 않는다 — 접수일 없이 발행일만 넣어도 채취일과 견준다.
+		LocalDate previous = sampledAt;
+		previous = requireChronological(previous, receivedAt);
+		previous = requireChronological(previous, analyzedAt);
+		requireChronological(previous, issuedAt);
 
 		return this.toBuilder()
-			.receivedAt(mergedReceivedAt)
-			.analyzedAt(mergedAnalyzedAt)
-			.issuedAt(mergedIssuedAt)
+			.receivedAt(receivedAt)
+			.analyzedAt(analyzedAt)
+			.issuedAt(issuedAt)
 			.build();
 	}
 
-	private static LocalDate keep(LocalDate value, LocalDate original) {
-		return value == null ? original : value;
-	}
-
-	/** 한쪽이라도 비어 있으면 아직 순서를 따질 수 없다 — 진행하며 하나씩 채우는 값이다. */
-	private static void requireChronological(LocalDate before, LocalDate after) {
-		if (before != null && after != null && after.isBefore(before)) {
+	/**
+	 * {@code after}가 {@code before}보다 앞서면 거부하고, 이어서 견줄 기준일을 돌려준다.
+	 * 아직 채우지 않은 일자는 검사 대상이 아니므로 그때는 기준일을 그대로 넘긴다 —
+	 * 그래야 중간 칸이 비어도 사슬이 끊기지 않는다.
+	 */
+	private static LocalDate requireChronological(LocalDate before, LocalDate after) {
+		if (after == null) return before;
+		if (before != null && after.isBefore(before)) {
 			throw new CustomException(ErrorCode.SCHEDULE_INVALID_CHRONOLOGY);
 		}
+		return after;
 	}
 
 	private Schedule changeStatus(ScheduleStatus next) {

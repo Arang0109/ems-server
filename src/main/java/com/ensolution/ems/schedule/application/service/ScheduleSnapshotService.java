@@ -3,7 +3,8 @@ package com.ensolution.ems.schedule.application.service;
 import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
-import com.ensolution.ems.schedule.application.command.update.UpdateBasicInfoCommand;
+import com.ensolution.ems.schedule.application.command.update.ChangeTeamSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.ChangeTenantSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleItemCommand;
 import com.ensolution.ems.schedule.application.port.out.ScheduleRepository;
 import com.ensolution.ems.schedule.application.service.assembler.ScheduleSnapshotAssembler;
@@ -15,8 +16,9 @@ import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleProgress;
 import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.EquipmentSnapshot;
-import com.ensolution.ems.schedule.domain.snapshot.SamplingSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.TeamSnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.TenantSnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +28,7 @@ import java.util.List;
 /**
  * 측정 시점 스냅샷(MongoDB 문서) 편집 유스케이스.
  *
- * <p>수정 경로가 여섯인 것은 <b>의도된 설계</b>다. 경로마다 재계산 여부·null 시맨틱·부작용 범위가
+ * <p>수정 경로가 일곱인 것은 <b>의도된 설계</b>다. 경로마다 재계산 여부·null 시맨틱·부작용 범위가
  * 달라, 하나로 합치면 그 차이가 전부 서비스 내부 조건문으로 이동한다. 근거는
  * {@code schedule/.claude/CLAUDE.md}의 "수정 경로 규약"에 있다.
  *
@@ -46,31 +48,6 @@ public class ScheduleSnapshotService {
 	private final SnapshotWriter snapshotWriter;
 	private final ScheduleValidator scheduleValidator;
 	private final ScheduleStatusTransitioner statusTransitioner;
-
-	/**
-	 * 측정계획의 측정장비를 교체한다. 전달된 목록으로 <b>전체 교체</b>하며(부분 갱신이 아니다),
-	 * 장비 유형은 장비 원장이 알고 있으므로 요청이 슬롯을 지정하지 않는다.
-	 * 기존 시트는 새 장비 spec으로 재계산한다.
-	 * 장비는 메타(MySQL)가 아닌 문서(MongoDB)에만 존재하므로 상태 전이가 없는 한 문서 단독 쓰기이며,
-	 * 원장(tenant·equipment)은 변경하지 않는다. 완료·취소된 계획은 변경할 수 없다.
-	 */
-	public ScheduleDetail changeEquipments(Long id, Long tenantId, ChangeScheduleEquipmentsCommand command) {
-		Schedule meta = scheduleRepository.findById(id, tenantId);
-		meta.requireEditable();
-
-		// 장비 원장 조회는 변경 함수 밖에서 끝낸다 — 재시도로 여러 번 호출되는 자리이기 때문이다.
-		List<EquipmentSnapshot> equipments =
-			snapshotAssembler.resolveEquipments(command.equipmentIds(), tenantId);
-
-		ScheduleSnapshot saved = snapshotWriter.write(id, tenantId, snapshot -> {
-			// 재계산은 교체 후 스냅샷을 입력으로 해야 새 피토관 계수·노즐경이 반영된다.
-			ScheduleSnapshot changed = snapshot.applyEquipmentChange(
-				snapshot.team().withEquipments(equipments), snapshot.sheets());
-			return changed.withSheets(recalculator.recalculate(changed, changed.sheets()));
-		});
-
-		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
-	}
 
 	/**
 	 * 측정계획 문서의 의뢰기관(→사업장→측정시설) 스냅샷을 수정한다. 전달되지 않은 필드는 기존 값을 유지하며,
@@ -102,40 +79,70 @@ public class ScheduleSnapshotService {
 
 		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
 	}
+	
 
 	/**
-	 * 성적서 기본정보 폼을 저장한다. 사용자에게는 한 폼이지만 값의 주인이 넷으로 갈려 있어 서버가 나눠 보낸다.
-	 * <ul>
-	 *   <li>시료접수일·분석완료일·성적서발행일 → <b>메타(MySQL)</b>. 성적서 진행 값의 진실은 메타다</li>
-	 *   <li>채취 시각·배출시설관리자·시료채취입회자 → 채취 스냅샷. 그 회차 현장의 사실이다</li>
-	 *   <li>시료분석검사자·기술책임자 → 고객사 스냅샷. 원장이 기본값을 갖지만 회차별로 다를 수 있다</li>
-	 *   <li>측정자(사수·부사수) 표기 → 팀 스냅샷</li>
-	 * </ul>
-	 * 목적지가 넷이라고 API를 쪼개면 저장 한 번이 네 번의 왕복이 되고, 중간에 실패하면 화면 상태가 갈라진다.
+	 * 측정계획 문서의 고객사(측정대행업체) 스냅샷을 수정한다. 전달되지 않은(공백 포함) 필드는 기존 값을
+	 * 유지하는 <b>부분 갱신</b>이다 — 성적서 서명란 담당자를 현장 채취 탭과 실험·분석 탭이 공유하므로,
+	 * 자기 것이 아닌 칸에 null을 실은 호출자가 상대의 입력을 지우지 않아야 한다.
 	 * <p>
-	 * 전달되지 않은(공백 포함) 값은 기존 값을 유지하는 <b>부분 갱신</b>이며, 원장은 어느 것도 건드리지 않는다.
-	 * 시료접수일이 채워지면 분석 착수로 보고 상태를 전진시킨다({@link ScheduleProgress}).
-	 * <p>
-	 * 이 경로만 메타와 문서를 함께 쓴다. 저장 순서는 MySQL → Mongo다.
+	 * 계산 입력이 없으므로 시트를 재계산하지 않는다. 고객사 원장은 변경하지 않으며,
+	 * 완료·취소된 계획은 변경할 수 없다.
 	 */
-	public ScheduleDetail updateBasicInfo(Long id, Long tenantId, UpdateBasicInfoCommand command) {
+	public ScheduleDetail changeTenant(Long id, Long tenantId, ChangeTenantSnapshotCommand command) {
 		Schedule meta = scheduleRepository.findById(id, tenantId);
 		meta.requireEditable();
 
-		Schedule savedMeta = scheduleRepository.save(meta.applyReportProgress(
-			command.receivedAt(), command.analyzedAt(), command.issuedAt()));
+		TenantSnapshot patch = new TenantSnapshot(
+			null,
+			command.name(), command.bizNumber(), command.representative(),
+			command.roadAddress(), command.detailAddress(), command.zipcode(),
+			command.analyst(), command.technicalManager());
 
-		ScheduleSnapshot changed = snapshotWriter.write(id, tenantId, snapshot -> snapshot
-			.withSampling(samplingOf(snapshot).update(
-				command.samplingStartedAt(), command.samplingEndedAt(),
-				command.facilityManager(), command.samplingWitness()))
-			.applyStaff(
-				snapshot.tenant() == null ? null
-					: snapshot.tenant().withStaff(command.analyst(), command.technicalManager()),
-				snapshot.team() == null ? null
-					: snapshot.team().withMembers(command.mentorName(), command.menteeName())));
+		ScheduleSnapshot saved = snapshotWriter.write(id, tenantId, snapshot -> snapshot.applyTenantChange(patch));
+		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
+	}
 
-		return statusTransitioner.advanceAfterDocumentSaved(savedMeta, changed);
+	/**
+	 * 측정계획 문서의 팀 스냅샷을 수정한다. 이 경로가 소유하는 것은 <b>측정자 표기</b>뿐이며,
+	 * 전달되지 않은(공백 포함) 이름은 기존 값을 유지한다.
+	 * <p>
+	 * 팀 원장도, 이 회차에 들고 간 장비도 바뀌지 않는다(장비 교체는 {@link #changeEquipments}).
+	 * 계산 입력이 없으므로 시트를 재계산하지 않는다. 완료·취소된 계획은 변경할 수 없다.
+	 */
+	public ScheduleDetail changeTeam(Long id, Long tenantId, ChangeTeamSnapshotCommand command) {
+		Schedule meta = scheduleRepository.findById(id, tenantId);
+		meta.requireEditable();
+
+		TeamSnapshot patch = new TeamSnapshot(null, null, command.mentorName(), command.menteeName(), null);
+
+		ScheduleSnapshot saved = snapshotWriter.write(id, tenantId, snapshot -> snapshot.applyTeamChange(patch));
+		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
+	}
+	
+	/**
+	 * 측정계획의 측정장비를 교체한다. 전달된 목록으로 <b>전체 교체</b>하며(부분 갱신이 아니다),
+	 * 장비 유형은 장비 원장이 알고 있으므로 요청이 슬롯을 지정하지 않는다.
+	 * 기존 시트는 새 장비 spec으로 재계산한다.
+	 * 장비는 메타(MySQL)가 아닌 문서(MongoDB)에만 존재하므로 상태 전이가 없는 한 문서 단독 쓰기이며,
+	 * 원장(tenant·equipment)은 변경하지 않는다. 완료·취소된 계획은 변경할 수 없다.
+	 */
+	public ScheduleDetail changeEquipments(Long id, Long tenantId, ChangeScheduleEquipmentsCommand command) {
+		Schedule meta = scheduleRepository.findById(id, tenantId);
+		meta.requireEditable();
+		
+		// 장비 원장 조회는 변경 함수 밖에서 끝낸다 — 재시도로 여러 번 호출되는 자리이기 때문이다.
+		List<EquipmentSnapshot> equipments =
+			snapshotAssembler.resolveEquipments(command.equipmentIds(), tenantId);
+		
+		ScheduleSnapshot saved = snapshotWriter.write(id, tenantId, snapshot -> {
+			// 재계산은 교체 후 스냅샷을 입력으로 해야 새 피토관 계수·노즐경이 반영된다.
+			ScheduleSnapshot changed = snapshot.applyEquipmentChange(
+				snapshot.team().withEquipments(equipments), snapshot.sheets());
+			return changed.withSheets(recalculator.recalculate(changed, changed.sheets()));
+		});
+		
+		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
 	}
 
 	/**
@@ -207,10 +214,4 @@ public class ScheduleSnapshotService {
 		return statusTransitioner.advanceAfterDocumentSaved(meta, changed);
 	}
 
-	/** 아직 채취 스냅샷이 없는 문서(구버전 백필 전)도 갱신 경로를 탈 수 있게 빈 스냅샷을 준다. */
-	private static SamplingSnapshot samplingOf(ScheduleSnapshot snapshot) {
-		return snapshot.samplingData() == null
-			? SamplingSnapshot.create(null, null)
-			: snapshot.samplingData();
-	}
 }

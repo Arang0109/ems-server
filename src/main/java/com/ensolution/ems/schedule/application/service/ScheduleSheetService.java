@@ -17,6 +17,7 @@ import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
 import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import com.ensolution.ems.schedule.domain.sampling.SheetMerge;
 import com.ensolution.ems.schedule.domain.sampling.SheetRef;
+import com.ensolution.ems.schedule.domain.snapshot.SamplingSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -43,7 +45,7 @@ public class ScheduleSheetService {
 
 	private final ScheduleRepository scheduleRepository;
 	private final SnapshotWriter snapshotWriter;
-	private final SnapshotSheetRecalculator reCalculator;
+	private final SnapshotSheetRecalculator recalculator;
 	private final PreviousSheetFinder previousSheetFinder;
 	private final ScheduleEventBroadcaster eventBroadcaster;
 	private final ScheduleStatusTransitioner statusTransitioner;
@@ -58,17 +60,26 @@ public class ScheduleSheetService {
 	 * ({@link SheetMerge}). 요청이 읽어간 뒤 같은 시트가 먼저 저장됐으면 409로 거부하고,
 	 * 서로 다른 시트를 건드린 경우에는 양쪽 입력이 모두 남는다.
 	 * <p>
+	 * 채취 시각과 현장 담당자도 같은 저장에서 함께 반영한다 — 같은 채취 스냅샷 노드에 살고
+	 * 현장 채취 탭이 함께 소유하므로, 나눠 보내면 저장 한 번이 여러 왕복이 되고 중간에 실패하면
+	 * 화면 상태가 갈라진다. 대신 기록지와 잠금 시점을 공유한다 — {@code ANALYZING}부터는
+	 * 이 넷도 함께 잠긴다({@code requireSheetEditable}).
+	 * <p>
 	 * 저장이 끝나면 같은 계획을 열어둔 다른 사용자에게 알린다({@link SheetsSavedEvent}). 한 기록지를
 	 * 섹션별로 나눠 입력하는 것이 실제 업무 방식이라, 상대 입력이 즉시 반영되지 않으면 화면의 계산값이
 	 * 서로 어긋난 채로 남는다 — 계산 입력이 섹션을 가로질러 엮여 있기 때문이다.
 	 */
 	public ScheduleDetail saveSheets(Long id, Long tenantId, EditorRef editor,
+	                                 LocalTime samplingStartedAt, LocalTime samplingEndedAt,
+	                                 String facilityManager, String samplingWitness,
 	                                 List<SamplingSheet> sheets, List<SheetRef> deletedSheets) {
 		Schedule meta = scheduleRepository.findById(id, tenantId);
 		meta.requireEditable();
 		meta.requireSheetEditable();
 
-		ScheduleSnapshot saved = mergeAndSaveSheets(id, tenantId, sheets, deletedSheets);
+		ScheduleSnapshot saved = mergeAndSaveSheets(
+			id, tenantId, samplingStartedAt, samplingEndedAt, facilityManager, samplingWitness,
+			sheets, deletedSheets);
 		ScheduleDetail detail = statusTransitioner.advanceAfterDocumentSaved(meta, saved);
 
 		publishAfterCommit(new SheetsSavedEvent(
@@ -113,12 +124,25 @@ public class ScheduleSheetService {
 	 * 물리적으로 겹친 저장을 다시 읽어 재시도하는 것은 {@link SnapshotWriter}가 맡는다 — 논리적 충돌
 	 * (같은 시트를 먼저 저장함)은 병합 단계의 시트 version 비교가 이미 걸러내 예외로 빠져나간다.
 	 */
-	private ScheduleSnapshot mergeAndSaveSheets(Long id, Long tenantId,
-	                                            List<SamplingSheet> sheets, List<SheetRef> deletedSheets) {
+	private ScheduleSnapshot mergeAndSaveSheets(
+		Long id, Long tenantId,
+		LocalTime samplingStartedAt, LocalTime samplingEndedAt,
+		String facilityManager, String samplingWitness,
+		List<SamplingSheet> sheets, List<SheetRef> deletedSheets
+	) {
 		return snapshotWriter.write(id, tenantId, snapshot -> {
 			List<SamplingSheet> merged = SheetMerge.merge(snapshot.sheets(), sheets, deletedSheets);
-			return snapshot.withSheets(reCalculator.recalculate(snapshot, merged));
+			ScheduleSnapshot withSheets = snapshot.withSheets(recalculator.recalculate(snapshot, merged));
+			return withSheets.withSampling(samplingOf(withSheets).update(
+				samplingStartedAt, samplingEndedAt, facilityManager, samplingWitness));
 		});
+	}
+
+	/** 아직 채취 스냅샷이 없는 문서(구버전 백필 전)도 갱신 경로를 탈 수 있게 빈 스냅샷을 준다. */
+	private static SamplingSnapshot samplingOf(ScheduleSnapshot snapshot) {
+		return snapshot.samplingData() == null
+			? SamplingSnapshot.create(null, null)
+			: snapshot.samplingData();
 	}
 
 	/** 이번 저장이 건드린 시트 카테고리. 수정분과 삭제분을 합친다 — 둘 다 상대 화면에서 갱신돼야 한다. */

@@ -184,13 +184,13 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 
 **예외 — 봉투를 씌울 수 없는 응답**
 
-바이너리 다운로드와 스트리밍은 `ApiResponse<T>`로 감싸지 않습니다. 현재 6곳이며,
+바이너리 다운로드와 스트리밍은 `ApiResponse<T>`로 감싸지 않습니다. 현재 5곳이며,
 예외를 늘릴 때는 해당 컨트롤러 javadoc에 근거를 남깁니다.
 
 | 반환 타입 | 위치 |
 |---|---|
 | `ResponseEntity<byte[]>` | `storage/.../DocumentController` — 문서 다운로드 2개 |
-| `ResponseEntity<byte[]>` | `schedule/.../ScheduleExportController` — 성적서 xlsx, 채취기록부 ZIP |
+| `ResponseEntity<byte[]>` | `schedule/.../ScheduleExportController` — 채취기록부 ZIP |
 | `ResponseEntity<SseEmitter>` | `schedule/.../ScheduleStreamController` — 측정 시트 편집 알림 |
 | `ResponseEntity<byte[]>` | `chat/.../ChatMessageController` — 대화 첨부 다운로드 |
 

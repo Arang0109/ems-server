@@ -3,6 +3,7 @@ package com.ensolution.ems.schedule.application.service;
 import com.ensolution.ems.schedule.application.command.create.CreateScheduleCommand;
 import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
+import com.ensolution.ems.schedule.application.command.update.UpdateReportDatesCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
 import com.ensolution.ems.schedule.application.mapper.ScheduleListItemMapper;
 import com.ensolution.ems.schedule.application.port.out.ScheduleDocumentRepository;
@@ -70,7 +71,6 @@ public class ScheduleService {
 	 * 폼이 자기 필드 전부를 보내므로 <b>전체 채택</b>이다 — 빈 칸은 "지웠다"는 뜻이다
 	 * (단 채취일자는 DB NOT NULL이자 집계 기준일이라 null이면 유지한다).
 	 * <p>
-	 * 진행하며 채우는 값은 {@link ScheduleSnapshotService#updateBasicInfo}가 따로 맡는다.
 	 * 한 메서드에 두 시맨틱을 섞으면 자기 것이 아닌 칸에 null을 실은 호출자가 남의 값을 지운다.
 	 */
 	public ScheduleDetail updateMeta(Long id, Long tenantId, UpdateScheduleCommand command) {
@@ -83,6 +83,26 @@ public class ScheduleService {
 
 		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
 		return new ScheduleDetail(saved, snapshot);
+	}
+
+	/**
+	 * 성적서를 진행하며 채우는 일자 셋(시료접수·분석완료·성적서발행)을 수정한다. 실험·분석 탭이 이 셋을
+	 * <b>단독으로 소유</b>하므로 <b>전체 채택</b>이다 — 빈 칸은 "지웠다"는 뜻이고, 잘못 넣은 일자를 비울 수 있다.
+	 * <p>
+	 * 일자는 메타에만 있어 문서에 되비출 것이 없으므로 <b>문서를 쓰지 않는다</b> — 이유 없는 문서 쓰기는
+	 * 낙관적 락만 건드린다. 다만 시료접수일이 채워지면 분석 착수로 보고 상태를 전진시켜야 하므로
+	 * 문서를 읽어 판정에 넘긴다({@link ScheduleProgress}).
+	 */
+	public ScheduleDetail updateReportDates(Long id, Long tenantId, UpdateReportDatesCommand command) {
+		Schedule meta = scheduleRepository.findById(id, tenantId);
+		meta.requireEditable();
+
+		Schedule saved = scheduleRepository.save(meta.applyReportProgress(
+			command.receivedAt(), command.analyzedAt(), command.issuedAt()
+		));
+
+		ScheduleSnapshot snapshot = scheduleDocumentRepository.findByScheduleId(id, tenantId);
+		return statusTransitioner.advanceAfterDocumentSaved(saved, snapshot);
 	}
 
 	/** 분석을 마친 측정계획을 완료로 확정한다. 이후 편집이 잠기며 측정 건수 통계에 집계된다. */

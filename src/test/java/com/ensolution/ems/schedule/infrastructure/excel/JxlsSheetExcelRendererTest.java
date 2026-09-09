@@ -40,6 +40,19 @@ class JxlsSheetExcelRendererTest {
 
 	private final JxlsSheetExcelRenderer renderer = new JxlsSheetExcelRenderer();
 
+	/**
+	 * 시트 하나짜리 뷰를 렌더링해 ZIP의 첫 파일 바이트를 돌려준다.
+	 * 산출물이 ZIP 하나뿐이므로, {@code ${plan.*}} 바인딩만 보는 검증도 이 경로를 지난다.
+	 */
+	private byte[] renderOne(byte[] template, ScheduleExportView view) throws Exception {
+		byte[] zip = renderer.renderSamplingRecordsZip(template, view);
+		try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zip))) {
+			ZipEntry entry = zis.getNextEntry();
+			assertThat(entry).as("ZIP에 파일이 하나는 있어야 한다").isNotNull();
+			return zis.readAllBytes();
+		}
+	}
+
 	private ScheduleExportView view() {
 		PointExportView p1 = PointExportView.builder()
 			.index(1).ts(new BigDecimal("100")).pv(new BigDecimal("5"))
@@ -274,7 +287,7 @@ class JxlsSheetExcelRendererTest {
 
 	@Test
 	void 단순_표현식이_바인딩된다() throws Exception {
-		byte[] rendered = renderer.render(simpleTemplate(), view());
+		byte[] rendered = renderOne(simpleTemplate(), view());
 
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
 			Sheet s = wb.getSheetAt(0);
@@ -285,7 +298,7 @@ class JxlsSheetExcelRendererTest {
 
 	@Test
 	void 시트의_하위_그룹_경로가_바인딩된다() throws Exception {
-		byte[] rendered = renderer.render(nestedGroupTemplate(), view());
+		byte[] rendered = renderOne(nestedGroupTemplate(), view());
 
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
 			Sheet s = wb.getSheetAt(0);
@@ -321,9 +334,9 @@ class JxlsSheetExcelRendererTest {
 			.referenceNumber("REF-123").sheets(List.of(emptySheet)).build();
 
 		byte[] template = emptySheetTemplate();
-		assertThatCode(() -> renderer.render(template, plan)).doesNotThrowAnyException();
+		assertThatCode(() -> renderOne(template, plan)).doesNotThrowAnyException();
 
-		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderer.render(template, plan)))) {
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderOne(template, plan)))) {
 			Sheet s = wb.getSheetAt(0);
 			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[][]");
 		}
@@ -331,7 +344,7 @@ class JxlsSheetExcelRendererTest {
 
 	@Test
 	void 측정점_반복이_전개된다() throws Exception {
-		byte[] rendered = renderer.render(loopTemplate(), view());
+		byte[] rendered = renderOne(loopTemplate(), view());
 
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
 			Sheet s = wb.getSheetAt(0);
@@ -344,7 +357,7 @@ class JxlsSheetExcelRendererTest {
 
 	@Test
 	void 장비_슬롯과_장비_목록이_바인딩된다() throws Exception {
-		byte[] rendered = renderer.render(equipmentTemplate(), equipmentView());
+		byte[] rendered = renderOne(equipmentTemplate(), equipmentView());
 
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
 			Sheet s = wb.getSheetAt(0);
@@ -357,7 +370,7 @@ class JxlsSheetExcelRendererTest {
 
 	@Test
 	void 장비_사양과_사양_목록이_바인딩된다() throws Exception {
-		byte[] rendered = renderer.render(equipmentSpecTemplate(), equipmentSpecView());
+		byte[] rendered = renderOne(equipmentSpecTemplate(), equipmentSpecView());
 
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
 			Sheet s = wb.getSheetAt(0);
@@ -395,8 +408,8 @@ class JxlsSheetExcelRendererTest {
 		}
 
 		assertThat(entryNames).containsExactly(
-			"fKET-A-QP-17-02-01(2) 대기측정기록부(REF-123)먼지.xlsx",
-			"fKET-A-QP-17-02-01(2) 대기측정기록부(REF-123)가스상.xlsx");
+			"fKET-A-QP-17-02-01(2) 대기측정기록부(REF-123) 먼지.xlsx",
+			"fKET-A-QP-17-02-01(2) 대기측정기록부(REF-123) 가스상.xlsx");
 		assertThat(categories).containsExactly("먼지", "가스상");
 		assertThat(velocities).containsExactly(12.3, 9.9);
 	}
@@ -444,7 +457,7 @@ class JxlsSheetExcelRendererTest {
 
 	@Test
 	void 측정항목이_인덱스로_바인딩된다() throws Exception {
-		byte[] rendered = renderer.render(itemIndexTemplate(), itemsView("먼지", "질소산화물", "황산화물", "일산화탄소"));
+		byte[] rendered = renderOne(itemIndexTemplate(), itemsView("먼지", "질소산화물", "황산화물", "일산화탄소"));
 
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
 			Sheet s = wb.getSheetAt(0);
@@ -460,9 +473,9 @@ class JxlsSheetExcelRendererTest {
 		byte[] template = itemIndexTemplate();
 		ScheduleExportView view = itemsView("먼지", "질소산화물");
 
-		assertThatCode(() -> renderer.render(template, view)).doesNotThrowAnyException();
+		assertThatCode(() -> renderOne(template, view)).doesNotThrowAnyException();
 
-		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderer.render(template, view)))) {
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderOne(template, view)))) {
 			Sheet s = wb.getSheetAt(0);
 			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][질소산화물]");
 			assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("[][]");
@@ -497,7 +510,7 @@ class JxlsSheetExcelRendererTest {
 			.sheets(List.of(SheetExportView.builder().category("먼지").build()))
 			.build();
 
-		byte[] rendered = renderer.render(analysisTemplate(), view);
+		byte[] rendered = renderOne(analysisTemplate(), view);
 
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
 			Sheet s = wb.getSheetAt(0);
@@ -512,9 +525,9 @@ class JxlsSheetExcelRendererTest {
 		byte[] template = analysisTemplate();
 		ScheduleExportView view = itemsView("먼지", "질소산화물");
 
-		assertThatCode(() -> renderer.render(template, view)).doesNotThrowAnyException();
+		assertThatCode(() -> renderOne(template, view)).doesNotThrowAnyException();
 
-		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderer.render(template, view)))) {
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(renderOne(template, view)))) {
 			Sheet s = wb.getSheetAt(0);
 			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][][]");
 			assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("[질소산화물][][]");

@@ -79,6 +79,31 @@ public record ScheduleSnapshot(
 	}
 
 	/**
+	 * 고객사 스냅샷의 전달된 조각을 병합한 새 스냅샷을 반환한다. 성적서 서명란 담당자는 원장이 기본값을
+	 * 갖지만 회차마다 달라질 수 있어 이 문서만 고친다 — 원장은 건드리지 않는다.
+	 * <p>
+	 * 노드 자체가 없는 문서는 그대로 둔다. 원장 연결키가 없는 patch를 그 자리에 앉히면
+	 * {@code tenantId}를 잃기 때문이다.
+	 */
+	public ScheduleSnapshot applyTenantChange(TenantSnapshot patch) {
+		if (tenant == null) return this;
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client,
+			tenant.merge(patch), team, samplingData, items);
+	}
+
+	/**
+	 * 팀 스냅샷의 전달된 조각을 병합한 새 스냅샷을 반환한다. 이 경로가 소유하는 것은 측정자 표기뿐이다.
+	 * <p>
+	 * 노드 자체가 없는 문서는 그대로 둔다 — patch에는 {@code teamId}도 장비 목록도 없으므로
+	 * 그 자리에 앉히면 이 회차에 들고 간 장비가 통째로 사라진다.
+	 */
+	public ScheduleSnapshot applyTeamChange(TeamSnapshot patch) {
+		if (team == null) return this;
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client,
+			tenant, team.merge(patch), samplingData, items);
+	}
+
+	/**
 	 * 측정항목 목록만 교체한 새 스냅샷을 반환한다.
 	 * <p>
 	 * 인자가 하나인 fluent 메서드는 MapStruct가 property setter로 읽으므로,
@@ -86,14 +111,6 @@ public record ScheduleSnapshot(
 	 */
 	public ScheduleSnapshot withItems(List<SamplingItemSnapshot> newItems) {
 		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, samplingData, newItems);
-	}
-
-	/**
-	 * 성적서 서명란 담당자와 측정자 표기를 갱신한 새 스냅샷을 반환한다.
-	 * 둘 다 원장이 기본값을 갖지만 회차별로 다를 수 있어 이 문서만 고친다 — 원장은 건드리지 않는다.
-	 */
-	public ScheduleSnapshot applyStaff(TenantSnapshot newTenant, TeamSnapshot newTeam) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, newTenant, newTeam, samplingData, items);
 	}
 
 	/**

@@ -362,12 +362,14 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
 |---|---|---|
 | `sampled_at` | `PUT /api/schedules/{id}` | 필수 — 비울 수 없음(측정 건수 집계 기준일) |
 | `schedule_purpose` · `reference_number` | `PUT /api/schedules/{id}` | **지움**(단독 소유 화면이라 빈 칸 = 지웠다) |
-| `received_at` · `analyzed_at` · `issued_at` | `PATCH /api/schedules/{id}/basic-info` | **유지**(두 화면이 공유하는 경로라 부분 갱신) |
+| `received_at` · `analyzed_at` · `issued_at` | `PATCH /api/schedules/{id}/report-dates` | **지움**(실험·분석 탭이 단독 소유하는 경로라 전체 채택) |
 | `measurement_field` · `stack_id` · `team_id` | 생성 시에만 | 수정 불가 |
 | `status` | 상태 전이 경로(`completion`·`cancellation`·`reopen`)와 자동 전진 | — |
 
-> `received_at`·`analyzed_at`·`issued_at`은 `PATCH` 경로로 **비울 수 없습니다.** 잘못 넣었으면 다른
-> 날짜로 고칩니다. 비우기가 필요해지면 화면별로 경로를 쪼개는 것이 해법입니다(모듈 문서 참고).
+> `received_at`·`analyzed_at`·`issued_at`은 한때 두 화면이 공유하는 경로에 묶여 **비울 수 없었습니다.**
+> 화면별로 경로를 쪼개면서 실험·분석 탭의 단독 소유가 되었고, 지금은 빈 값을 보내 지울 수 있습니다.
+> 대신 `sampled_at ≤ received_at ≤ analyzed_at ≤ issued_at` 순서를 어기면 400으로 거부합니다
+> (`SCHEDULE_INVALID_CHRONOLOGY`). 아직 채우지 않은 칸은 검사를 건너뛰되 사슬은 끊기지 않습니다.
 
 ### 측정계획 문서 동시 편집 (낙관적 락)
 
@@ -450,8 +452,9 @@ SCHEDULED ──> MEASURING ──> ANALYZING ──> REPORT_COMPLETED  (종단)
 | 종단 → `SCHEDULED` → 재도출 | 사용자 확정 | `POST /api/schedules/{id}/reopen` |
 
 - **시트를 저장한 것만으로는 전진하지 않습니다.** 틀만 있고 측정점 값이 비어 있으면 `SCHEDULED`에 머뭅니다.
-- 자동 전진은 `updateBasicInfo`·`saveSheets`·`changeEquipments`·`changeClient`·`changeItems`·
-  `reorderItems`·`updateItem` **7개 경로 모두**에서 판정되며, 멱등하고 역행하지 않습니다. 한 번의
+- 자동 전진은 `updateReportDates`·`saveSheets`·`changeEquipments`·`changeClient`·`changeTenant`·
+  `changeTeam`·`changeItems`·`reorderItems`·`updateItem` **9개 경로 모두**에서 판정되며,
+  멱등하고 역행하지 않습니다. 한 번의
   판정에서 2단계를 건너뛰지 않고 순차 적용하므로 두 신호가 동시에 충족되면 `SCHEDULED → ANALYZING`까지
   연쇄 전진합니다.
 - `REPORT_COMPLETED`·`CANCELED`는 종단 상태이며 `canEdit() == false`입니다. 모든 수정 경로가
@@ -778,6 +781,7 @@ mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analy
 | `ContractAmountUnit` | MONTH, QUARTER, SEMI_ANNUAL, ANNUAL, TOTAL |
 | `ScheduleStatus` | SCHEDULED(측정예정), MEASURING(측정중), ANALYZING(분석값입력중), REPORT_COMPLETED(성적서작성완료), CANCELED(취소) |
 | `ChatMessageType` | TEXT, IMAGE, FILE — 사용자가 고르지 않고 업로드된 `contentType`이 정합니다 |
+| `DocumentCategory` | SAMPLING_RECORD_TEMPLATE(채취기록부 양식), CONTRACT(계약서), CERTIFICATE(인증서), ETC(기타) — `documents.category`. REPORT_TEMPLATE은 2026-09-09에 제거됐습니다(`docs/migration/2026-09-09-documents-drop-report-template.sql`) |
 
 ---
 
