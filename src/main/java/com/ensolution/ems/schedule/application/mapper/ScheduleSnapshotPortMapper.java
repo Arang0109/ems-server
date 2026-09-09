@@ -17,6 +17,7 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface ScheduleSnapshotPortMapper {
 	
+	@Mapping(target = "merge", ignore = true)   // 도메인 파생 메서드일 뿐 property가 아니다
 	TenantSnapshot toTenantSnapshot(TenantSummary summary);
 
 	/**
@@ -25,6 +26,7 @@ public interface ScheduleSnapshotPortMapper {
 	 */
 	@Mapping(target = "equipments", source = "equipments")
 	@Mapping(target = "withEquipments", ignore = true)   // 도메인 파생 메서드일 뿐 property가 아니다
+	@Mapping(target = "merge", ignore = true)
 	TeamSnapshot toTeamSnapshot(TeamSummary summary, List<EquipmentSnapshot> equipments);
 
 	@Mapping(target = "equipmentId", source = "id")

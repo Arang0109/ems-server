@@ -11,14 +11,16 @@ import com.ensolution.ems.schedule.application.service.ScheduleService;
 import com.ensolution.ems.schedule.application.service.ScheduleSheetService;
 import com.ensolution.ems.schedule.application.service.ScheduleSnapshotService;
 import com.ensolution.ems.schedule.presentation.mapper.ScheduleMapper;
+import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleItemsRequest;
-import com.ensolution.ems.schedule.presentation.request.ReorderScheduleItemsRequest;
-import com.ensolution.ems.schedule.presentation.request.UpdateScheduleItemRequest;
-import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
+import com.ensolution.ems.schedule.presentation.request.ChangeTeamSnapshotRequest;
+import com.ensolution.ems.schedule.presentation.request.ChangeTenantSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
+import com.ensolution.ems.schedule.presentation.request.ReorderScheduleItemsRequest;
 import com.ensolution.ems.schedule.presentation.request.SaveSheetsRequest;
-import com.ensolution.ems.schedule.presentation.request.UpdateBasicInfoRequest;
+import com.ensolution.ems.schedule.presentation.request.UpdateReportDatesRequest;
+import com.ensolution.ems.schedule.presentation.request.UpdateScheduleItemRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleRequest;
 import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
 import com.ensolution.ems.schedule.presentation.response.PreviousSheetCandidateResponse;
@@ -117,33 +119,14 @@ public class ScheduleController {
 		ScheduleDetail detail = scheduleService.cancel(scheduleId, principal.getTenantId());
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
-
-	@Operation(summary = "측정계획 기본 정보 수정",
-		description = "성적서를 진행하며 채우는 값을 저장합니다."
-			+ "시료접수일·분석완료일·성적서발행일은 측정계획 본체에, 채취 시각과 배출시설관리자·시료채취입회자는 "
-			+ "채취 정보(snapshot.samplingData)에, 시료분석검사자·기술책임자는 고객사 정보(snapshot.tenant)에, "
-			+ "측정자 표기명은 팀 정보(snapshot.team)에 저장됩니다 — 원장은 어느 것도 바뀌지 않습니다. "
-			+ "시료접수일이 채워지면 상태가 분석값 입력 중으로 전진합니다. "
-			+ "완료·취소 상태는 변경할 수 없습니다.")
-	@PatchMapping("/{scheduleId}/basic-info")
-	public ResponseEntity<ApiResponse<ScheduleResponse>> updateBasicInfo(
-		@PathVariable Long scheduleId,
-		@Valid @RequestBody UpdateBasicInfoRequest request,
-		@AuthenticationPrincipal CustomUserDetails principal
-	) {
-		ScheduleDetail detail = snapshotService.updateBasicInfo(
-			scheduleId, principal.getTenantId(), mapper.toUpdateBasicInfoCommand(request)
-		);
-		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
-	}
 	
 	@Operation(summary = "측정계획 정의 수정",
 		description = "계획을 정의하는 값(채취일자·측정용도·관리번호)을 수정합니다. "
-			+ "전달한 값을 그대로 채택하므로 빈 값은 기존 값을 지웁니다 — 화면이 이 셋을 단독으로 소유하기 때문입니다. "
+			+ "전달한 값을 그대로 채택하므로 빈 값은 기존 값을 지웁니다 — 측정정보 탭이 이 셋을 단독으로 소유하기 때문입니다. "
 			+ "채취일자만은 필수이며 비울 수 없습니다(측정 건수 집계의 기준일). "
 			+ "측정분야와 측정 대상(측정시설·측정팀)은 생성 시점에만 정하며 이 경로로 바꿀 수 없습니다. "
-			+ "시료접수·분석완료·성적서발행 일자는 PATCH /api/schedules/{scheduleId}/basic-info 가 맡습니다 — "
-			+ "그쪽은 여러 화면이 공유하는 경로라 부분 갱신이고, 이 경로와 규약이 다릅니다. "
+			+ "시료접수·분석완료·성적서발행 일자는 PATCH /api/schedules/{scheduleId}/report-dates 가 맡습니다 — "
+			+ "소유 화면이 다르므로 한 경로에 묶으면 서로의 빈 칸이 상대의 값을 지웁니다. "
 			+ "문서 스냅샷은 건드리지 않으며, 완료·취소 상태는 변경할 수 없습니다.")
 	@PutMapping("/{scheduleId}")
 	public ResponseEntity<ApiResponse<ScheduleResponse>> updateSchedule(
@@ -153,6 +136,76 @@ public class ScheduleController {
 	) {
 		ScheduleDetail detail = scheduleService.updateMeta(
 			scheduleId, principal.getTenantId(), mapper.toUpdateCommand(request)
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 성적서 진행 일자 수정",
+		description = "성적서를 진행하며 채우는 일자 셋(시료접수일·분석완료일·성적서발행일)을 수정합니다. "
+			+ "실험·분석 탭이 이 셋을 단독으로 소유하므로 전달한 값을 그대로 채택합니다 — "
+			+ "빈 값은 기존 값을 지우므로, 잘못 넣은 일자를 비울 수 있습니다. "
+			+ "채취일자 ≤ 시료접수일 ≤ 분석완료일 ≤ 성적서발행일 순서를 어기면 거부합니다. "
+			+ "시료접수일이 채워지면 상태가 분석값 입력 중으로 전진합니다. "
+			+ "문서 스냅샷은 건드리지 않으며, 완료·취소 상태는 변경할 수 없습니다.")
+	@PatchMapping("/{scheduleId}/report-dates")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> updateReportDates(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody UpdateReportDatesRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = scheduleService.updateReportDates(
+			scheduleId, principal.getTenantId(), mapper.toUpdateReportDatesCommand(request)
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 의뢰기관 스냅샷 수정",
+		description = "측정계획 문서의 의뢰기관·사업장·측정시설 정보를 수정합니다. 전달하지 않은 필드는 기존 값을 유지하며, "
+			+ "하위 사업장(workplace)·측정시설(workplace.stack)도 중첩 전달로 함께 부분 수정됩니다. "
+			+ "배출·방지시설 목록은 전달하면 전체 교체합니다. 표준산소농도·굴뚝 형상 등 계산 입력이 바뀌면 "
+			+ "기존 측정 시트를 재계산합니다. 원장은 변경하지 않습니다. 완료·취소 상태는 변경할 수 없습니다.")
+	@PatchMapping("/{scheduleId}/client")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> changeClient(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody ChangeClientSnapshotRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = snapshotService.changeClient(
+			scheduleId, principal.getTenantId(), mapper.toChangeClientCommand(request)
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+	
+	@Operation(summary = "측정계획 고객사 스냅샷 수정",
+		description = "측정계획 문서의 고객사(측정대행업체) 정보를 수정합니다. "
+			+ "전달하지 않은(공백 포함) 필드는 기존 값을 유지합니다 — 성적서 서명란 담당자(시료분석검사자·기술책임자)를 "
+			+ "현장 채취 탭과 실험·분석 탭이 공유하므로, 자기 것이 아닌 칸의 빈 값이 상대의 입력을 지우지 않습니다. "
+			+ "이 회차 문서만 고치며 고객사 원장은 바뀌지 않습니다. 완료·취소 상태는 변경할 수 없습니다.")
+	@PatchMapping("/{scheduleId}/tenant")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> changeTenant(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody ChangeTenantSnapshotRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = snapshotService.changeTenant(
+			scheduleId, principal.getTenantId(), mapper.toChangeTenantCommand(request)
+		);
+		
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 측정팀 스냅샷 수정",
+		description = "이 회차의 측정자(사수·부사수) 표기명을 수정합니다. 전달하지 않은(공백 포함) 이름은 기존 값을 유지합니다. "
+			+ "팀 원장과 이 회차에 들고 간 장비 목록은 바뀌지 않습니다 — 장비 교체는 PATCH /api/schedules/{scheduleId}/equipments 를 씁니다. "
+			+ "완료·취소 상태는 변경할 수 없습니다.")
+	@PatchMapping("/{scheduleId}/team")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> changeTeam(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody ChangeTeamSnapshotRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = snapshotService.changeTeam(
+			scheduleId, principal.getTenantId(), mapper.toChangeTeamCommand(request)
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
@@ -171,23 +224,6 @@ public class ScheduleController {
 	) {
 		ScheduleDetail detail = snapshotService.changeEquipments(
 			scheduleId, principal.getTenantId(), mapper.toChangeEquipmentsCommand(request)
-		);
-		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
-	}
-
-	@Operation(summary = "측정계획 의뢰기관 스냅샷 수정",
-		description = "측정계획 문서의 의뢰기관·사업장·측정시설 정보를 수정합니다. 전달하지 않은 필드는 기존 값을 유지하며, "
-			+ "하위 사업장(workplace)·측정시설(workplace.stack)도 중첩 전달로 함께 부분 수정됩니다. "
-			+ "배출·방지시설 목록은 전달하면 전체 교체합니다. 표준산소농도·굴뚝 형상 등 계산 입력이 바뀌면 "
-			+ "기존 측정 시트를 재계산합니다. 원장은 변경하지 않습니다. 완료·취소 상태는 변경할 수 없습니다.")
-	@PatchMapping("/{scheduleId}/client")
-	public ResponseEntity<ApiResponse<ScheduleResponse>> changeClient(
-		@PathVariable Long scheduleId,
-		@Valid @RequestBody ChangeClientSnapshotRequest request,
-		@AuthenticationPrincipal CustomUserDetails principal
-	) {
-		ScheduleDetail detail = snapshotService.changeClient(
-			scheduleId, principal.getTenantId(), mapper.toChangeClientCommand(request)
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
@@ -256,7 +292,10 @@ public class ScheduleController {
 	@Operation(summary = "측정 시트 저장",
 		description = "측정값을 저장하며 서버가 계산 파이프라인을 실행해 계산 결과를 함께 반영합니다. "
 			+ "요청에 담긴 카테고리의 시트만 교체하고 나머지는 서버 값을 유지하므로, 시트 삭제는 deletedSheets로 명시해야 합니다. "
-			+ "읽어간 뒤 다른 사용자가 같은 시트를 먼저 저장했으면 409로 거부합니다. 완료·취소 상태는 저장할 수 없습니다.")
+			+ "읽어간 뒤 다른 사용자가 같은 시트를 먼저 저장했으면 409로 거부합니다. "
+			+ "채취 시각과 배출시설관리자·시료채취입회자를 함께 보냅니다 — 현장 채취 탭이 함께 소유하는 값이라 저장이 한 번에 끝납니다. "
+			+ "이 넷은 전달하지 않으면(공백 포함) 기존 값을 유지합니다. 채취 시작시각이 채워지면 상태가 측정 중으로 전진합니다. "
+			+ "완료·취소 상태는 저장할 수 없으며, 분석값 입력 중부터는 기록지가 잠겨 이 경로 전체가 거부됩니다.")
 	@PutMapping("/{scheduleId}/sheets")
 	public ResponseEntity<ApiResponse<ScheduleResponse>> saveSheets(
 		@PathVariable Long scheduleId,
@@ -264,7 +303,10 @@ public class ScheduleController {
 		@AuthenticationPrincipal CustomUserDetails principal
 	) {
 		ScheduleDetail detail = sheetService.saveSheets(
-			scheduleId, principal.getTenantId(), new EditorRef(principal.getUsername(), principal.getName()),
+			scheduleId, principal.getTenantId(),
+			new EditorRef(principal.getUsername(), principal.getName()),
+			request.samplingStartedAt(), request.samplingEndedAt(),
+			request.facilityManager(), request.samplingWitness(),
 			request.sheets(), request.deletedSheets()
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));

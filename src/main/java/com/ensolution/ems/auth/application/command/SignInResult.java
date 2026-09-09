@@ -1,6 +1,7 @@
 package com.ensolution.ems.auth.application.command;
 
 public record SignInResult(
+		Long userId,
 		String accessToken,
 		String refreshToken,
 		Long tenantId,

@@ -23,12 +23,14 @@ public interface ScheduleDocumentMapper {
 	@Mapping(target = "modifiedAt", ignore = true)
 	ScheduleDocument toDocument(ScheduleSnapshot snapshot);
 
-	// withSheets·withSampling·withItems·withItemOrder는 도메인 파생 메서드일 뿐 property가 아니므로
-	// 매핑 대상에서 제외한다. (인자가 하나인 fluent 메서드는 MapStruct가 타깃 property의 setter로 읽는다.)
+	// with*·apply*는 도메인 파생 메서드일 뿐 property가 아니므로 매핑 대상에서 제외한다.
+	// (인자가 하나인 fluent 메서드는 MapStruct가 타깃 property의 setter로 읽는다.)
 	@Mapping(target = "withSheets", ignore = true)
 	@Mapping(target = "withSampling", ignore = true)
 	@Mapping(target = "withItems", ignore = true)
 	@Mapping(target = "withItemOrder", ignore = true)
+	@Mapping(target = "applyTenantChange", ignore = true)
+	@Mapping(target = "applyTeamChange", ignore = true)
 	ScheduleSnapshot toDomain(ScheduleDocument document);
 
 	List<ScheduleSnapshot> toDomains(List<ScheduleDocument> documents);

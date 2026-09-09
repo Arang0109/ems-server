@@ -5,16 +5,20 @@ import com.ensolution.ems.schedule.application.command.detail.PreviousSheetCandi
 import com.ensolution.ems.schedule.application.command.detail.PreviousSheetDetail;
 import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
-import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapshotCommand;
-import com.ensolution.ems.schedule.application.command.update.UpdateBasicInfoCommand;
+import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
+import com.ensolution.ems.schedule.application.command.update.ChangeTeamSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.ChangeTenantSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.UpdateReportDatesCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleItemCommand;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
-import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequest;
+import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
+import com.ensolution.ems.schedule.presentation.request.ChangeTeamSnapshotRequest;
+import com.ensolution.ems.schedule.presentation.request.ChangeTenantSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
-import com.ensolution.ems.schedule.presentation.request.UpdateBasicInfoRequest;
+import com.ensolution.ems.schedule.presentation.request.UpdateReportDatesRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleItemRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.response.PreviousSheetCandidateResponse;
@@ -43,8 +47,12 @@ public interface ScheduleMapper {
 	ChangeScheduleEquipmentsCommand toChangeEquipmentsCommand(ChangeScheduleEquipmentsRequest request);
 
 	ChangeClientSnapshotCommand toChangeClientCommand(ChangeClientSnapshotRequest request);
+	
+	ChangeTenantSnapshotCommand toChangeTenantCommand(ChangeTenantSnapshotRequest request);
 
-	UpdateBasicInfoCommand toUpdateBasicInfoCommand(UpdateBasicInfoRequest request);
+	UpdateReportDatesCommand toUpdateReportDatesCommand(UpdateReportDatesRequest request);
+
+	ChangeTeamSnapshotCommand toChangeTeamCommand(ChangeTeamSnapshotRequest request);
 
 	UpdateScheduleItemCommand toUpdateItemCommand(UpdateScheduleItemRequest request);
 

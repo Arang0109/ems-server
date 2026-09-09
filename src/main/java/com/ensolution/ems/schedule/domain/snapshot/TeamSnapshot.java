@@ -2,6 +2,8 @@ package com.ensolution.ems.schedule.domain.snapshot;
 
 import java.util.List;
 
+import static com.ensolution.ems.schedule.domain.snapshot.SnapshotMerge.keepText;
+
 /**
  * 측정 시점 팀 스냅샷. 그 회차에 누가 나갔고 어떤 장비를 들고 갔는지를 담는다.
  *
@@ -18,15 +20,17 @@ public record TeamSnapshot(
 	List<EquipmentSnapshot> equipments
 ) {
 	/**
-	 * 측정자(사수·부사수) 이름만 교체한 새 팀 스냅샷을 반환한다.
-	 * 전달되지 않은(공백 포함) 이름은 기존 값을 유지한다. 원장 연결키인 {@code teamId}는
-	 * 바꾸지 않으므로 문서상 표기만 바뀌고 팀 원장은 그대로다.
+	 * 전달된 조각을 덮어쓴 새 팀 스냅샷을 반환한다. 이 경로가 소유하는 것은 <b>측정자 표기</b>뿐이며,
+	 * 전달되지 않은(공백 포함) 이름은 기존 값을 유지하는 부분 갱신이다.
+	 * 원장 연결키인 {@code teamId}와 {@code teamName}·{@code equipments}는 바꾸지 않으므로
+	 * 문서상 표기만 바뀌고 팀 원장도, 이 회차에 들고 간 장비도 그대로다.
 	 */
-	public TeamSnapshot withMembers(String mentorName, String menteeName) {
+	public TeamSnapshot merge(TeamSnapshot patch) {
+		if (patch == null) return this;
 		return new TeamSnapshot(
 			teamId, teamName,
-			SnapshotMerge.keepText(mentorName, this.mentorName),
-			SnapshotMerge.keepText(menteeName, this.menteeName),
+			keepText(patch.mentorName(), mentorName),
+			keepText(patch.menteeName(), menteeName),
 			equipments);
 	}
 

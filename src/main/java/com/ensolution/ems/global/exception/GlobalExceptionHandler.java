@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.List;
 
@@ -108,6 +109,17 @@ public class GlobalExceptionHandler {
         .body(ApiResponse.error(e.getMessage()));
   }
   
+  // 서블릿 multipart 한도(spring.servlet.multipart.max-file-size) 초과. 컨트롤러에 닿기 전에 터지므로
+  // 도메인의 업로드 한도 검사(예: 채팅 첨부 10MB)가 실행되지 않는다. 핸들러가 없으면 포괄 핸들러의
+  // 500이 나가 클라이언트가 "파일이 큼"과 "서버 장애"를 구분하지 못한다.
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+    log.warn("[MaxUploadSizeExceededException] 업로드 한도를 넘었습니다: {}", e.getMessage());
+    return ResponseEntity
+        .status(HttpStatus.PAYLOAD_TOO_LARGE)
+        .body(ApiResponse.error("첨부 파일이 너무 큽니다."));
+  }
+
   // 클라이언트가 먼저 끊은 SSE·비동기 응답. 브라우저 탭을 닫거나 연결이 만료되면 정상적으로 발생한다.
   // 포괄 핸들러에 맡기면 정상 종료가 ERROR 스택으로 남고, 이미 죽은 소켓에 응답 본문을 다시 쓰려 한다.
   // 응답을 쓸 수 없는 상태이므로 ApiResponse 를 반환하지 않는다(규칙 6의 예외).

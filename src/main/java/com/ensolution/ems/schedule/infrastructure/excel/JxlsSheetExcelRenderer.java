@@ -21,8 +21,6 @@ import java.util.zip.ZipOutputStream;
 /**
  * jxls-poi 기반 엑셀 렌더러. 업로드된 템플릿에 측정계획 뷰를 채운다.
  * <ul>
- *   <li>성적서({@link #render}): {@code plan}(측정계획 뷰)과 {@code sheets}(측정 시트 목록 전체),
- *       {@code items}(측정항목 목록)를 노출해 단일 파일을 만든다.</li>
  *   <li>채취기록부({@link #renderSamplingRecordsZip}): 시트마다 {@code plan}(원장 데이터)과 {@code sheet}(해당 시트),
  *       시트의 측정 영역별 하위 뷰, {@code items}(측정항목 목록)를 최상위 변수로 함께 노출해
  *       시트별 파일을 만든 뒤 하나의 ZIP으로 묶는다.</li>
@@ -32,20 +30,6 @@ import java.util.zip.ZipOutputStream;
 @Slf4j
 @Component
 public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
-
-	@Override
-	public byte[] render(byte[] template, ScheduleExportView data) {
-		try {
-			Map<String, Object> model = new HashMap<>();
-			model.put("plan", data);
-			model.put("sheets", data.getSheets());
-			model.put("items", data.getItems());
-			return fill(template, model);
-		} catch (Exception e) {
-			log.warn("엑셀 템플릿 렌더링 실패", e);
-			throw new CustomException(ErrorCode.SCHEDULE_EXPORT_FAILED);
-		}
-	}
 
 	@Override
 	public byte[] renderSamplingRecordsZip(byte[] template, ScheduleExportView data) {
@@ -118,10 +102,15 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 		}
 	}
 
-	/** ZIP 엔트리명: {순번}_{카테고리}.xlsx (카테고리 null이면 sheet로 대체). */
+	/** ZIP 엔트리명: fKET-A-QP-17-02-01(2) 대기측정기록부({문서번호}) {카테고리}.xlsx */
 	private String entryName(String referenceNumber, SheetExportView sheet) {
 		String refNum = referenceNumber == null ? "..." : referenceNumber;
-		String category = sheet.getCategory() == null || sheet.getCategory().isBlank() ? "sheet" : sheet.getCategory();
-		return "fKET-A-QP-17-02-01(2) 대기측정기록부(" + refNum + ")" + category + ".xlsx";
+		String category = sheet.getCategory();
+		
+		String suffix = category == null || category.isBlank()
+			? ".xlsx"
+			: " " + category + ".xlsx";
+		
+		return "fKET-A-QP-17-02-01(2) 대기측정기록부(" + refNum + ")" + suffix;
 	}
 }

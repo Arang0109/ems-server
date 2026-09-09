@@ -34,6 +34,24 @@
 
 ---
 
+## 사용자 조회 경로가 둘인 이유
+
+같은 원장(`User`)을 보지만 **노출 범위가 달라** 엔드포인트를 나눕니다. 하나로 합치지 마세요.
+
+| 경로 | 권한 | 응답 | 용도 |
+|---|---|---|---|
+| `GET /api/admin/members` | ADMIN 전용 | `MemberResponse` — 로그인 아이디·이메일·연락처·tenantId 포함 | 회원 관리 화면(생성·수정·삭제와 한 세트) |
+| `GET /api/users` | 인증된 사용자 전원 | `UserListResponse` — `userId`·`name`·`department`·`role`만 | 선택지 드롭다운 (측정계획 담당자 배정 등) |
+
+- 조회 자체는 `UserService.getUserList(tenantId)` 하나를 공유합니다. 갈라지는 것은 **응답 DTO**뿐입니다.
+- `UserMapper`(auth presentation)에 `unmappedTargetPolicy = ERROR`를 걸지 않은 것은 의도입니다.
+  `UserListResponse`는 `UserSummary`의 부분집합이며, **공개 VO에 필드를 더했다고 이 응답이 자동으로
+  넓어져서는 안 되기** 때문입니다. `admin`의 `MemberMapper`는 반대로 ERROR라 필드 추가 시 컴파일이 깨집니다 —
+  두 매퍼의 정책 차이가 곧 "누구에게 보여도 되는가"의 경계입니다.
+- `/api/users`에 필드를 더할 때는 **권한 없는 사용자에게 보여도 되는 값인지**를 먼저 따집니다.
+
+---
+
 ## 역할 부여 제한
 
 테넌트 격리만으로는 **자기 계정 권한 상승**을 막지 못합니다. 격리를 지켜도 "내 계정의 역할을

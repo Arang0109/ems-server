@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  *
  * <p>일자 넷은 수정 경로가 갈린다 — 채취일자는 계획을 정의하는 값이라
  * {@code PUT /api/schedules/{id}}, 나머지 셋은 진행하며 채우는 값이라
- * {@code PATCH /api/schedules/{id}/basic-info}가 맡는다.
+ * {@code PATCH /api/schedules/{id}/report-dates}가 맡는다.
  *
  * <p><b>{@code mentorId}·{@code menteeId}는 배정 사실이고, 성적서에 인쇄되는 이름은
  * {@code snapshot.team.mentorName}·{@code menteeName}이다.</b> 등록 화면이 선택지를 되채우려면 id가

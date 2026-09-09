@@ -29,7 +29,9 @@
 > | MySQL | 대부분 | 원장 테이블 전반 (`docs/DATABASE.md` 참고) |
 > | MongoDB | `equipment` | `equipments`, `equipment_inspection_records` |
 > | MongoDB | `schedule` | `schedule_documents` (측정 시트·실험분석정보 임베드) |
+> | MongoDB | `chat` | `chat_messages` (대화 본문·첨부 임베드) |
 > | Redis | `auth` | Refresh Token |
+> | Redis | `chat` | 접속 상태(`PRESENCE:*`) — TTL 로 스스로 만료되는 휘발성 상태 |
 >
 > 두 저장소에 걸친 저장은 2PC를 쓸 수 없으므로 **순서로 정합성을 확보**합니다.
 > `ARCHITECTURE.md`의 "폴리글랏 저장소" 절을 참고하세요.
@@ -38,12 +40,13 @@
 
 ## 모듈 지도
 
-기능 모듈 9개 + 공통 인프라(`global`)로 구성됩니다.
+기능 모듈 10개 + 공통 인프라(`global`)로 구성됩니다.
 
 | 모듈 | 역할 | 모듈 문서 |
 |---|---|---|
 | `auth` | 인증·인가, 사용자·역할, JWT/Refresh Token | `auth/.claude/CLAUDE.md` |
 | `admin` | 테넌트 관리자용 회원·문서 관리 (자체 원장 없음) | `admin/.claude/CLAUDE.md` |
+| `chat` | 사용자 간 1:1 대화 (MySQL + MongoDB + Redis) | `chat/.claude/CLAUDE.md` |
 | `client_management` | 의뢰기관·사업장·측정시설과 하위 설비·측정물질·측정팀 | `client_management/.claude/CLAUDE.md` |
 | `contract` | 계약 관리 | `contract/.claude/CLAUDE.md` |
 | `dashboard` | 통계·요약 조회 전용 (자체 원장 없음) | `dashboard/.claude/CLAUDE.md` |
@@ -51,7 +54,7 @@
 | `platform` | 플랫폼 운영자의 고객사(테넌트) 생명주기 관리 | `platform/.claude/CLAUDE.md` |
 | `schedule` | 측정계획·측정 시트·실험분석정보·주기 이행 이력 (MySQL + MongoDB) | `schedule/.claude/CLAUDE.md` |
 | `storage` | 문서 저장·버전 관리 | `storage/.claude/CLAUDE.md` |
-| `global` | 공통 인프라: 보안 설정, Swagger, 공유 enum, `ApiResponse`, 예외 | — |
+| `global` | 공통 인프라: 보안 설정, Swagger, 공유 enum, `ApiResponse`, 예외, 파일 보관소 SPI(`global/storage/`) | — |
 
 작업 전에 해당 모듈의 `.claude/CLAUDE.md`를 먼저 읽습니다. 루트 규칙과 충돌하면 루트가 우선하며,
 모듈 문서가 **명시적 예외**로 근거와 함께 선언한 것만 예외입니다.
@@ -187,8 +190,9 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | 반환 타입 | 위치 |
 |---|---|
 | `ResponseEntity<byte[]>` | `storage/.../DocumentController` — 문서 다운로드 2개 |
-| `ResponseEntity<byte[]>` | `schedule/.../ScheduleExportController` — 성적서 xlsx, 채취기록부 ZIP |
+| `ResponseEntity<byte[]>` | `schedule/.../ScheduleExportController` — 채취기록부 ZIP |
 | `ResponseEntity<SseEmitter>` | `schedule/.../ScheduleStreamController` — 측정 시트 편집 알림 |
+| `ResponseEntity<byte[]>` | `chat/.../ChatMessageController` — 대화 첨부 다운로드 |
 
 > 반환 타입 선언은 **실제 응답 본문과 일치**해야 합니다. 본문 없이 `ApiResponse.success()`만 반환한다면
 > 선언도 `ApiResponse<Void>`여야 합니다. 불일치하면 Swagger 스키마가 거짓말을 합니다.
@@ -234,13 +238,14 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 | `{대상}Recorder` | 유스케이스 완료 시 파생 이력 기록 | `MeasurementRecordRecorder` |
 | `{대상}Finder` | 단순 조회를 넘는 탐색 규칙 캡슐화 | `PreviousSheetFinder` |
 | `{대상}Indexer` | 두 애그리거트의 결합 규칙 캡슐화 | *(현재 없음 — `AnalysisRecordIndexer`는 실험분석정보를 측정항목 안으로 들이면서 사라졌습니다)* |
-| `{대상}Recalculator` | 도메인 계산 엔진과 애그리거트 사이의 어댑터 | `SnapshotSheetRecalculator` |
-| `{대상}Writer` | 동시 쓰기 정책(재읽기·재시도) 캡슐화 | `SnapshotWriter` |
+| `{대상}ReCalculator` | 도메인 계산 엔진과 애그리거트 사이의 어댑터 | `SnapshotSheetReCalculator` |
+| `{대상}Writer` | 동시 쓰기 정책(재읽기·재시도)·되돌릴 수 없는 쓰기의 순서 캡슐화 | `SnapshotWriter`, `DirectRoomWriter`, `ChatAttachmentWriter` |
 | `{대상}Transitioner` | 상태 머신 전이 저장과 그 부수효과(이력 동기화·문서 저장 시점) 캡슐화 | `ScheduleStatusTransitioner` |
+| `{대상}Publisher` | 알림 발행의 트랜잭션 경계 정책(커밋 이후 발행) 캡슐화 | `ChatEventPublisher` |
 
 - `{대상}Detail`을 반환하는 어셈블러만 `{대상}DetailAssembler`로 씁니다 (`StackDetailAssembler`, `ContractDetailAssembler`).
 - **위치**: `{대상}Assembler`는 `application/service/assembler/`, 그 외 협력자
-  (`Writer`·`Finder`·`Recorder`·`Recalculator`·`Transitioner` 등)는 `application/service/support/`에 둡니다.
+  (`Writer`·`Finder`·`Recorder`·`ReCalculator`·`Transitioner` 등)는 `application/service/support/`에 둡니다.
   **`service/` 직하에는 `@Service`만 남습니다.** (`client_management`에 미이관분이 남아 있으며 순차 이관합니다.)
 - 협력자로 뽑는 기준은 Validator와 같습니다 — 서비스 본문에 조립·탐색 절차가 남지 않는 것이 목표이며,
   단순 위임 래퍼를 만들기 위한 규칙이 아닙니다.
@@ -513,6 +518,7 @@ public Stack createStack(CreateStackCommand command) {
 | `docs/DATABASE.md` | **스키마의 단일 진실.** 테이블·컬럼·제약·Enum 값 |
 | `docs/migration/` | 수동 실행 DDL·백필 스크립트 (규칙 15) |
 | `docs/excel-template-guide.md` | **고객 대상** jxls 템플릿 작성 매뉴얼. `~ExportView`의 필드명이 곧 이 문서의 계약이라 변경하면 배포된 템플릿이 깨집니다 |
+| `docs/chat-websocket-protocol.md` | **프론트엔드 대상** 채팅 프로토콜 계약. STOMP 목적지·페이로드·재연결 규칙이 곧 `ems-web`과의 약속이라 바꾸면 프론트가 깨집니다 |
 | `docs/equipment/*.md` | equipment 도메인 모델 Mermaid 다이어그램 |
 | `docs/architecture-audit-*.md` | 아키텍처 규칙 준수 진단 리포트 (날짜별 이력) |
 

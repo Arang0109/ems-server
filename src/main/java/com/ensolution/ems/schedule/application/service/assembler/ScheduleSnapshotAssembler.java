@@ -77,16 +77,21 @@ public class ScheduleSnapshotAssembler {
 	 * 기본값은 팀 원장의 사수·부사수 이름이고, 계획에 따로 배정된 사람이 있으면 그 이름으로 바꾼다.
 	 * 측정자는 팀 소속과 무관하게 테넌트 사용자 중에서 고르므로 이름은 팀이 아니라 auth 원장에서 온다.
 	 * <p>
-	 * <b>미배정(null)은 {@code withMembers}가 기존 값을 유지해 그대로 팀 기본값이 남는다.</b>
+	 * <b>미배정(null)은 {@link TeamSnapshot#merge}가 기존 값을 유지해 그대로 팀 기본값이 남는다.</b>
 	 * 이 폴백이 없으면 사수·부사수를 보내지 않던 기존 클라이언트의 성적서 표기가 빈칸이 된다.
+	 * <p>
+	 * 측정자 표기만 담은 patch를 넘긴다 — {@code teamId}·{@code teamName}·장비 목록은 방금 조립한
+	 * 값이므로 건드리지 않는다({@code PATCH /{id}/team}이 표기를 고칠 때와 같은 경로다).
 	 */
 	private TeamSnapshot assembleTeam(Schedule meta, TeamSummary teamSummary, List<EquipmentSummary> equipments) {
 		TeamSnapshot fromTeam = snapshotMapper.toTeamSnapshot(
 			teamSummary, snapshotMapper.toEquipmentSnapshots(equipments));
 
-		return fromTeam.withMembers(
+		return fromTeam.merge(new TeamSnapshot(
+			null, null,
 			resolveMeasurerName(meta.getMentorId(), meta.getTenantId()),
-			resolveMeasurerName(meta.getMenteeId(), meta.getTenantId()));
+			resolveMeasurerName(meta.getMenteeId(), meta.getTenantId()),
+			null));
 	}
 
 	/**

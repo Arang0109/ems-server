@@ -51,26 +51,32 @@ Document (문서)
 
 ## 보관소 추상화
 
+**이 모듈의 소유가 아닙니다.** 파일 실물 보관은 도메인 기능이 아니라 공통 인프라라서 `global/storage/`에 있고,
+이 모듈은 그 SPI의 **소비자 중 하나**입니다(다른 하나는 `chat`의 대화 첨부입니다).
+
 **환경마다 보관소는 하나입니다.** `ems.storage.provider`가 어느 구현체를 빈으로 올릴지 정하고,
 서비스는 어느 보관소인지 모른 채 `storageKey`만 넘깁니다.
 
 ```
-DocumentService
-      │  (storageKey)
-      ▼
-FileStorageClient          ← application/port/out
-      ▲
-      ├── LocalFileStorageAdapter   (provider=LOCAL 또는 미설정)
-      └── S3FileStorageAdapter      (provider=S3, S3Config가 배선)
+DocumentService        ChatMessageService
+      │  (storageKey)        │
+      ▼                      ▼
+        FileStorageClient          ← global/storage/  (SPI)
+              ▲
+              ├── LocalFileStorageAdapter   (provider=LOCAL 또는 미설정)
+              └── S3FileStorageAdapter      (provider=S3, S3Config가 배선)
 ```
 
-- `application/port/out/FileStorageClient` — 서비스가 보는 유일한 계약입니다. `store`·`load`·`delete` 셋뿐입니다.
-- 구현체는 `infrastructure/adapter/`에 나란히 둡니다. 둘 중 하나만 등록되므로 라우팅 계층이 없습니다.
-- `storageKey`는 도메인(`DocumentVersion`)이 만듭니다. 어댑터는 그 키를 받아 자기 방식으로 해석할 뿐입니다.
-  S3에서는 `keyPrefix`를 앞에 붙인 것이 오브젝트 키가 됩니다.
-- 설정은 `infrastructure/config/StorageProperties`, S3 빈 배선은 `infrastructure/config/S3Config`입니다.
-  **활성 보관소 값 자체는 `StorageProperties`에 바인딩하지 않습니다** — `@ConditionalOnProperty`가
+- `global/storage/FileStorageClient` — 서비스가 보는 유일한 계약입니다. `store`·`load`·`delete` 셋뿐입니다.
+  **감싸는 포트를 이 모듈에 따로 두지 않습니다**(루트 규칙 3·10의 단순 위임 래퍼 금지). 서비스가 직접 주입받습니다.
+- 구현체·설정·빈 배선(`LocalFileStorageAdapter`·`S3FileStorageAdapter`·`StorageProperties`·`S3Config`)도
+  전부 `global/storage/`에 나란히 있습니다. 둘 중 하나만 등록되므로 라우팅 계층이 없습니다.
+- `storageKey`는 **소비 모듈의 도메인**이 만듭니다. 이 모듈에서는 `DocumentVersion`입니다.
+  어댑터는 그 키를 받아 자기 방식으로 해석할 뿐이며, S3에서는 `keyPrefix`를 앞에 붙인 것이 오브젝트 키가 됩니다.
+- **활성 보관소 값 자체는 `StorageProperties`에 바인딩하지 않습니다** — `@ConditionalOnProperty`가
   Environment에서 직접 읽어 빈 등록 시점에 판단하므로, record에는 선택된 보관소가 실제로 쓰는 설정만 남습니다.
+- 실물이 없을 때 어댑터가 던지는 코드는 `STORAGE_FILE_NOT_FOUND`입니다. 어댑터가 공용이 되면서
+  `DOCUMENT_FILE_NOT_FOUND`에서 이름을 바꿨습니다 — 문서만의 오류가 아니기 때문입니다.
 
 ### 보관소 선택
 
@@ -167,5 +173,6 @@ FileStorageClient          ← application/port/out
 - 업로드·다운로드가 전 구간 온메모리 `byte[]`입니다. multipart 제한이 20MB라 아직 감당되지만,
   더 큰 파일을 다루게 되면 스트리밍이나 presigned URL을 검토해야 합니다
 - `docs/DATABASE.md`에 `documents`·`document_versions` 섹션이 없습니다
-- 테스트는 `S3FileStorageAdapterTest`(오브젝트 키 조합·실패 번역) 하나뿐입니다.
-  버전 번호 부여와 "마지막 버전은 못 지운다" 규칙이 다음 대상입니다
+- 이 모듈의 테스트는 `DocumentServiceTest`입니다. 보관소 어댑터 테스트(`S3FileStorageAdapterTest`)는
+  어댑터와 함께 `src/test/.../global/storage/`로 옮겨갔습니다
+- 버전 번호 부여와 "마지막 버전은 못 지운다" 규칙은 아직 회귀로 고정돼 있지 않습니다

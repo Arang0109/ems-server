@@ -16,18 +16,22 @@ class TeamSnapshotTest {
 		return new EquipmentSnapshot(id, type, null, null, null, null, null, null, null, null);
 	}
 
+	private static TeamSnapshot patch(String mentorName, String menteeName) {
+		return new TeamSnapshot(null, null, mentorName, menteeName, null);
+	}
+
 	private static TeamSnapshot existing() {
 		return new TeamSnapshot(1L, "1팀", "홍길동", "김철수",
 			List.of(equipment("E1", EquipType.PITOT_TUBE), equipment("E2", EquipType.NOZZLE)));
 	}
 
 	@Nested
-	@DisplayName("withMembers")
-	class WithMembers {
+	@DisplayName("merge")
+	class Merge {
 
 		@Test
 		void 측정자_표기명을_교체한다() {
-			TeamSnapshot changed = existing().withMembers("이측정", "박보조");
+			TeamSnapshot changed = existing().merge(patch("이측정", "박보조"));
 
 			assertThat(changed.mentorName()).isEqualTo("이측정");
 			assertThat(changed.menteeName()).isEqualTo("박보조");
@@ -35,7 +39,7 @@ class TeamSnapshotTest {
 
 		@Test
 		void 원장_연결키와_장비_목록은_보존된다() {
-			TeamSnapshot changed = existing().withMembers("이측정", "박보조");
+			TeamSnapshot changed = existing().merge(patch("이측정", "박보조"));
 
 			assertThat(changed.teamId()).isEqualTo(1L);
 			assertThat(changed.teamName()).isEqualTo("1팀");
@@ -45,14 +49,14 @@ class TeamSnapshotTest {
 
 		@Test
 		void 전달되지_않거나_공백인_이름은_기존_값을_유지한다() {
-			assertThat(existing().withMembers(null, null)).isEqualTo(existing());
-			assertThat(existing().withMembers("  ", "").mentorName()).isEqualTo("홍길동");
-			assertThat(existing().withMembers("  ", "").menteeName()).isEqualTo("김철수");
+			assertThat(existing().merge(patch(null, null))).isEqualTo(existing());
+			assertThat(existing().merge(patch("  ", "")).mentorName()).isEqualTo("홍길동");
+			assertThat(existing().merge(patch("  ", "")).menteeName()).isEqualTo("김철수");
 		}
 
 		@Test
 		void 한_명만_교체할_수_있다() {
-			TeamSnapshot changed = existing().withMembers(null, "박보조");
+			TeamSnapshot changed = existing().merge(patch(null, "박보조"));
 
 			assertThat(changed.mentorName()).isEqualTo("홍길동");
 			assertThat(changed.menteeName()).isEqualTo("박보조");

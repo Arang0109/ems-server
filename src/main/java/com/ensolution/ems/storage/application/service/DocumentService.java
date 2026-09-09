@@ -12,7 +12,7 @@ import com.ensolution.ems.storage.application.port.in.UpdateDocumentCommand;
 import com.ensolution.ems.storage.application.port.in.UploadedFile;
 import com.ensolution.ems.storage.application.port.out.DocumentRepository;
 import com.ensolution.ems.storage.application.port.out.DocumentVersionRepository;
-import com.ensolution.ems.storage.application.port.out.FileStorageClient;
+import com.ensolution.ems.global.storage.FileStorageClient;
 import com.ensolution.ems.storage.application.validator.DocumentValidator;
 import com.ensolution.ems.storage.domain.Document;
 import com.ensolution.ems.global.common.enums.DocumentCategory;

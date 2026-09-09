@@ -57,7 +57,7 @@ Schedule (MySQL 메타 · 진실의 원천)
 - `SamplingSnapshot.sheets` — 루트가 `sheets()` 위임 접근자로 대신 답합니다
 - 물리적으로도 `ScheduleDocument`의 필드 — Mongo `schedule_documents` **한 문서 안**에 배열로
   들어갑니다. 시트만 담는 컬렉션이 없습니다
-- 계산 입력이 전부 같은 스냅샷에서 나옵니다(`SnapshotSheetRecalculator`) —
+- 계산 입력이 전부 같은 스냅샷에서 나옵니다(`SnapshotSheetReCalculator`) —
   피토관 계수·노즐경·오리피스 보정계수는 `snapshot.equipments()`(= `team.equipments`)에서,
   표준산소농도·굴뚝 형상/치수는 `snapshot.client().workplace().stack()`에서 취합니다.
   **시트는 스냅샷 없이 계산될 수 없습니다**
@@ -65,7 +65,7 @@ Schedule (MySQL 메타 · 진실의 원천)
   직접 읽어 `SCHEDULED → MEASURING` 전이를 판정합니다. 메타의 상태 머신이 시트 내부 필드에 의존합니다
 
 **단, 계산 엔진은 이미 절연되어 있습니다.** `application/calculation/`의 13개 클래스는 스냅샷을 전혀
-모르고 `StackData` DTO로만 소통합니다. `SnapshotSheetRecalculator`가 유일한 어댑터입니다.
+모르고 `StackData` DTO로만 소통합니다. `SnapshotSheetReCalculator`가 유일한 어댑터입니다.
 훗날 분리 논의가 다시 나온다면 **여기가 유일하게 깨끗한 이음매**입니다.
 
 ### 2. Schedule과 ScheduleSnapshot은 한 개념의 두 저장소 표현
@@ -127,19 +127,20 @@ MySQL(메타)과 MongoDB(세부)에 걸쳐 있고 **2PC를 쓸 수 없으므로*
 시트에는 식별자가 없고 `category`가 자연키이므로 충돌 판정 단위를 문서 전체가 아니라 **시트**로
 잡습니다 — 두 사람이 서로 다른 기록지를 나눠 입력하는 흔한 경우에 충돌이 나지 않아야 합니다.
 
-#### 문서 락을 공유하는 경로 6개
+#### 문서 락을 공유하는 경로 7개
 
-실험분석정보를 `items[].analysis`로 문서에 합치면서 아래 여섯이 같은 `@Version`을 놓고 경합합니다.
+실험분석정보를 `items[].analysis`로 문서에 합치면서 아래 일곱이 같은 `@Version`을 놓고 경합합니다.
 **문서를 쓰는 경로는 예외 없이 `SnapshotWriter`를 지납니다** — 어느 경로가 재시도를 타는지 사람이
 외우게 두면 나중에 추가되는 경로에서 반드시 빠집니다.
 
 | 경로 | 쓰는 필드 |
 |---|---|
-| `saveSheets` | `samplingData.sheets` |
+| `saveSheets` | `samplingData` 전체 — `sheets` + 채취시각 2·현장 담당자 2 |
 | `saveAnalysisResults` | `items[].analysis` 의 실험실 입력 4필드 |
 | `saveSamplingTimes` | `items[].analysis` 의 채취시각 2필드 |
 | `changeItems` · `reorderItems` · `updateItem` | `items` 집합·순서·조건 |
 | `changeEquipments` · `changeClient` | `team.equipments` · `client` 트리 + 재계산된 `sheets` |
+| `changeTenant` · `changeTeam` | `tenant` 서명란 담당자 · `team` 측정자 표기 |
 
 **변경 함수의 계약 3조**(정본은 `SnapshotWriter` javadoc) — ① 자기 소유 필드만 쓴다 ② 순수해야 한다
 (재시도로 여러 번 호출되므로 이벤트 발행·MySQL 저장 금지) ③ 스냅샷과 무관한 검증은 루프 밖에서 끝낸다.
@@ -186,16 +187,16 @@ MySQL(메타)과 MongoDB(세부)에 걸쳐 있고 **2PC를 쓸 수 없으므로*
 | `mentorId`·`menteeId` | 메타(`schedules`) | 등록 시 **배정된 사람** |
 | `team.mentorName`·`menteeName` | 스냅샷 | 성적서에 **인쇄될 표기** |
 
-`teamId`(메타)와 `team.teamName`(스냅샷)의 관계와 같습니다. 표기는 `PATCH /{id}/basic-info`로 자유 편집되므로
+`teamId`(메타)와 `team.teamName`(스냅샷)의 관계와 같습니다. 표기는 `PATCH /{id}/team`으로 자유 편집되므로
 편집 뒤 둘이 갈릴 수 있고, **그것이 의도입니다** — 같은 사실의 사본이 아니기 때문입니다.
 
 - 측정자는 팀 원장의 사수·부사수가 아니라 **테넌트 사용자 전체에서 고르는 값**입니다. 그래서 팀이 아니라
   계획이 소유하고, tenant 소속 확인을 `ScheduleValidator.requireMeasurersInTenant`가 따로 합니다.
-- **미배정(null)이면 팀 원장의 이름이 표기의 기본값**입니다(`TeamSnapshot.withMembers`의 부분 갱신 시맨틱).
+- **미배정(null)이면 팀 원장의 이름이 표기의 기본값**입니다(`TeamSnapshot.merge`의 부분 갱신 시맨틱).
   이 폴백이 없으면 사수·부사수를 보내지 않던 클라이언트의 성적서 표기가 빈칸이 됩니다.
   회귀는 `ScheduleSnapshotAssemblerTeamTest`가 고정합니다.
 - 배정은 등록 시점에만 받습니다. `PUT /{id}`로는 바꾸지 않습니다 — 바꿀 일이 생기면 표기를 고치는
-  `PATCH /{id}/basic-info`와 시맨틱이 겹치지 않는지 먼저 정하세요.
+  `PATCH /{id}/team`과 시맨틱이 겹치지 않는지 먼저 정하세요.
 
 **도메인 타입을 그대로 노출하는 예외 3곳**입니다. 각각 기존 결정이 있어 뒤집지 않았습니다.
 
@@ -252,13 +253,13 @@ REPORT_COMPLETED · CANCELED ──reopen──► 스냅샷에서 재도출한 
 
 | 클래스 | 역할 |
 |---|---|
-| `ScheduleService` | 애그리거트 생명주기 — 생성·삭제·메타 수정(`PUT /{id}`)·상태 전이(완료·취소·재개방)·조회·목록 |
-| `ScheduleSnapshotService` | 문서(스냅샷) 편집 6경로 — `changeEquipments`·`changeClient`·`updateBasicInfo`·`changeItems`·`reorderItems`·`updateItem` |
-| `ScheduleSheetService` | 측정 시트 저장(병합·재계산·SSE)과 이전 회차 불러오기 |
+| `ScheduleService` | 애그리거트 생명주기 — 생성·삭제·메타 수정(`PUT /{id}`·`PATCH /{id}/report-dates`)·상태 전이(완료·취소·재개방)·조회·목록 |
+| `ScheduleSnapshotService` | 문서(스냅샷) 편집 7경로 — `changeEquipments`·`changeClient`·`changeTenant`·`changeTeam`·`changeItems`·`reorderItems`·`updateItem` |
+| `ScheduleSheetService` | 측정 시트 저장(병합·재계산·SSE)과 채취 정보 저장, 이전 회차 불러오기 |
 | `ScheduleStatisticsService` | `ScheduleStatisticsUseCase` 구현. **타 모듈(`dashboard`)에 여는 유일한 계약** |
 | `AnalysisResultService` | 실험분석정보 유스케이스. 실험·분석 탭과 성적서 탭의 저장 경로를 분리 (결과는 `items[].analysis`에 저장) |
 | `MeasurementHistoryService` | 이력 **조회만**. 쓰기는 완료 유스케이스에 종속된 부수효과이므로 한 서비스에 섞지 않음 |
-| `ScheduleExportService` | jxls 템플릿 엑셀 내보내기(성적서 단일 xlsx / 채취기록부 ZIP) |
+| `ScheduleExportService` | jxls 템플릿 엑셀 내보내기(채취기록부 ZIP) |
 | `ScheduleStreamService` | SSE 구독. 구독 전 tenant 소속 확인 — 없으면 id만 바꿔 타 고객사 편집 알림을 받을 수 있음 |
 
 > `ScheduleController` 하나가 앞의 세 서비스를 주입받습니다. **엔드포인트가 곧 의도 선언**이라는
@@ -279,7 +280,7 @@ REPORT_COMPLETED · CANCELED ──reopen──► 스냅샷에서 재도출한 
 |---|---|
 | `ScheduleStatusTransitioner` | 상태 전이 저장과 이력 동기화. **경로별 문서 저장 시점**을 한곳에 모음 (아래 참고) |
 | `SnapshotWriter` | 문서 단위 낙관적 락 아래의 부분 갱신. 문서를 쓰는 **모든 경로가 여기를 지납니다** |
-| `SnapshotSheetRecalculator` | 스냅샷에서 계산 입력(장비 spec·굴뚝 정보)을 뽑아 시트 재계산. 계산 엔진과 스냅샷 사이의 **유일한 어댑터** |
+| `SnapshotSheetReCalculator` | 스냅샷에서 계산 입력(장비 spec·굴뚝 정보)을 뽑아 시트 재계산. 계산 엔진과 스냅샷 사이의 **유일한 어댑터** |
 | `PreviousSheetFinder` | 새 기록지를 채울 이전 회차 시트 탐색. 직전 회차만 보지 않고 그 기록지를 실제로 쓴 회차를 거슬러 찾음(깊이 제한 `MAX_LOOKBACK`) |
 | `MeasurementRecordRecorder` | 완료 시 이행 이력 기록 / 재개방·취소·삭제 시 해제 |
 
@@ -328,7 +329,8 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 
 | 필드 | 이유 |
 |---|---|
-| `Schedule.updatePlan` 의 측정용도·관리번호 | 측정정보 탭이 **단독 소유**해 폼이 자기 필드 전부를 보냄. 빈 칸은 "지웠다" |
+| `Schedule.updateMetadata` 의 측정용도·관리번호 | 측정정보 탭이 **단독 소유**해 폼이 자기 필드 전부를 보냄. 빈 칸은 "지웠다" |
+| `Schedule.applyReportProgress` 의 일자 3종 | 실험·분석 탭이 **단독 소유**. 경로를 쪼개면서 성립했고, 그래서 잘못 넣은 일자를 비울 수 있음 |
 | `SamplingItemSnapshot.allowance` · `oxygenApplicable` | 한번 채운 뒤 잘못 넣은 기준을 비울 방법이 없어짐 |
 | `StackSnapshot.standardOxygen` | 위와 동일 |
 | `AnalysisResult` 채취시간 (`applySamplingTime`) | 성적서 탭이 항목 표 **전체**를 보내는 일괄 저장이라 빈 칸은 "지웠다"는 뜻 |
@@ -342,11 +344,15 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 
 | 메서드 | 시맨틱 | 쓰는 경로 |
 |---|---|---|
-| `updatePlan(sampledAt, schedulePurpose, referenceNumber)` | 전체 채택 (단 `sampledAt`은 null이면 유지 — DB NOT NULL이자 집계 기준일) | `PUT /{id}` |
-| `applyReportProgress(receivedAt, analyzedAt, issuedAt)` | 부분 갱신 | `PATCH /{id}/basic-info` |
+| `updateMetadata(sampledAt, schedulePurpose, referenceNumber)` | 전체 채택 (단 `sampledAt`은 null이면 유지 — DB NOT NULL이자 집계 기준일) | `PUT /{id}` |
+| `applyReportProgress(receivedAt, analyzedAt, issuedAt)` | 전체 채택 + 순서 검증 | `PATCH /{id}/report-dates` |
 
 > 한때 이 둘이 `update()` 하나였고 필드마다 시맨틱이 달랐습니다. 그 결과 자기 것이 아닌 칸에 null을
 > 실어 보낸 호출자가 남의 값을 지웠습니다 — **한 메서드에 두 시맨틱을 섞지 마세요.**
+>
+> `applyReportProgress`의 순서 검증(`sampledAt ≤ received ≤ analyzed ≤ issued`)은 **빈 칸을 건너뛰되
+> 사슬을 끊지 않습니다.** 전체 채택이라 중간 칸이 비어 올 수 있는데, 인접한 두 값만 견주면 접수일 없이
+> 발행일만 넣었을 때 채취일과의 순서를 놓칩니다.
 
 ---
 
@@ -354,14 +360,14 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 
 ### `/api/schedules` — `ScheduleController`
 
-`POST /` · `GET /` · `GET /canceled` · `GET /{id}` · `PUT /{id}` · `PATCH /{id}/basic-info` ·
+`POST /` · `GET /` · `GET /canceled` · `GET /{id}` · `PUT /{id}` · `PATCH /{id}/report-dates` ·
 `POST /{id}/completion` · `POST /{id}/cancellation` · `POST /{id}/reopen` · `DELETE /{id}` ·
-`PATCH /{id}/equipments` · `PATCH /{id}/client` · `PATCH /{id}/items` · `PUT /{id}/items/order` ·
-`PATCH /{id}/items/{pollutantId}` · `PUT /{id}/sheets` ·
+`PATCH /{id}/client` · `PATCH /{id}/tenant` · `PATCH /{id}/team` · `PATCH /{id}/equipments` ·
+`PATCH /{id}/items` · `PUT /{id}/items/order` · `PATCH /{id}/items/{pollutantId}` · `PUT /{id}/sheets` ·
 `GET /{id}/sheets/{category}/previous` · `GET /{id}/sheets/{category}/previous/candidates`
 
 **엑셀** (`ScheduleExportController`, multipart 템플릿 업로드)
-`POST /{id}/report/export` (성적서 단일 xlsx) · `POST /{id}/sampling-records/export` (채취기록부 ZIP)
+`POST /{id}/sampling-records/export` (채취기록부 ZIP)
 
 **SSE** (`ScheduleStreamController`) `GET /{id}/stream`
 
@@ -381,18 +387,20 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 
 ## 수정 경로 규약 — API를 하나로 합치지 않는 이유
 
-측정계획 수정 경로가 10개인 것은 **의도된 설계**입니다. "측정계획 수정 API 하나"로 통합하지 않습니다.
+측정계획 수정 경로가 11개인 것은 **의도된 설계**입니다. "측정계획 수정 API 하나"로 통합하지 않습니다.
 
 | 경로 | 서비스 메서드 | 시트 재계산 | 문서 락 | 부작용 |
 |---|---|---|---|---|
 | `PUT /{id}` | `updateMeta` | 안 함 | — | **계획을 정의하는 값**(채취일자·측정용도·관리번호). 메타만, 전체 채택 |
-| `PATCH /{id}/basic-info` | `updateBasicInfo` | 안 함 | ○ | **진행하며 채우는 값**(일자 3종 + 채취시각·담당자). 메타 + 스냅샷 3노드 팬아웃, 부분 갱신, 자동 상태 전이 판정 |
+| `PATCH /{id}/report-dates` | `updateReportDates` | 안 함 | — | **진행하며 채우는 일자 3종**. 메타만, 전체 채택 + 순서 검증, 자동 상태 전이 판정 |
 | `PATCH /{id}/equipments` | `changeEquipments` | **함** | ○ | 팀 스냅샷 장비 목록 전체 교체 |
 | `PATCH /{id}/client` | `changeClient` | **함** | ○ | 의뢰기관→사업장→측정시설 트리 병합 |
+| `PATCH /{id}/tenant` | `changeTenant` | 안 함 | ○ | 성적서 서명란 담당자(+ 고객사 원장 사본). 부분 갱신 |
+| `PATCH /{id}/team` | `changeTeam` | 안 함 | ○ | 이 회차 측정자 표기. 부분 갱신, 장비 목록은 건드리지 않음 |
 | `PATCH /{id}/items` | `changeItems` | 안 함 | ○ | 기존 항목은 측정 시점 값 유지, 신규만 원장에서 조립 |
 | `PUT /{id}/items/order` | `reorderItems` | 안 함 | ○ | **성적서 항목 순서 결정** |
 | `PATCH /{id}/items/{pollutantId}` | `updateItem` | 안 함 | ○ | 이 회차 항목의 판정 근거 정정 |
-| `PUT /{id}/sheets` | `saveSheets` | **함** | ○ | 시트 병합 + SSE 발행. `ANALYZING`부터 잠김 |
+| `PUT /{id}/sheets` | `saveSheets` | **함** | ○ | 시트 병합 + **채취시각·현장 담당자** + SSE 발행. `ANALYZING`부터 잠김 |
 | `PUT /{id}/analyses/results` | `saveAnalysisResults` | 안 함 | ○ | `items[].analysis`의 실험실 입력 4필드 |
 | `PUT /{id}/analyses/sampling-times` | `saveSamplingTimes` | 안 함 | ○ | `items[].analysis`의 채취시각 2필드 |
 
@@ -403,27 +411,33 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 "문서 락" ○ 는 그 경로가 문서를 써서 `SnapshotWriter`를 지난다는 뜻입니다. 위 "문서 락을 공유하는 경로"
 절을 함께 보세요 — 각 경로가 자기 소유 필드만 쓰는 것이 서로를 덮어쓰지 않는 근거입니다.
 
-### 앞의 두 경로를 가르는 기준
+### 경로를 가르는 기준 — 소유 화면
 
-`PUT /{id}`와 `PATCH /{id}/basic-info`는 한때 **저장소 기준**(메타 vs 문서의 `BasicInfo`)으로 갈려
-있었습니다. `BasicInfo`를 없애고 성적서 기본정보를 메타로 모으면서 그 기준이 사라졌고, 두 경로가
-같은 일자를 쓰게 되어 서로의 값을 지우는 결함이 생겼습니다. 지금은 **개념 기준**입니다.
+한때 성적서를 진행하며 채우는 값 11개가 `PATCH /{id}/basic-info` **한 경로**로 저장됐습니다.
+목적지가 넷(메타·채취·고객사·팀)이라 서버가 나눠 보냈는데, 그 대가로 **두 화면이 한 경로를 공유**했고
+각 화면이 자기 것이 아닌 칸에 null을 실어 보냈습니다. 그래서 부분 갱신일 수밖에 없었고,
+**이미 채운 값을 비울 방법이 없었습니다.**
 
-| | `PUT /{id}` | `PATCH /{id}/basic-info` |
-|---|---|---|
-| 무엇 | 계획을 **정의하는** 값 | 진행하며 **채우는** 값 |
-| 필드 | 채취일자·측정용도·관리번호 | 접수·분석완료·발행일 + 채취시각·현장 담당자·서명란 담당자·측정자 표기 |
-| 쓰는 화면 | 측정정보 탭 1개 (**단독 소유**) | 현장 채취 탭 + 실험·분석 탭 (**공유**) |
-| null | **전체 채택** — 빈 값은 지움 | **부분 갱신** — null은 미전달 |
-| 도메인 | `Schedule.updatePlan` | `Schedule.applyReportProgress` |
+지금은 **소유 화면 기준**으로 갈랐습니다. 각 경로가 단독 소유가 되면서 전체 채택이 성립합니다.
 
-null 시맨틱이 갈리는 이유는 **소유 화면의 수**입니다. 단독 소유면 폼이 자기 필드 전부를 보내므로
-빈 칸을 "지웠다"로 읽을 수 있지만, 공유 경로에서는 각 화면이 자기 것이 아닌 칸에 null을 실어 보내므로
-전체 채택으로 두면 한쪽이 저장할 때마다 다른 쪽 입력이 사라집니다.
+| 경로 | 필드 | 소유 화면 | null |
+|---|---|---|---|
+| `PUT /{id}` | 채취일자·측정용도·관리번호 | 측정정보 탭 | **전체 채택** |
+| `PATCH /{id}/report-dates` | 접수·분석완료·발행일 | 실험·분석 탭 | **전체 채택** |
+| `PUT /{id}/sheets` | 채취시각 2·현장 담당자 2 (+시트) | 현장 채취 탭 | 부분 갱신 |
+| `PATCH /{id}/tenant` | 서명란 담당자 | 두 탭 **공유** | 부분 갱신 |
+| `PATCH /{id}/team` | 측정자 표기 | 현장 채취 탭 | 부분 갱신 |
 
-> 그래서 `basic-info`로는 **이미 채운 값을 비울 수 없습니다.** 비우기가 실제로 필요해지면 시맨틱을
-> 바꿀 것이 아니라 화면별로 경로를 쪼개야 합니다 — 두 화면의 소유 필드가 겹치지 않으므로 쪼개면
-> 각 경로가 단독 소유가 되어 전체 채택이 성립합니다.
+null 시맨틱을 가르는 것은 **소유 화면의 수**입니다. 단독 소유면 폼이 자기 필드 전부를 보내므로 빈 칸을
+"지웠다"로 읽을 수 있지만, 공유 경로에서는 전체 채택으로 두면 한쪽이 저장할 때마다 다른 쪽 입력이
+사라집니다. 서명란 담당자(`tenant`)만 여전히 두 탭이 공유해 부분 갱신으로 남습니다 —
+비우기가 필요해지면 그것도 화면별로 쪼갭니다.
+
+**채취 정보가 시트 저장에 합류한 이유**는 같은 노드(`samplingData`)에 살고 같은 화면이 소유하기
+때문입니다. 나눠 보내면 저장 한 번이 여러 왕복이 되고 중간에 실패하면 화면 상태가 갈라집니다.
+대신 **잠금 시점을 시트와 공유합니다** — `ANALYZING`부터는 채취시각·현장 담당자도 함께 잠깁니다
+(`requireSheetEditable`). 현장에서 확정되는 사실이라는 점에서 일관되지만, `basic-info`가 그 시점에도
+수정을 허용하던 것에 비하면 축소입니다.
 
 **측정분야와 대상(측정시설·측정팀)은 어느 경로로도 바꿀 수 없습니다.** 생성 시점에만 정합니다 —
 측정분야가 바뀌면 측정항목과 성적서 서식이 통째로 달라지고, 대상이 바뀌면 스냅샷 정합성이 무너집니다.
@@ -439,9 +453,9 @@ null 시맨틱이 갈리는 이유는 **소유 화면의 수**입니다. 단독 
    성적서 탭이 필드를 나눠 소유합니다. 한 문서에 저장하게 된 뒤에도 **필드 소유가 겹치지 않는 것**이
    서로를 덮어쓰지 않는 근거이므로, 통합 PUT은 그 근거를 없앱니다 — 문서 전체를 보내는 요청은
    자기 것이 아닌 필드까지 싣기 때문입니다.
-4. **부작용 범위가 다릅니다.** `updateBasicInfo`만 메타와 문서를 함께 씁니다.
+4. **부작용 범위가 다릅니다.** 메타만 쓰는 경로(`PUT /{id}`·`report-dates`)와 문서만 쓰는 경로가 갈립니다 — 문서를 쓰지 않는 경로가 낙관적 락을 건드리지 않는 것이 요점입니다.
 
-경로 10개는 많아 보이지만 각각이 **서로 다른 재계산·null·동시성 규약**을 갖습니다.
+경로 11개는 많아 보이지만 각각이 **서로 다른 재계산·null·동시성 규약**을 갖습니다.
 합치는 순간 그 차이가 전부 서비스 내부 조건문으로 이동합니다.
 
 ---
