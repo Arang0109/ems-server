@@ -3,7 +3,6 @@ package com.ensolution.ems.client_management.application;
 import com.ensolution.ems.client_management.application.port.out.PollutantCatalogRepository;
 import com.ensolution.ems.client_management.domain.PollutantCatalog;
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
@@ -30,20 +29,19 @@ public class FakePollutantCatalogRepository implements PollutantCatalogRepositor
 	}
 
 	public PollutantCatalog given(String code, MeasurementField field, String nameKr, Integer sortOrder, boolean active) {
-		return given(code, field, nameKr, sortOrder, active, null, null);
+		return given(code, field, nameKr, sortOrder, active, null);
 	}
 
-	/** 카탈로그 투영값(method·phase)까지 지정한다. 투영이 실제로 전파되는지 검증할 때 쓴다. */
+	/** 카탈로그 투영값(phase)까지 지정한다. 투영이 실제로 전파되는지 검증할 때 쓴다. */
 	public PollutantCatalog given(
 		String code, MeasurementField field, String nameKr, Integer sortOrder, boolean active,
-		MeasurementMethod method, PollutantPhase phase
+		PollutantPhase phase
 	) {
 		PollutantCatalog catalog = PollutantCatalog.builder()
 			.id(nextId++)
 			.code(code)
 			.field(field)
 			.nameKr(nameKr)
-			.method(method)
 			.phase(phase)
 			.sortOrder(sortOrder)
 			.active(active)

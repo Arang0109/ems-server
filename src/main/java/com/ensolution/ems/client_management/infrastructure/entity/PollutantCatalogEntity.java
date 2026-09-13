@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.infrastructure.entity;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -64,9 +63,6 @@ public class PollutantCatalogEntity {
 	/** 가이드 표준 국문명. 고객사가 채택할 때 복사해 가는 초기값이다. */
 	@Column(name = "name_kr", nullable = false)
 	private String nameKr;
-
-	@Enumerated(EnumType.STRING)
-	private MeasurementMethod method;
 
 	@Enumerated(EnumType.STRING)
 	private PollutantPhase phase;

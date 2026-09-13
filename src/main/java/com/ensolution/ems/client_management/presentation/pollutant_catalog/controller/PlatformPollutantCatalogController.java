@@ -44,6 +44,7 @@ public class PlatformPollutantCatalogController {
 		description = """
 			모든 고객사가 공통으로 사용하는 법정 측정물질을 추가합니다. code는 등록 후 변경할 수 없습니다.
 			code는 측정분야 안에서만 유일하므로, 대기 납과 수질 납처럼 분야가 다르면 같은 code를 쓸 수 있습니다.
+			측정방법(`method`)은 카탈로그가 갖지 않습니다 — 같은 물질이라도 업체마다 다를 수 있어 고객사가 채택 시 지정합니다.
 			""")
 	@PostMapping
 	public ResponseEntity<ApiResponse<PollutantCatalogResponse>> createCatalog(
@@ -76,7 +77,9 @@ public class PlatformPollutantCatalogController {
 			전달하지 않은 필드는 기존 값을 유지합니다.
 
 			반영 범위가 필드마다 다릅니다.
-			- `field`/`method`/`phase`: 가이드가 단일 진실 소스이므로 **이미 채택한 고객사에도 즉시 반영**됩니다.
+			- `field`/`phase`: 가이드가 단일 진실 소스이므로 **이미 채택한 고객사에도 즉시 반영**됩니다.
+			- 측정방법(`method`)은 카탈로그가 갖지 않습니다. 같은 물질이라도 업체마다 측정방법이 다를 수 있어
+			  고객사가 채택 시 지정합니다(`POST /api/pollutants`).
 			- `nameKr`: 채택 시점에 복사되는 초기값이므로 **앞으로 채택할 고객사에만** 반영됩니다.
 			  이미 채택한 고객사는 자신의 표기명을 직접 보유하므로 바뀌지 않습니다.
 			""")

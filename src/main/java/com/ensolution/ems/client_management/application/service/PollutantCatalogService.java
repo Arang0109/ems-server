@@ -29,7 +29,7 @@ public class PollutantCatalogService {
 
 		return pollutantCatalogRepository.save(PollutantCatalog.register(
 			command.code(), command.field(), command.nameKr(),
-			command.method(), command.phase(), command.sortOrder()
+			command.phase(), command.sortOrder()
 		));
 	}
 
@@ -37,7 +37,7 @@ public class PollutantCatalogService {
 		PollutantCatalog catalog = pollutantCatalogRepository.findById(catalogId);
 
 		return pollutantCatalogRepository.save(catalog.update(
-			command.field(), command.nameKr(), command.method(),
+			command.field(), command.nameKr(),
 			command.phase(), command.sortOrder()
 		));
 	}

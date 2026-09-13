@@ -220,6 +220,7 @@ tenants (테넌트/고객사)
 고객사에게 **지원하는 측정물질 가이드**입니다. **`tenant_id`가 없는 전 테넌트 공유 테이블**로, `roles`/`privileges`와 같은 범주입니다.
 
 가이드는 "무엇을 쓸 수 있는가"만 정의합니다. 영문명·시험장비·시험방법 같은 **고객사 표기값은 보유하지 않습니다** — 그 값들은 `pollutants`가 직접 관리합니다.
+**측정방법(`method`)도 보유하지 않습니다** — 같은 물질이라도 업체마다 측정방법이 다를 수 있어(이황화메틸: 테드라백·카트리지) 고객사가 채택 시 `pollutants.method`에 정합니다(2026-09-13 이관, `docs/migration/2026-09-13-pollutants-method.sql`).
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
@@ -227,7 +228,6 @@ tenants (테넌트/고객사)
 | code | VARCHAR(30) | NOT NULL | 물질 판별 키(`NOX`, `SOX`, `PB` …). 클라이언트 분기의 기준. **측정분야 안에서만 유일** |
 | field | VARCHAR | NOT NULL, ENUM(String) | `MeasurementField` |
 | name_kr | VARCHAR | NOT NULL | 가이드 표준 한글명. 고객사가 채택할 때 **복사해 가는 초기값** |
-| method | VARCHAR | ENUM(String) | `MeasurementMethod` |
 | phase | VARCHAR | ENUM(String) | `PollutantPhase` |
 | sort_order | INT | | 목록 표시 순서(법령 고시 순서) |
 | active | BOOLEAN | NOT NULL | 폐지 항목은 false. **하드 삭제 금지** — 채택 행·스냅샷이 참조 |
@@ -236,7 +236,7 @@ tenants (테넌트/고객사)
 - **UNIQUE** `uk_pollutant_catalog_field_code` (field, code)
 - **INDEX** `idx_pollutant_catalog_field` (field, sort_order)
 - **수정의 파급 범위가 컬럼마다 다릅니다.**
-  - `field`·`method`·`phase`: 가이드가 단일 진실 소스이며 `pollutants`에는 컬럼이 없습니다. 조회 시 조인으로 전파되므로 **이미 채택한 고객사에도 즉시 반영**됩니다.
+  - `field`·`phase`: 가이드가 단일 진실 소스이며 `pollutants`에는 컬럼이 없습니다. 조회 시 조인으로 전파되므로 **이미 채택한 고객사에도 즉시 반영**됩니다.
   - `name_kr`: 채택 시점에 복사되는 초기값이므로 **앞으로 채택할 고객사에만** 반영됩니다. 이미 채택한 고객사는 자신의 표기명을 보유하므로 바뀌지 않습니다.
 - **code의 유일 범위가 측정분야인 이유**: 같은 물질이라도 대기와 수질은 배출허용기준·공정시험법이 다른 별개 항목입니다. 납·카드뮴·수은 등 중금속은 양쪽 법령에 모두 있으므로, code를 전역 유일로 두면 한쪽만 등록할 수 있습니다. 그래서 `(AIR, PB)`와 `(WATER, PB)`가 공존합니다.
   - 따라서 **code만으로는 물질을 특정할 수 없습니다.** 다른 계층(측정물질 생성, 시설별 측정물질 등록)이 카탈로그를 지목할 때는 `catalog_id`를 씁니다. code는 클라이언트가 화면(측정분야) 안에서 물질을 분기하는 용도입니다.
@@ -252,7 +252,7 @@ tenants (테넌트/고객사)
 고객사가 가이드에서 **채택한** 측정물질입니다. 가이드에 없는 물질은 만들 수 없으므로 `catalog_id`는 **NOT NULL**입니다.
 
 여기 있는 컬럼은 전부 **고객사 소유값**이며, 고객사가 직접 입력·관리합니다.
-`field`·`method`·`phase`는 가이드가 단일 진실 소스이므로 컬럼으로 두지 않고 조회 시 조인으로 채웁니다
+`field`·`phase`는 가이드가 단일 진실 소스이므로 컬럼으로 두지 않고 조회 시 조인으로 채웁니다
 (`PollutantEntityMapper.toDomain`이 `code`와 함께 투영).
 
 | 컬럼 | 타입 | 제약 | 설명 |
@@ -260,6 +260,7 @@ tenants (테넌트/고객사)
 | pollutant_id | BIGINT | PK, AUTO_INCREMENT | |
 | tenant_id | BIGINT | NOT NULL, FK→tenants | `fk_pollutants_tenants`, ON DELETE CASCADE |
 | catalog_id | BIGINT | **NOT NULL**, FK→pollutant_catalog | `fk_pollutants_catalog`. **ON DELETE 없음**(카탈로그는 폐지만 함) |
+| method | VARCHAR | ENUM(String), NULL | `MeasurementMethod`. 고객사가 채택 시 정하는 측정방법 — 같은 항목도 업체마다 다를 수 있어 카탈로그가 아니라 여기서 소유. API(`POST`)는 필수, DB는 백필 호환을 위해 nullable |
 | name_kr | VARCHAR | NOT NULL | 한글명. 채택 시 가이드 값을 복사하며 이후 고객사가 관리 |
 | name_en | VARCHAR | | 영문명. 고객사 입력값(초기 공백) |
 | equipment | VARCHAR | | 시험장비. 고객사 입력값(초기 공백) |
@@ -810,6 +811,9 @@ mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analy
    -- 재기동 후 확인
    -- SELECT COUNT(*) FROM pollutant_catalog;   -- 48
    ```
+   **2026-09-13**: `method`를 `pollutant_catalog`에서 `pollutants`로 이관했습니다(`docs/migration/2026-09-13-pollutants-method.sql`).
+   백필은 채택 시점의 카탈로그 값을 복사한 것이며, 이후 고객사가 `PUT /api/pollutants/{id}`로 고칩니다.
+   카탈로그 `method`가 NULL이던 항목을 채택한 행은 백필 후에도 NULL로 남습니다.
 2. **`contract.contract_amount_unit` ORDINAL 저장**: `@Enumerated(EnumType.STRING)` 부재. enum 순서 변경 시 데이터 깨짐 위험 → STRING 저장 권장.
 3. **Auditing 리스너 범위**: `@EntityListeners(AuditingEntityListener.class)`가 없으면 `created_at`/`modified_at`이 항상 null로 저장됩니다. `stacks`, `users`, `pollutant_catalog`, `pollutants`, `stack_pollutant`, `chat_rooms`, `chat_room_participants`에는 부착돼 있으나, `clients`·`workplaces`·`facilities`·`preventions`·`teams` 등 나머지 테넌트 테이블은 아직 누락 상태입니다.
 4. **tenant_id 주입 경로**: 인증된 사용자의 `tenant_id`(`users.tenant_id`)를 `CustomUserDetails.tenantId`로 로드하여, 컨트롤러가 `@AuthenticationPrincipal`로 읽어 생성 커맨드에 주입합니다.

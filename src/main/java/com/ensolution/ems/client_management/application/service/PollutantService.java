@@ -34,16 +34,20 @@ public class PollutantService {
 		pollutantValidator.requireCatalogNotLinked(catalog.getId(), command.tenantId());
 
 		return pollutantRepository.save(Pollutant.register(
-			command.tenantId(), catalog,
+			command.tenantId(), catalog, command.method(),
 			command.nameKr(), command.nameEn(), command.equipment(), command.testMethod()
 		));
 	}
 
-	/** 고객사 소유값만 수정한다. 측정분야·측정방법·형태는 카탈로그 소유이므로 대상이 아니다. */
+	/**
+	 * 고객사 소유값만 수정한다. 측정분야·형태는 카탈로그 소유이므로 대상이 아니다.
+	 * 측정방법은 고객사 소유값이라 수정할 수 있다.
+	 */
 	public Pollutant updatePollutant(Long id, Long tenantId, UpdatePollutantCommand command) {
 		Pollutant pollutant = pollutantRepository.findById(id, tenantId);
 
 		return pollutantRepository.save(pollutant.update(
+			command.method(),
 			command.nameKr(), command.nameEn(), command.equipment(), command.testMethod()
 		));
 	}
@@ -70,7 +74,7 @@ public class PollutantService {
 	}
 
 	/**
-	 * 단건 조회. 고객사 소유값에 카탈로그 투영값(code·측정분야·측정방법·형태)이 이미 채워진 상태로 돌아오므로
+	 * 단건 조회. 고객사 소유값에 카탈로그 투영값(code·측정분야·형태)이 이미 채워진 상태로 돌아오므로
 	 * 목록과 상세가 같은 값을 보여 준다.
 	 */
 	@Transactional(readOnly = true)

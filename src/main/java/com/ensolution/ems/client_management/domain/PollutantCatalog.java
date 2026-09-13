@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.domain;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,8 +14,11 @@ import lombok.NoArgsConstructor;
  * <p>카탈로그는 "무엇을 쓸 수 있는가"만 정의한다. 표기명(영문)·시험장비·시험방법 같은 <b>고객사 표기값은
  * 소유하지 않는다</b> — 그 값들은 {@link Pollutant}가 직접 관리한다. 여기서 보유하는 {@code nameKr}은
  * 고객사가 물질을 채택할 때 복사해 가는 <b>초기값</b>이며, 이후 카탈로그를 고쳐도 이미 채택한 고객사에는
- * 반영되지 않는다. 반대로 {@code field}·{@code method}·{@code phase}는 카탈로그가 단일 진실 소스이며
+ * 반영되지 않는다. 반대로 {@code field}·{@code phase}는 카탈로그가 단일 진실 소스이며
  * 조회 시 조인으로 전파되므로 법령 개정이 즉시 반영된다.
+ *
+ * <p><b>측정방법은 카탈로그가 갖지 않는다.</b> 같은 물질이라도 업체마다 측정방법이 다를 수 있으므로
+ * (예: 이황화메틸은 테드라백·카트리지 둘 다 쓰인다) 고객사가 채택할 때 {@link Pollutant}에 직접 정한다.
  *
  * <p>{@code code}는 클라이언트가 특정 물질을 판별하는 불변 키다(예: {@code NOX}). 한번 부여하면 변경하지 않는다 —
  * 측정계획 스냅샷에 영구 보관되고 클라이언트 분기 로직이 이 값에 의존한다.
@@ -35,7 +37,6 @@ public class PollutantCatalog {
 	private MeasurementField field;
 	/** 가이드 표준 국문명. 고객사가 채택할 때 복사해 가는 초기값이다. */
 	private String nameKr;
-	private MeasurementMethod method;
 	private PollutantPhase phase;
 	private Integer sortOrder;
 	private boolean active;
@@ -44,7 +45,6 @@ public class PollutantCatalog {
 		String code,
 		MeasurementField field,
 		String nameKr,
-		MeasurementMethod method,
 		PollutantPhase phase,
 		Integer sortOrder
 	) {
@@ -52,7 +52,6 @@ public class PollutantCatalog {
 			.code(code)
 			.field(field)
 			.nameKr(nameKr)
-			.method(method)
 			.phase(phase)
 			.sortOrder(sortOrder)
 			.active(true)
@@ -69,14 +68,12 @@ public class PollutantCatalog {
 	public PollutantCatalog update(
 		MeasurementField field,
 		String nameKr,
-		MeasurementMethod method,
 		PollutantPhase phase,
 		Integer sortOrder
 	) {
 		return this.toBuilder()
 			.field(keep(field, this.field))
 			.nameKr(keep(nameKr, this.nameKr))
-			.method(keep(method, this.method))
 			.phase(keep(phase, this.phase))
 			.sortOrder(keep(sortOrder, this.sortOrder))
 			.build();

@@ -1,7 +1,6 @@
 package com.ensolution.ems.client_management.presentation.pollutant_catalog.request;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 
 /**
@@ -12,7 +11,6 @@ import com.ensolution.ems.global.common.enums.PollutantPhase;
 public record UpdatePollutantCatalogRequest(
 	MeasurementField field,
 	String nameKr,
-	MeasurementMethod method,
 	PollutantPhase phase,
 	Integer sortOrder
 ) {}

@@ -7,8 +7,8 @@ import com.ensolution.ems.global.common.enums.PollutantPhase;
 /**
  * 측정물질 단건.
  *
- * <p>{@code nameKr}·{@code nameEn}·{@code equipment}·{@code testMethod}는 고객사가 관리하는 값이고,
- * {@code code}·{@code field}·{@code method}·{@code phase}는 가이드(카탈로그)에서 채워지는 값이다.
+ * <p>{@code method}·{@code nameKr}·{@code nameEn}·{@code equipment}·{@code testMethod}는 고객사가 관리하는 값이고,
+ * {@code code}·{@code field}·{@code phase}는 가이드(카탈로그)에서 채워지는 값이다.
  */
 public record PollutantResponse(
 	Long id,

@@ -25,8 +25,8 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `Stack` | Workplace 산하의 개별 측정시설/굴뚝. 측정 분야·형태·등급 등 물리적 속성 포함 |
 | `Facility` | Stack 산하의 배출시설. 연료 종류·사용량·투입량 관리 |
 | `Prevention` | Stack 산하의 방지시설. 처리 대상물질명(`targetName`)·제거효율(`removalEfficiency`)을 자체 필드로 보유 |
-| `PollutantCatalog` | 고객사에게 **지원하는 측정물질 가이드**. **이 모듈 유일의 tenant 비종속 애그리거트**(전 tenant 공유). 불변 키 `code`를 보유해 클라이언트가 물질별 분기를 할 수 있게 한다. code는 **측정분야 안에서만 유일**하다(대기 납·수질 납이 모두 `PB`). 표기값(영문명·시험장비·시험방법)은 **소유하지 않는다** |
-| `Pollutant` | 고객사가 가이드에서 **채택한** 물질. `catalogId`는 필수 — 가이드에 없는 물질은 만들 수 없다. `nameKr`·`nameEn`·`equipment`·`testMethod`는 고객사 소유 컬럼이고, `code`·`field`·`method`·`phase`는 카탈로그에서 조인해 채우는 읽기 전용 투영값이다 |
+| `PollutantCatalog` | 고객사에게 **지원하는 측정물질 가이드**. **이 모듈 유일의 tenant 비종속 애그리거트**(전 tenant 공유). 불변 키 `code`를 보유해 클라이언트가 물질별 분기를 할 수 있게 한다. code는 **측정분야 안에서만 유일**하다(대기 납·수질 납이 모두 `PB`). 표기값(영문명·시험장비·시험방법)과 **측정방법은 소유하지 않는다** |
+| `Pollutant` | 고객사가 가이드에서 **채택한** 물질. `catalogId`는 필수 — 가이드에 없는 물질은 만들 수 없다. `method`·`nameKr`·`nameEn`·`equipment`·`testMethod`는 고객사 소유 컬럼이고, `code`·`field`·`phase`는 카탈로그에서 조인해 채우는 읽기 전용 투영값이다. 측정방법은 채택 시 **필수**로 정한다 |
 | `StackPollutant` | Stack과 Pollutant를 연결하는 시설별 측정물질. 측정주기·허용치 관리 |
 | `Team` | tenant 직속 측정 팀. 사수(mentor)·부사수(mentee) user id와 장비 id 4종(입자샘플러·가스샘플러·피토관·노즐) 관리. users는 `auth`, 장비는 `equipment` 모듈 소유이므로 **plain id 컬럼**만 보관(FK 없음) |
 
@@ -49,7 +49,7 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `FacilityService` | `createFacility`, `getFacility`, `getFacilityList(stackId)`, `updateFacility`, `reorderFacilities`, `deleteFacility`. 등록 시 `max(sortOrder)+10`을 부여해 목록 맨 뒤에 붙인다 |
 | `PreventionService` | `createPrevention`, `getPrevention`, `getPreventionList(stackId)`, `updatePrevention`, `reorderPreventions`, `deletePrevention`. 등록 시 `max(sortOrder)+10`을 부여해 목록 맨 뒤에 붙인다 |
 | `PollutantCatalogService` | 운영자용 가이드 CRUD + `deactivateCatalog`/`activateCatalog`, 시드용 멱등 `ensureCatalog`. tenant 범위를 다루지 않는다 |
-| `PollutantService` | `createPollutant`(가이드 항목 채택), `getPollutant`, `getPollutantList(field)`(채택분만), `getPollutantCandidates(field)`(미채택 가이드 항목), `updatePollutant`(고객사 소유값만), `deletePollutant`. 후보 목록만 `PollutantCatalogAssembler`에 위임 |
+| `PollutantService` | `createPollutant`(가이드 항목 채택), `getPollutant`, `getPollutantList(field)`(채택분만), `getPollutantCandidates(field)`(미채택 가이드 항목), `updatePollutant`(고객사 소유값만 — 측정방법 포함), `deletePollutant`. 후보 목록만 `PollutantCatalogAssembler`에 위임 |
 | `StackPollutantService` | `createStackPollutant`, `createStackPollutants`(일괄), `getStackPollutantList(stackId)`, `removeStackPollutant`. **등록 대상은 이미 채택한 `pollutantId`만** — 등록 과정에서 측정물질을 만들지 않는다 |
 | `TeamService` | `createTeam`, `getTeam`, `getTeamList`, `updateTeam`, `deleteTeam`. 사수·부사수 user 검증은 `TeamValidator`에 위임(아래 참고). 장비 id는 검증 없이 저장 |
 
@@ -93,7 +93,7 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
   `StackDetail`로 조립합니다. 트리 조립 책임을 서비스·도메인 모델에서 분리한 `@Component`입니다.
 - `StackService.getStackDetail()`이 이 Assembler에 위임합니다.
 - **카탈로그 속성 투영은 Assembler가 아니라 `PollutantEntityMapper`가 담당합니다.** `toDomain()`이 `code`·`field`·
-  `method`·`phase`를 `catalog.*`에서 매핑하므로, 측정물질을 읽는 모든 경로가 한 곳에서 같은 값을 얻습니다.
+  `phase`를 `catalog.*`에서 매핑하므로, 측정물질을 읽는 모든 경로가 한 곳에서 같은 값을 얻습니다.
   덕분에 도메인에 병합 로직이 없고 조회 경로에서 카탈로그를 다시 읽지 않습니다.
 - `PollutantCatalogAssembler` — 가이드와 이 tenant의 **채택 현황**을 대조해 `assembleCandidates()`로 **아직 채택하지 않은 항목**을
   뽑습니다. 값을 병합하지는 않습니다(표기값은 `Pollutant`가 소유하고, 카탈로그 속성은 위 매퍼가 이미 채웠습니다).
@@ -159,8 +159,12 @@ Outbound Port는 `application/port/out/`에 둡니다. (`domain/port/`가 아님
 고객사에 동일하게 적용되며, 클라이언트가 특정 물질에 반응형 동작을 하려면 전 tenant 공통 키가 필요하기 때문입니다.
 
 **가이드는 "무엇을 쓸 수 있는가"만 정의합니다.** tenant별 표기명·시험장비·공정시험법은 `Pollutant`가 직접 소유하며,
-가이드를 고쳐도 이미 채택한 고객사의 표기는 바뀌지 않습니다. 반대로 `field`·`method`·`phase`는 가이드가 단일 진실
+가이드를 고쳐도 이미 채택한 고객사의 표기는 바뀌지 않습니다. 반대로 `field`·`phase`는 가이드가 단일 진실
 소스라 조인으로 전파되므로 법령 개정이 즉시 반영됩니다.
+
+**측정방법(`method`)은 가이드가 정하지 않습니다.** 같은 항목(예: 이황화메틸)도 업체에 따라 테드라백·카트리지가
+갈리므로 고객사가 채택 시 지정하고(`POST /api/pollutants` 필수) 이후 수정할 수 있습니다. 카탈로그에는 기본값도
+없습니다. 2026-09-13에 카탈로그에서 이관했습니다(`docs/migration/2026-09-13-pollutants-method.sql`).
 
 **고객사는 가이드에 없는 물질을 만들 수 없습니다** (`pollutants.catalog_id` NOT NULL). 따라서 가이드에 항목이 없는
 측정분야는 물질 등록 자체가 불가능합니다 — 현재 시드는 `AIR`뿐이므로 다른 분야를 열려면 카탈로그 확충이 선행되어야 합니다.

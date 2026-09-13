@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * 지원 물질 가이드(카탈로그)와 이 tenant의 채택 현황을 대조한다.
  *
  * <p>값을 병합하지는 않는다 — 고객사 표기값은 {@code pollutants}가 소유하고, 카탈로그 속성
- * ({@code code}·{@code field}·{@code method}·{@code phase})은 {@code PollutantEntityMapper}가
+ * ({@code code}·{@code field}·{@code phase})은 {@code PollutantEntityMapper}가
  * 조인으로 이미 채워 둔다.
  *
  * <p>조회는 소스당 1회로 끝낸다. 항목 수에 비례해 쿼리가 늘지 않도록 in-memory 조인한다.

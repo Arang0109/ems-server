@@ -45,8 +45,8 @@ public class StackSnapshotAssembler {
 	}
 
 	/**
-	 * 측정 시점의 측정항목을 조립한다. 표기명·장비·시험방법은 고객사가 보유한 값을,
-	 * code·측정분야·측정방법·형태는 카탈로그 투영값을 그대로 스냅샷에 남긴다.
+	 * 측정 시점의 측정항목을 조립한다. 표기명·측정방법·장비·시험방법은 고객사가 보유한 값을,
+	 * code·측정분야·형태는 카탈로그 투영값을 그대로 스냅샷에 남긴다.
 	 */
 	private List<StackMeasurementSummary.MeasurementItemInfo> assembleMeasurementItems(Long stackId, Long tenantId) {
 		List<StackPollutantListItem> stackPollutants = stackPollutantRepository.findByStackId(stackId, tenantId);

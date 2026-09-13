@@ -71,7 +71,7 @@ public class PollutantCatalogInitializer implements ApplicationRunner {
 
 			pollutantCatalogService.ensureCatalog(new CreatePollutantCatalogCommand(
 				item.code(), item.field(), item.nameKr(),
-				item.method(), item.phase(), item.sortOrder()
+				item.phase(), item.sortOrder()
 			));
 			created++;
 		}

@@ -100,16 +100,13 @@ class PollutantCatalogAssemblerTest {
 		}
 
 		@Test
-		@DisplayName("측정방법·형태가 그대로 실려 온다")
+		@DisplayName("측정분야·형태가 그대로 실려 온다")
 		void carriesCatalogAttributes() {
-			catalogRepository.given(
-				"NOX", MeasurementField.AIR, "질소산화물", 200, true,
-				MeasurementMethod.FIELD_MEASUREMENT, PollutantPhase.GAS);
+			catalogRepository.given("NOX", MeasurementField.AIR, "질소산화물", 200, true, PollutantPhase.GAS);
 
 			PollutantCatalog candidate = assembler.assembleCandidates(TENANT, null).getFirst();
 
 			assertThat(candidate.getField()).isEqualTo(MeasurementField.AIR);
-			assertThat(candidate.getMethod()).isEqualTo(MeasurementMethod.FIELD_MEASUREMENT);
 			assertThat(candidate.getPhase()).isEqualTo(PollutantPhase.GAS);
 		}
 
@@ -135,16 +132,16 @@ class PollutantCatalogAssemblerTest {
 	class ById {
 
 		@Test
-		@DisplayName("고객사 값과 가이드 투영값이 함께 채워진다")
+		@DisplayName("고객사 값(표기명·측정방법)과 가이드 투영값이 함께 채워진다")
 		void returnsOwnedAndProjectedValues() {
-			PollutantCatalog nox = catalogRepository.given(
-				"NOX", MeasurementField.AIR, "질소산화물", 200, true,
-				MeasurementMethod.FIELD_MEASUREMENT, PollutantPhase.GAS);
-			Long pollutantId = pollutantRepository.given(TENANT, nox, "질소산화물(자사)").getId();
+			PollutantCatalog nox = catalogRepository.given("NOX", MeasurementField.AIR, "질소산화물", 200, true, PollutantPhase.GAS);
+			Long pollutantId = pollutantRepository
+				.given(TENANT, nox, "질소산화물(자사)", MeasurementMethod.TEDLAR_BAG).getId();
 
 			var pollutant = assembler.pollutantById(TENANT).get(pollutantId);
 
 			assertThat(pollutant.getNameKr()).isEqualTo("질소산화물(자사)");
+			assertThat(pollutant.getMethod()).isEqualTo(MeasurementMethod.TEDLAR_BAG);
 			assertThat(pollutant.getCode()).isEqualTo("NOX");
 			assertThat(pollutant.getField()).isEqualTo(MeasurementField.AIR);
 			assertThat(pollutant.getPhase()).isEqualTo(PollutantPhase.GAS);

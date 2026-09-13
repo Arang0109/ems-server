@@ -1,5 +1,6 @@
 package com.ensolution.ems.client_management.infrastructure.entity;
 
+import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.platform.infrastructure.entity.TenantEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -18,9 +19,9 @@ import java.time.LocalDateTime;
  * 고객사가 가이드({@code pollutant_catalog})에서 채택한 측정물질.
  * 가이드에 없는 물질은 만들 수 없으므로 {@code catalog_id}는 NOT NULL이다.
  *
- * <p>여기 있는 컬럼은 전부 <b>고객사 소유값</b>이다. {@code field}·{@code method}·{@code phase}는
+ * <p>여기 있는 컬럼은 전부 <b>고객사 소유값</b>이다. {@code field}·{@code phase}는
  * 카탈로그가 단일 진실 소스이므로 컬럼으로 두지 않고 조회 시 조인으로 채운다
- * ({@code PollutantEntityMapper.toDomain}).
+ * ({@code PollutantEntityMapper.toDomain}). {@code method}는 고객사 소유값이라 컬럼으로 갖는다.
  */
 @Builder(toBuilder = true)
 @NoArgsConstructor
@@ -75,6 +76,13 @@ public class PollutantEntity {
 		foreignKey = @ForeignKey(name = "fk_pollutants_catalog")
 	)
 	private PollutantCatalogEntity catalog;
+
+	/**
+	 * 고객사가 채택 시 정하는 측정방법. 같은 카탈로그 항목이라도 업체마다 다를 수 있어 카탈로그가 아니라
+	 * 여기서 소유한다. API는 필수지만 백필 전 레거시 행 호환을 위해 DB는 nullable이다.
+	 */
+	@Enumerated(EnumType.STRING)
+	private MeasurementMethod method;
 
 	/** 채택 시 카탈로그 국문명을 복사하므로 항상 값이 있다. 이후 수정은 고객사 몫이다. */
 	@Column(name = "name_kr", nullable = false)

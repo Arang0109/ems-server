@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.application.port.out.PollutantReposi
 import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.domain.PollutantCatalog;
 import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 
@@ -25,12 +26,17 @@ public class FakePollutantRepository implements PollutantRepository {
 
 	/**
 	 * 이 tenant가 가이드 항목을 채택한 상태를 만든다.
-	 * 어댑터가 조인으로 채우는 카탈로그 투영값(code·field·method·phase)까지 흉내낸다.
+	 * 어댑터가 조인으로 채우는 카탈로그 투영값(code·field·phase)까지 흉내낸다.
 	 *
 	 * @param nameKr 고객사 표기명. null이면 카탈로그 국문명을 복사한 상태가 된다
 	 */
 	public Pollutant given(Long tenantId, PollutantCatalog catalog, String nameKr) {
-		Pollutant pollutant = Pollutant.register(tenantId, catalog, nameKr, null, null, null)
+		return given(tenantId, catalog, nameKr, null);
+	}
+
+	/** 측정방법은 고객사 채택값이므로 카탈로그가 아니라 인자로 받는다. */
+	public Pollutant given(Long tenantId, PollutantCatalog catalog, String nameKr, MeasurementMethod method) {
+		Pollutant pollutant = Pollutant.register(tenantId, catalog, method, nameKr, null, null, null)
 			.toBuilder()
 			.id(nextId++)
 			.build();
