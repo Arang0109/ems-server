@@ -13,6 +13,7 @@ import com.ensolution.ems.schedule.application.calculation.step.ParticleStep;
 import com.ensolution.ems.schedule.application.calculation.step.PressureStep;
 import com.ensolution.ems.schedule.application.calculation.step.QuantityStep;
 import com.ensolution.ems.schedule.application.calculation.step.SamplingEndTimeStep;
+import com.ensolution.ems.schedule.application.calculation.step.SamplingVolumeStep;
 import com.ensolution.ems.schedule.application.calculation.step.SheetStep;
 import com.ensolution.ems.schedule.application.calculation.StackData;
 import com.ensolution.ems.schedule.domain.sampling.ExhaustGasData;
@@ -48,6 +49,7 @@ class SheetCalculatorTest {
 			new ParticleStep(calc),
 			new IsokineticSampleStep(calc),
 			new SamplingEndTimeStep(),
+			new SamplingVolumeStep(calc),
 			new ApplyResultStep()
 		);
 		return new SheetCalculator(steps);

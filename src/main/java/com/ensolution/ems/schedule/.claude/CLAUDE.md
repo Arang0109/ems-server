@@ -27,7 +27,7 @@ Schedule (MySQL 메타 · 진실의 원천)
         ├── TeamSnapshot                  측정자 + EquipmentSnapshot[]
         ├── SamplingSnapshot              채취시각·현장 담당자 + SamplingSheet[]
         └── SamplingItemSnapshot[]        측정항목 (성적서 항목 순서 = 배열 순서)
-              ├── MeasurementMethodSnapshot 측정방법 사본 (채취 단위·통칭 시료명·표준 채취시간)
+              ├── MeasurementMethodSnapshot 측정방법 사본 (채취 단위·통칭 시료명·표준 채취시간·표준 흡인유량)
               └── AnalysisResult          실험분석정보 (null = 아직 분석 전)
   └── MeasurementRecord (MySQL)          1:N, 완료 시 파생
 ```
@@ -288,13 +288,15 @@ REPORT_COMPLETED · CANCELED ──reopen──► 스냅샷에서 재도출한 
 
 ### 계산 엔진 (`application/calculation/`)
 
-시트 계산 파이프라인. `SheetStep` 11개가 `@Order`로 실행:
+시트 계산 파이프라인. `SheetStep` 12개가 `@Order`로 실행:
 Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flow(6) → Quantity(7) → Particle(8)
-→ IsokineticSample(9) → SamplingEndTime(10) → ApplyResult(999).
+→ IsokineticSample(9) → SamplingEndTime(10) → SamplingVolume(11) → ApplyResult(999).
 입력 DTO `StackData`·`SamplingItemInput`도 여기 있습니다 — Command도 조회 VO도 아니어서 `command/`에 두지 않습니다.
 
-**가스상 시료 행의 파생값 두 가지는 서버가 정합니다.** 흡인유량·가스미터압 자체는 현장에서 사용자가 적는 입력값이고
-측정방법·측정물질·장비에 계획값을 두지 않습니다(2026-09-14에 그 모델링을 검토했다가 접었습니다).
+**가스상 시료 행의 파생값 세 가지는 서버가 정합니다.** 흡인유량·가스미터압의 실측값은 현장에서 사용자가 적는 입력값입니다.
+표준 흡인유량은 측정방법 기본값 + 측정물질 오버라이드로 원장이 갖고(`client_management`), 스냅샷 `items[].suctionFlowRate`
+(유효값)·`items[].method.suctionFlowRate`(방법 기본값)로 복사됩니다 — 프론트가 새 가스상 행의 흡인유량 칸을 이 값으로
+시드하며, 서버는 행에 적힌 값을 덮어쓰지 않습니다. 가스미터압은 계획값을 두지 않습니다.
 
 - `IsokineticSample(9)` — 카탈로그 측정방식이 등속흡인(먼지·중금속·수은, `MeasurementMode.isIsokinetic()`)인 항목이
   담긴 가스상 행(비소화합물 흡수액)은 채취시각·흡인유량(`Vm×1000/총채취시간`)·채취량(`Vm×1000`)을 같은 시트의
@@ -305,6 +307,9 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
   (`SCHEDULE_SHEET_ISOKINETIC_ROW_MISPLACED`), 항목→기록지 매핑은 `MeasurementCategory.particulateSourceOf(mode)`입니다.
 - `SamplingEndTime(10)` — 시작시각만 적힌 정유량 행은 종료시각을 `시작 + 항목의 표준 채취시간`으로 **비어 있을 때만** 채웁니다.
   기본값이지 확정값이 아니라, 적힌 종료시각은 유지되고 시작시각을 고친 뒤의 재계산은 화면 몫입니다.
+- `SamplingVolume(11)` — 시료채취량이 빈 정유량 행은 `채취시간(분) × 흡인유량(L/min)`으로 **비어 있을 때만** 채웁니다(소수 1자리,
+  자정 넘김은 하루를 더함). 적산계로 잰 값이 더 정확할 수 있어 적힌 값은 유지합니다. 시각·유량이 바뀔 때 즉시 다시 계산하는
+  것은 화면(`sample-rules.applySamplePatch`) 몫입니다.
 
 ### 상태 전이의 문서 저장 시점
 
