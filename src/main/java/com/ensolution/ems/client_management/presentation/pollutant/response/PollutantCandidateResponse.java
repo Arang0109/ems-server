@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.presentation.pollutant.response;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.common.enums.MeasurementMode;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 
 /**
@@ -11,6 +12,7 @@ import com.ensolution.ems.global.common.enums.PollutantPhase;
  *
  * @param catalogId 채택할 때 지목하는 id. code는 측정분야 안에서만 유일하므로 id를 쓴다
  * @param code      모든 고객사에서 동일한 불변 키(예: {@code NOX}). 화면 안에서 물질을 분기할 때 쓴다
+ * @param mode      측정방식 분류. 측정방법 후보를 좁히거나 항목을 묶어 보여 줄 때 쓴다
  * @param sortOrder 법령 고시 순서
  */
 public record PollutantCandidateResponse(
@@ -19,5 +21,6 @@ public record PollutantCandidateResponse(
 	MeasurementField field,
 	String nameKr,
 	PollutantPhase phase,
+	MeasurementMode mode,
 	Integer sortOrder
 ) {}

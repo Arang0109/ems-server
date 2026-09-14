@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.presentation.pollutant_catalog.request;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.common.enums.MeasurementMode;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +13,8 @@ import jakarta.validation.constraints.Pattern;
  *             대기 납과 수질 납처럼 분야가 다르면 같은 code를 쓸 수 있다
  * @param nameKr 가이드 표준 국문명. 고객사가 채택할 때 복사해 가는 초기값이다.
  *               영문명·시험장비·시험방법·측정방법은 고객사가 직접 관리하므로 카탈로그에 두지 않는다
+ * @param mode   측정방식 분류(현장측정·먼지·중금속·수은·가스상 채취). 회사와 무관한 전역 사실이라 카탈로그가 갖는다.
+ *               두 방식에 걸치는 항목(비소화합물)은 주 방식 하나를 준다
  */
 public record CreatePollutantCatalogRequest(
 	@NotBlank
@@ -22,5 +25,6 @@ public record CreatePollutantCatalogRequest(
 	@NotBlank
 	String nameKr,
 	PollutantPhase phase,
+	MeasurementMode mode,
 	Integer sortOrder
 ) {}

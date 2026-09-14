@@ -27,6 +27,7 @@ Schedule (MySQL 메타 · 진실의 원천)
         ├── TeamSnapshot                  측정자 + EquipmentSnapshot[]
         ├── SamplingSnapshot              채취시각·현장 담당자 + SamplingSheet[]
         └── SamplingItemSnapshot[]        측정항목 (성적서 항목 순서 = 배열 순서)
+              ├── MeasurementMethodSnapshot 측정방법 사본 (채취 단위·통칭 시료명·표준 채취시간)
               └── AnalysisResult          실험분석정보 (null = 아직 분석 전)
   └── MeasurementRecord (MySQL)          1:N, 완료 시 파생
 ```

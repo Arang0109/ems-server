@@ -41,6 +41,9 @@ public interface ScheduleSnapshotPortMapper {
 
 	List<SamplingItemSnapshot> toItemSnapshots(List<StackMeasurementSummary.MeasurementItemInfo> infos);
 
+	/** 측정방법 사본. {@code toItemSnapshot}의 중첩 매핑이며, null 요약은 null 사본이 된다. */
+	MeasurementMethodSnapshot toMethodSnapshot(StackMeasurementSummary.MeasurementMethodInfo info);
+
 	FacilitySnapshot toFacilitySnapshot(StackMeasurementSummary.FacilityInfo info);
 
 	List<FacilitySnapshot> toFacilitySnapshots(List<StackMeasurementSummary.FacilityInfo> infos);

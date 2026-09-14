@@ -4,6 +4,7 @@ import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.application.port.out.PollutantRepository;
 import com.ensolution.ems.client_management.infrastructure.entity.PollutantEntity;
 import com.ensolution.ems.client_management.infrastructure.mapper.PollutantEntityMapper;
+import com.ensolution.ems.client_management.infrastructure.repository.MeasurementMethodJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.PollutantCatalogJpaRepository;
 import com.ensolution.ems.client_management.infrastructure.repository.PollutantJpaRepository;
 import com.ensolution.ems.platform.infrastructure.repository.TenantJpaRepository;
@@ -23,6 +24,7 @@ public class PollutantRepositoryAdapter implements PollutantRepository {
 
 	private final PollutantJpaRepository jpaPollutantRepository;
 	private final PollutantCatalogJpaRepository jpaPollutantCatalogRepository;
+	private final MeasurementMethodJpaRepository jpaMeasurementMethodRepository;
 	private final TenantJpaRepository jpaTenantRepository;
 	private final PollutantEntityMapper mapper;
 
@@ -35,7 +37,11 @@ public class PollutantRepositoryAdapter implements PollutantRepository {
 		PollutantEntity entity = mapper.toEntity(pollutant).toBuilder()
 			.tenant(jpaTenantRepository.getReferenceById(pollutant.getTenantId()))
 			.catalog(jpaPollutantCatalogRepository.getReferenceById(pollutant.getCatalogId()))
+			.method(pollutant.getMethodId() == null
+				? null
+				: jpaMeasurementMethodRepository.getReferenceById(pollutant.getMethodId()))
 			.build();
+		// 프록시를 붙여 저장한 뒤 다시 투영하므로 생성·수정 응답에도 측정방법 속성이 채워진다.
 		return mapper.toDomain(jpaPollutantRepository.save(entity));
 	}
 
@@ -71,6 +77,12 @@ public class PollutantRepositoryAdapter implements PollutantRepository {
 	@Transactional(readOnly = true)
 	public boolean existsByCatalogId(Long catalogId) {
 		return jpaPollutantRepository.existsByCatalog_CatalogId(catalogId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean existsByMethodId(Long methodId) {
+		return jpaPollutantRepository.existsByMethod_MethodId(methodId);
 	}
 
 	@Override

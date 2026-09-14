@@ -11,12 +11,14 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/** 측정방법은 nullable 참조라 {@code left join fetch}다 — 조인 없이 투영하면 목록마다 N+1이 난다. */
 @Repository
 public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, Long> {
 
 	@Query("""
     select p from PollutantEntity p
     join fetch p.catalog
+    left join fetch p.method
     where p.pollutantId = :pollutantId
       and p.tenant.tenantId = :tenantId
 """)
@@ -29,6 +31,7 @@ public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, L
 	@Query("""
     select p from PollutantEntity p
     join fetch p.catalog c
+    left join fetch p.method
     where p.tenant.tenantId = :tenantId
     order by c.sortOrder asc, p.nameKr asc
 """)
@@ -38,6 +41,7 @@ public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, L
 	@Query("""
     select p from PollutantEntity p
     join fetch p.catalog c
+    left join fetch p.method
     where p.tenant.tenantId = :tenantId
       and c.field = :field
     order by c.sortOrder asc, p.nameKr asc
@@ -50,6 +54,7 @@ public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, L
 	@Query("""
     select p from PollutantEntity p
     join fetch p.catalog c
+    left join fetch p.method
     where p.tenant.tenantId = :tenantId
       and c.catalogId = :catalogId
 """)
@@ -59,6 +64,8 @@ public interface PollutantJpaRepository extends JpaRepository<PollutantEntity, L
 	);
 
 	boolean existsByCatalog_CatalogId(Long catalogId);
+
+	boolean existsByMethod_MethodId(Long methodId);
 
 	@Modifying
 	@Query("""

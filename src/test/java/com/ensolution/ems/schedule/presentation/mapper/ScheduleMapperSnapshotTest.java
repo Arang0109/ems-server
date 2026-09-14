@@ -1,6 +1,8 @@
 package com.ensolution.ems.schedule.presentation.mapper;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.common.enums.MeasurementMode;
+import com.ensolution.ems.global.common.enums.SampleGrouping;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
 import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
@@ -8,6 +10,7 @@ import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import com.ensolution.ems.schedule.domain.snapshot.AnalysisResult;
 import com.ensolution.ems.schedule.domain.snapshot.ClientSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.FacilitySnapshot;
+import com.ensolution.ems.schedule.domain.snapshot.MeasurementMethodSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingItemSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingSnapshot;
 import com.ensolution.ems.schedule.domain.snapshot.ScheduleSnapshot;
@@ -60,7 +63,9 @@ class ScheduleMapperSnapshotTest {
 
 		SamplingItemSnapshot item = new SamplingItemSnapshot(
 			31L, 32L, "NOX", "질소산화물", "NOx",
-			MeasurementField.AIR, null, null, null, null,
+			MeasurementField.AIR,
+			new MeasurementMethodSnapshot(4L, "카트리지", SampleGrouping.MERGED, "VOCs", 30),
+			null, MeasurementMode.DIRECT_READING, null, null, 30,
 			null, new BigDecimal("150"), false,
 			AnalysisResult.empty().applyAnalysisResult(new BigDecimal("12.5"), "ppm", null, null));
 
@@ -84,6 +89,20 @@ class ScheduleMapperSnapshotTest {
 		assertThat(response.client().workplace().stack().facilities())
 			.singleElement()
 			.satisfies(facility -> assertThat(facility.name()).isEqualTo("보일러"));
+	}
+
+	@Test
+	void 측정방법_사본은_중첩_객체로_나간다() {
+		ScheduleSnapshotResponse response = mapper.toSnapshotResponse(snapshot());
+
+		assertThat(response.items()).singleElement().satisfies(item -> {
+			assertThat(item.mode()).isEqualTo(MeasurementMode.DIRECT_READING);
+			assertThat(item.method().methodId()).isEqualTo(4L);
+			assertThat(item.method().name()).isEqualTo("카트리지");
+			assertThat(item.method().sampleGrouping()).isEqualTo(SampleGrouping.MERGED);
+			assertThat(item.method().mergedSampleName()).isEqualTo("VOCs");
+			assertThat(item.method().samplingMinutes()).isEqualTo(30);
+		});
 	}
 
 	@Test

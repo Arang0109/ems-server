@@ -3,7 +3,6 @@ package com.ensolution.ems.schedule.application.service;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
 import com.ensolution.ems.global.common.enums.MeasurementCycle;
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
@@ -83,8 +82,8 @@ class AnalysisResultServiceTest {
 	private static SamplingItemSnapshot item(Long pollutantId, String nameKr, BigDecimal allowance) {
 		return new SamplingItemSnapshot(
 			pollutantId * 10, pollutantId, null, nameKr, null,
-			MeasurementField.AIR, MeasurementMethod.FIELD_MEASUREMENT, PollutantPhase.GAS,
-			null, null, MeasurementCycle.MONTHLY, allowance, false, null);
+			MeasurementField.AIR, null, PollutantPhase.GAS, null,
+			null, null, null, MeasurementCycle.MONTHLY, allowance, false, null);
 	}
 
 	private AnalysisResult analysisOf(Long pollutantId) {

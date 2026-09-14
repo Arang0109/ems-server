@@ -2,8 +2,8 @@ package com.ensolution.ems.schedule.domain.snapshot;
 
 import com.ensolution.ems.global.common.enums.MeasurementCycle;
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
+import com.ensolution.ems.global.common.enums.SampleGrouping;
 import com.ensolution.ems.global.exception.CustomException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,11 +24,33 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class SamplingItemSnapshotTest {
 
+	private static final MeasurementMethodSnapshot CARTRIDGE =
+		new MeasurementMethodSnapshot(4L, "카트리지", SampleGrouping.MERGED, "VOCs", 30);
+
 	private static SamplingItemSnapshot item(Long pollutantId, String nameKr, BigDecimal allowance) {
 		return new SamplingItemSnapshot(
 			pollutantId * 100, pollutantId, "CODE-" + pollutantId, nameKr, nameKr,
-			MeasurementField.AIR, MeasurementMethod.FIELD_MEASUREMENT, PollutantPhase.GAS,
-			"가스분석기", "ES 01310", MeasurementCycle.MONTHLY, allowance, false, null);
+			MeasurementField.AIR, CARTRIDGE, PollutantPhase.GAS, null,
+			"가스분석기", "ES 01310", 30, MeasurementCycle.MONTHLY, allowance, false, null);
+	}
+
+	@Nested
+	@DisplayName("측정방법 사본")
+	class MethodSnapshot {
+
+		@Test
+		@DisplayName("조건 정정과 분석 결과 교체는 측정방법 사본을 그대로 옮긴다 — 원장이 아니라 이 회차의 값이다")
+		void 조건_정정과_분석_결과_교체는_측정방법_사본을_그대로_옮긴다() {
+			SamplingItemSnapshot original = item(1L, "포름알데히드", new BigDecimal("10"));
+
+			SamplingItemSnapshot corrected = original.applyCondition(MeasurementCycle.SEMI_ANNUAL, null, true);
+			SamplingItemSnapshot analyzed = original.withAnalysis(AnalysisResult.empty());
+
+			assertThat(corrected.method()).isEqualTo(CARTRIDGE);
+			assertThat(analyzed.method()).isEqualTo(CARTRIDGE);
+			assertThat(corrected.method().mergedSampleName()).isEqualTo("VOCs");
+			assertThat(corrected.method().samplingMinutes()).isEqualTo(30);
+		}
 	}
 
 	@Nested

@@ -2,7 +2,7 @@ package com.ensolution.ems.schedule.domain.snapshot;
 
 import com.ensolution.ems.global.common.enums.MeasurementCycle;
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
+import com.ensolution.ems.global.common.enums.MeasurementMode;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 
 import java.math.BigDecimal;
@@ -16,6 +16,13 @@ import java.math.BigDecimal;
  *
  * @param code     전역 측정물질 카탈로그 키(예: {@code NOX}). 카탈로그 도입 이전에 생성된 스냅샷과
  *                 고객사 자체 물질은 null이므로, 소비처는 null을 허용하고 {@code nameKr}로 폴백해야 한다
+ * @param mode     측정방식 분류(현장측정·먼지·중금속·수은·가스상 채취) — 카탈로그 전역 사실의 사본.
+ *                 회사 측정방법과 무관하게 항목을 묶는 축이며 2026-09-14 이전 문서는 null
+ * @param method   측정 시점 측정방법 사본(채취 단위·통칭 시료명·방법 기본 채취시간). 원장에서 복사하며,
+ *                 측정방법이 정해지지 않은 레거시 항목은 null이다
+ * @param samplingMinutes 이 항목에 적용되는 표준 채취시간(분). 항목별 오버라이드가 반영된 유효값이라
+ *                 {@code method.samplingMinutes}(방법 기본값)와 다를 수 있다. 계획 기본값이며 실측 시각은
+ *                 {@link AnalysisResult}가 갖는다. 2026-09-14 이전 문서는 null
  * @param analysis 실험실 분석 결과. <b>null이면 아직 분석 전</b>이며 정상 상태다 —
  *                 {@link AnalysisResult#empty()}(입력했다가 전부 지움)와 뜻이 다르므로 구분해 다룬다
  */
@@ -26,10 +33,12 @@ public record SamplingItemSnapshot(
 	String nameKr,
 	String nameEn,
 	MeasurementField field,
-	MeasurementMethod method,
+	MeasurementMethodSnapshot method,
 	PollutantPhase phase,
+	MeasurementMode mode,
 	String equipment,
 	String testMethod,
+	Integer samplingMinutes,
 	MeasurementCycle cycle,
 	BigDecimal allowance,
 	boolean oxygenApplicable,
@@ -57,7 +66,7 @@ public record SamplingItemSnapshot(
 	) {
 		return new SamplingItemSnapshot(
 			stackPollutantId, pollutantId, code, nameKr, nameEn,
-			field, method, phase, equipment, testMethod,
+			field, method, phase, mode, equipment, testMethod, samplingMinutes,
 			SnapshotMerge.keep(newCycle, cycle), newAllowance, newOxygenApplicable, analysis);
 	}
 
@@ -69,7 +78,7 @@ public record SamplingItemSnapshot(
 	public SamplingItemSnapshot withAnalysis(AnalysisResult newAnalysis) {
 		return new SamplingItemSnapshot(
 			stackPollutantId, pollutantId, code, nameKr, nameEn,
-			field, method, phase, equipment, testMethod,
+			field, method, phase, mode, equipment, testMethod, samplingMinutes,
 			cycle, allowance, oxygenApplicable, newAnalysis);
 	}
 

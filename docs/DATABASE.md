@@ -15,7 +15,8 @@ tenants (테넌트/고객사)
 │       └── stacks     (측정시설/굴뚝)     tenant_id, workplace_id
 │           ├── facilities        (배출시설)      tenant_id, stack_id
 │           └── preventions       (방지시설)      tenant_id, stack_id
-├── pollutants         (고객사 채택 물질)  tenant_id, catalog_id
+├── measurement_methods (측정방법)         tenant_id
+├── pollutants         (고객사 채택 물질)  tenant_id, catalog_id, method_id
 ├── stack_pollutant    (시설별 측정물질)   tenant_id, stack_id, pollutant_id
 ├── contract           (계약)              tenant_id, workplace_id
 ├── schedules          (측정계획 메타)     tenant_id, stack_id, team_id
@@ -32,7 +33,7 @@ tenants (테넌트/고객사)
 - **`pollutant_catalog`** — 고객사에게 지원하는 측정물질 가이드. 모든 테넌트가 같은 `code`로 물질을 식별할 수 있게 합니다. 표기명·시험장비·시험방법은 가이드가 아니라 `pollutants`(고객사)가 소유합니다.
 
 **`tenant_id` 연관 방식 두 가지**
-- **JPA 연관(@ManyToOne → TenantEntity)**: `clients`, `workplaces`, `stacks`, `facilities`, `preventions`, `pollutants`, `stack_pollutant` — 실제 FK(`fk_*_tenants`) + `ON DELETE CASCADE`.
+- **JPA 연관(@ManyToOne → TenantEntity)**: `clients`, `workplaces`, `stacks`, `facilities`, `preventions`, `measurement_methods`, `pollutants`, `stack_pollutant` — 실제 FK(`fk_*_tenants`) + `ON DELETE CASCADE`.
 - **plain 컬럼(Long, FK 제약 없음)**: `users`, `contract`, `chat_rooms`, `chat_room_participants` — `tenant_id`를 값으로만 보유(모듈 경계상 TenantEntity에 의존하지 않음). 애플리케이션이 정합성 보장.
 
 ---
@@ -220,7 +221,7 @@ tenants (테넌트/고객사)
 고객사에게 **지원하는 측정물질 가이드**입니다. **`tenant_id`가 없는 전 테넌트 공유 테이블**로, `roles`/`privileges`와 같은 범주입니다.
 
 가이드는 "무엇을 쓸 수 있는가"만 정의합니다. 영문명·시험장비·시험방법 같은 **고객사 표기값은 보유하지 않습니다** — 그 값들은 `pollutants`가 직접 관리합니다.
-**측정방법(`method`)도 보유하지 않습니다** — 같은 물질이라도 업체마다 측정방법이 다를 수 있어(이황화메틸: 테드라백·카트리지) 고객사가 채택 시 `pollutants.method`에 정합니다(2026-09-13 이관, `docs/migration/2026-09-13-pollutants-method.sql`).
+**측정방법도 보유하지 않습니다** — 같은 물질이라도 업체마다 측정방법이 다를 수 있어(이황화메틸: 테드라백·카트리지) 고객사가 채택 시 `pollutants.method_id`로 자기 `measurement_methods` 행을 가리킵니다(2026-09-13 카탈로그에서 이관, 2026-09-14 테넌트 소유 테이블로 승격).
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
@@ -229,6 +230,7 @@ tenants (테넌트/고객사)
 | field | VARCHAR | NOT NULL, ENUM(String) | `MeasurementField` |
 | name_kr | VARCHAR | NOT NULL | 가이드 표준 한글명. 고객사가 채택할 때 **복사해 가는 초기값** |
 | phase | VARCHAR | ENUM(String) | `PollutantPhase` |
+| mode | VARCHAR | ENUM(String), NULL | `MeasurementMode` **측정방식 분류**(현장측정·먼지·중금속·수은·가스상 채취). 회사 측정방법과 무관한 전역 사실이라 가이드가 갖는다 — 회사가 측정방법을 현장측정(가스분석기)·현장측정(THC)로 쪼개도 이 축으로 다시 묶인다. 가스상 채취의 매체(흡수액·흡착관…)는 회사마다 갈려 여기 두지 않는다. 비소화합물처럼 두 방식에 걸치면 주 방식 하나. 도입(2026-09-14) 이전 행 호환을 위해 nullable, 백필은 `docs/migration/2026-09-14-measurement-methods.sql` |
 | sort_order | INT | | 목록 표시 순서(법령 고시 순서) |
 | active | BOOLEAN | NOT NULL | 폐지 항목은 false. **하드 삭제 금지** — 채택 행·스냅샷이 참조 |
 | created_at / modified_at | DATETIME | | |
@@ -236,7 +238,7 @@ tenants (테넌트/고객사)
 - **UNIQUE** `uk_pollutant_catalog_field_code` (field, code)
 - **INDEX** `idx_pollutant_catalog_field` (field, sort_order)
 - **수정의 파급 범위가 컬럼마다 다릅니다.**
-  - `field`·`phase`: 가이드가 단일 진실 소스이며 `pollutants`에는 컬럼이 없습니다. 조회 시 조인으로 전파되므로 **이미 채택한 고객사에도 즉시 반영**됩니다.
+  - `field`·`phase`·`mode`: 가이드가 단일 진실 소스이며 `pollutants`에는 컬럼이 없습니다. 조회 시 조인으로 전파되므로 **이미 채택한 고객사에도 즉시 반영**됩니다.
   - `name_kr`: 채택 시점에 복사되는 초기값이므로 **앞으로 채택할 고객사에만** 반영됩니다. 이미 채택한 고객사는 자신의 표기명을 보유하므로 바뀌지 않습니다.
 - **code의 유일 범위가 측정분야인 이유**: 같은 물질이라도 대기와 수질은 배출허용기준·공정시험법이 다른 별개 항목입니다. 납·카드뮴·수은 등 중금속은 양쪽 법령에 모두 있으므로, code를 전역 유일로 두면 한쪽만 등록할 수 있습니다. 그래서 `(AIR, PB)`와 `(WATER, PB)`가 공존합니다.
   - 따라서 **code만으로는 물질을 특정할 수 없습니다.** 다른 계층(측정물질 생성, 시설별 측정물질 등록)이 카탈로그를 지목할 때는 `catalog_id`를 씁니다. code는 클라이언트가 화면(측정분야) 안에서 물질을 분기하는 용도입니다.
@@ -247,20 +249,57 @@ tenants (테넌트/고객사)
 
 ---
 
+## measurement_methods — 측정방법 (테넌트 소유)
+
+고객사가 측정물질에 쓰는 **측정방법**(채취 매체·방식)입니다. 한때 전역 enum(`MeasurementMethod`)이었으나
+2026-09-14에 테넌트 소유 테이블로 승격했습니다(`docs/migration/2026-09-14-measurement-methods.sql`).
+
+**왜 테이블인가.** 카트리지·흡착관 항목은 한 번의 채취로 그 방법의 항목 전부를 함께 잡습니다. 표준 채취시간과
+통칭 시료명은 물질이 아니라 **측정방법에 종속되는 값**이라, `pollutants`에 두면 카트리지 항목마다 같은 값을 반복
+저장하고 바꿀 때마다 전부 동기화해야 합니다(이행 종속). 값을 여기 두고 `pollutants`는 FK로 참조만 하면
+측정방법을 한 번 고치는 것으로 그 방법을 쓰는 항목 전부에 반영됩니다 — 동기화 경로가 없는 것이 요점입니다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| method_id | BIGINT | PK, AUTO_INCREMENT | |
+| tenant_id | BIGINT | NOT NULL, FK→tenants | `fk_measurement_methods_tenants`, ON DELETE CASCADE |
+| name | VARCHAR | NOT NULL | 표시명("카트리지") |
+| sample_grouping | VARCHAR | NOT NULL, ENUM(String) | `SampleGrouping`. **채취 단위** — `NONE`(가스상 시료 행 없음: 먼지·중금속·수은·현장측정) / `PER_ITEM`(항목별 한 병: 흡수액·테드라백) / `MERGED`(한 번의 채취로 항목 전부, 한 병: 흡착관·카트리지) |
+| merged_sample_name | VARCHAR | NULL | `MERGED`일 때 기록지의 통칭 시료명(`VOCs`·`VOCs-T`). 불변식 `merged_sample_name IS NOT NULL ⇔ sample_grouping = MERGED`는 도메인이 지킵니다(`MEASUREMENT_METHOD_GROUPING_MISMATCH`) |
+| sampling_minutes | INT | NULL | **표준(계획) 채취시간, 분 — 이 방법의 기본값.** 항목마다 따로 잡는 방법(`PER_ITEM`)은 `pollutants.sampling_minutes`가 항목별로 덮어쓸 수 있다. 회차별 실측 시각은 `schedule_documents`가 따로 갖습니다 |
+| sort_order | INT | | 등록 시 `max+10`. 목록 표시 순서 |
+| created_at / modified_at | DATETIME | | |
+
+- **UNIQUE** `uk_measurement_methods_tenant_name` (tenant_id, name)
+- **INDEX** `idx_measurement_methods_tenant_id` (tenant_id)
+- **기본 8종**(`MeasurementMethodPreset`)은 `POST /api/measurement-methods/defaults`가 **이름 기준으로 멱등하게** 채웁니다.
+  같은 이름이 있으면 손대지 않으므로 고객사가 고친 값은 되돌아가지 않습니다. 테넌트 발급 시 자동으로 채우지 않습니다 —
+  `platform`이 `client_management`를 참조하지 않기 때문이며, 새 고객사가 첫 화면에서 명시적으로 채웁니다.
+  마이그레이션은 기존 테넌트 전체에 같은 8종을 넣고 구 `pollutants.method`를 그 이름으로 매핑해 백필합니다.
+- **삭제는 측정물질이 참조 중이면 막습니다**(`MEASUREMENT_METHOD_IN_USE`). 그래서 `pollutants.method_id`에 `ON DELETE`가 없습니다.
+- 수정 시 `merged_sample_name`·`sampling_minutes`는 **전체 채택**(null = 비움)입니다 — "없음"이 유효한 값이라 null을
+  "유지"로 읽으면 비울 방법이 없어집니다(`stack_pollutant.allowance`와 같은 판단).
+- `schedule_documents.items[].method`는 이 행의 **사본**입니다(`{methodId, name, sampleGrouping, mergedSampleName, samplingMinutes}`).
+  측정방법을 고쳐도 과거 회차의 기록지는 바뀌지 않습니다. 항목에 실제 적용된 채취시간(오버라이드 반영)은
+  `items[].samplingMinutes`에 따로 복사됩니다 — `method.samplingMinutes`는 방법 기본값입니다.
+
+---
+
 ## pollutants — 측정물질 (고객사 채택 물질)
 
 고객사가 가이드에서 **채택한** 측정물질입니다. 가이드에 없는 물질은 만들 수 없으므로 `catalog_id`는 **NOT NULL**입니다.
 
 여기 있는 컬럼은 전부 **고객사 소유값**이며, 고객사가 직접 입력·관리합니다.
-`field`·`phase`는 가이드가 단일 진실 소스이므로 컬럼으로 두지 않고 조회 시 조인으로 채웁니다
-(`PollutantEntityMapper.toDomain`이 `code`와 함께 투영).
+`field`·`phase`·`mode`는 가이드가, 이름·채취 단위·통칭 시료명·표준 채취시간은 측정방법이 단일 진실 소스이므로
+컬럼으로 두지 않고 조회 시 조인으로 채웁니다(`PollutantEntityMapper.toDomain`이 `code`와 함께 투영).
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | pollutant_id | BIGINT | PK, AUTO_INCREMENT | |
 | tenant_id | BIGINT | NOT NULL, FK→tenants | `fk_pollutants_tenants`, ON DELETE CASCADE |
 | catalog_id | BIGINT | **NOT NULL**, FK→pollutant_catalog | `fk_pollutants_catalog`. **ON DELETE 없음**(카탈로그는 폐지만 함) |
-| method | VARCHAR | ENUM(String), NULL | `MeasurementMethod`. 고객사가 채택 시 정하는 측정방법 — 같은 항목도 업체마다 다를 수 있어 카탈로그가 아니라 여기서 소유. API(`POST`)는 필수, DB는 백필 호환을 위해 nullable |
+| method_id | BIGINT | NULL, FK→measurement_methods | `fk_pollutants_measurement_methods`. **ON DELETE 없음**(삭제는 Validator가 막음). 고객사가 채택 시 정하는 측정방법 — 같은 항목도 업체마다 다를 수 있어 카탈로그가 아니라 여기서 정함. API(`POST`)는 필수, DB는 백필되지 못한 레거시 행 호환을 위해 nullable |
+| sampling_minutes | INT | NULL | **항목별 채취시간 오버라이드(분).** 흡수액처럼 항목마다 따로 잡는 방법은 물질마다 흡인 시간이 다를 수 있어 방법 기본값을 덮어쓴다. `MERGED` 방법의 항목에는 둘 수 없다(`POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED`). 유효값 = MERGED면 방법 값, 아니면 `sampling_minutes ?? measurement_methods.sampling_minutes`(`Pollutant.getEffectiveSamplingMinutes`). `PUT`에서 이 컬럼만 **전체 채택**(null = 방법 기본값으로 되돌림). 2026-09-14 추가 — 컬럼 추가라 ddl-auto가 반영하며 스크립트가 없다 |
 | name_kr | VARCHAR | NOT NULL | 한글명. 채택 시 가이드 값을 복사하며 이후 고객사가 관리 |
 | name_en | VARCHAR | | 영문명. 고객사 입력값(초기 공백) |
 | equipment | VARCHAR | | 시험장비. 고객사 입력값(초기 공백) |
@@ -784,7 +823,8 @@ mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analy
 | `SubscriptionPlan` | BASIC, PRO, ENTERPRISE, INTERNAL |
 | `Grade` | TYPE_1 ~ TYPE_5 |
 | `MeasurementField` | AIR(대기), WATER(수질), NOISE_VIBRATION(소음진동), ODOR(악취) |
-| `MeasurementMethod` | DUST, HEAVY_METAL, MERCURY, FIELD_MEASUREMENT, ABSORPTION_SOLUTION, ADSORPTION_TUBE, TEDLAR_BAG, CARTRIDGE |
+| `MeasurementMode` | DIRECT_READING(현장측정), DUST(먼지), HEAVY_METAL(중금속), MERCURY(수은), GAS_SAMPLING(가스상 채취) — `pollutant_catalog.mode`. 전역 **측정방식 분류**. 고객사 측정방법(`measurement_methods`)과 축이 다르다 |
+| `SampleGrouping` | NONE(가스상 표 없음 — 입자상 시트에서 잡거나 직독식이라 가스상 시료 행이 없음), PER_ITEM(항목별 채취), MERGED(통칭 채취) — `measurement_methods.sample_grouping`. 구 `MeasurementMethod` enum은 2026-09-14에 `measurement_methods` 테이블로 승격되며 제거됐습니다 |
 | `PollutantPhase` | PARTICLE(입자상), GAS(가스상) |
 | `MeasurementCycle` | MONTHLY, TWICE_MONTHLY, BIMONTHLY, QUARTERLY, SEMI_ANNUAL, ANNUAL |
 | `Shape` | CIRCULAR, RECTANGULAR |
@@ -814,7 +854,14 @@ mongosh "mongodb://<host>:27017/ems" --file docs/migration/2026-08-29-drop-analy
    **2026-09-13**: `method`를 `pollutant_catalog`에서 `pollutants`로 이관했습니다(`docs/migration/2026-09-13-pollutants-method.sql`).
    백필은 채택 시점의 카탈로그 값을 복사한 것이며, 이후 고객사가 `PUT /api/pollutants/{id}`로 고칩니다.
    카탈로그 `method`가 NULL이던 항목을 채택한 행은 백필 후에도 NULL로 남습니다.
+   **2026-09-14**: 측정방법을 enum에서 테넌트 소유 테이블 `measurement_methods`로 승격하고 `pollutants.method`(enum 문자열)를
+   `method_id` FK로 바꿨습니다(`docs/migration/2026-09-14-measurement-methods.sql`). 같은 배포에서 MongoDB의
+   `schedule_documents.items[].method`도 문자열에서 사본 객체로 바꿉니다(`docs/migration/2026-09-14-measurement-methods.js`) —
+   **신버전 배포 전에 실행하지 않으면 기존 문서를 역직렬화하지 못합니다.**
+   같은 스크립트가 `pollutants.sampling_minutes`(항목별 채취시간 오버라이드)·`pollutant_catalog.mode`(측정방식 분류,
+   기존 48건 백필)·비소화합물 `phase` 정정(GAS → PARTICLE)까지 한 묶음으로 처리합니다. 배포 순서는
+   **구버전 중지 → SQL → Mongo JS → 신버전 → ems-web**입니다.
 2. **`contract.contract_amount_unit` ORDINAL 저장**: `@Enumerated(EnumType.STRING)` 부재. enum 순서 변경 시 데이터 깨짐 위험 → STRING 저장 권장.
-3. **Auditing 리스너 범위**: `@EntityListeners(AuditingEntityListener.class)`가 없으면 `created_at`/`modified_at`이 항상 null로 저장됩니다. `stacks`, `users`, `pollutant_catalog`, `pollutants`, `stack_pollutant`, `chat_rooms`, `chat_room_participants`에는 부착돼 있으나, `clients`·`workplaces`·`facilities`·`preventions`·`teams` 등 나머지 테넌트 테이블은 아직 누락 상태입니다.
+3. **Auditing 리스너 범위**: `@EntityListeners(AuditingEntityListener.class)`가 없으면 `created_at`/`modified_at`이 항상 null로 저장됩니다. `stacks`, `users`, `pollutant_catalog`, `measurement_methods`, `pollutants`, `stack_pollutant`, `chat_rooms`, `chat_room_participants`에는 부착돼 있으나, `clients`·`workplaces`·`facilities`·`preventions`·`teams` 등 나머지 테넌트 테이블은 아직 누락 상태입니다.
 4. **tenant_id 주입 경로**: 인증된 사용자의 `tenant_id`(`users.tenant_id`)를 `CustomUserDetails.tenantId`로 로드하여, 컨트롤러가 `@AuthenticationPrincipal`로 읽어 생성 커맨드에 주입합니다.
 5. **`target_substances` 테이블 수동 삭제 필요**: 측정대상물질은 `preventions.target_name`/`removal_efficiency`로 통합되어 엔티티가 제거됐지만, `ddl-auto: update`는 테이블/컬럼 삭제를 반영하지 않습니다. 기존 DB에 남아 있는 `target_substances` 테이블은 `DROP TABLE target_substances;`로 직접 정리해야 합니다.

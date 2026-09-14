@@ -112,7 +112,7 @@
 
 | enum | 공유 모듈 |
 |---|---|
-| `Grade`·`MeasurementCycle`·`MeasurementField`·`MeasurementMethod`·`Orientation`·`PollutantPhase`·`Shape` | client_management + schedule |
+| `Grade`·`MeasurementCycle`·`MeasurementField`·`MeasurementMode`·`Orientation`·`PollutantPhase`·`SampleGrouping`·`Shape` | client_management + schedule |
 | `DocumentCategory` | admin + storage |
 
 #### 이벤트 패키지

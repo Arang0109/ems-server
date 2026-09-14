@@ -1,6 +1,5 @@
 package com.ensolution.ems.client_management.infrastructure.entity;
 
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.platform.infrastructure.entity.TenantEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -21,7 +20,8 @@ import java.time.LocalDateTime;
  *
  * <p>여기 있는 컬럼은 전부 <b>고객사 소유값</b>이다. {@code field}·{@code phase}는
  * 카탈로그가 단일 진실 소스이므로 컬럼으로 두지 않고 조회 시 조인으로 채운다
- * ({@code PollutantEntityMapper.toDomain}). {@code method}는 고객사 소유값이라 컬럼으로 갖는다.
+ * ({@code PollutantEntityMapper.toDomain}). 측정방법은 {@code method_id}로 참조하며, 채취 단위·채취시간
+ * 같은 측정방법 속성도 같은 이유로 컬럼이 아니라 조인 투영이다.
  */
 @Builder(toBuilder = true)
 @NoArgsConstructor
@@ -79,10 +79,22 @@ public class PollutantEntity {
 
 	/**
 	 * 고객사가 채택 시 정하는 측정방법. 같은 카탈로그 항목이라도 업체마다 다를 수 있어 카탈로그가 아니라
-	 * 여기서 소유한다. API는 필수지만 백필 전 레거시 행 호환을 위해 DB는 nullable이다.
+	 * 여기서 정한다. API는 필수지만 백필되지 못한 레거시 행 호환을 위해 DB는 nullable이다.
+	 * 삭제는 {@code MeasurementMethodValidator.requireNotReferenced}가 막으므로 {@code @OnDelete}를 두지 않는다.
 	 */
-	@Enumerated(EnumType.STRING)
-	private MeasurementMethod method;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(
+		name = "method_id",
+		foreignKey = @ForeignKey(name = "fk_pollutants_measurement_methods")
+	)
+	private MeasurementMethodEntity method;
+
+	/**
+	 * 항목별 채취시간 오버라이드(분). null이면 측정방법의 기본값을 따른다.
+	 * 흡수액처럼 항목마다 따로 잡는 방법은 물질마다 흡인 시간이 다를 수 있어 둔다. 통칭 채취(MERGED) 항목은 서비스가 막는다.
+	 */
+	@Column(name = "sampling_minutes")
+	private Integer samplingMinutes;
 
 	/** 채택 시 카탈로그 국문명을 복사하므로 항상 값이 있다. 이후 수정은 고객사 몫이다. */
 	@Column(name = "name_kr", nullable = false)

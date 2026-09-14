@@ -5,7 +5,6 @@ import com.ensolution.ems.client_management.application.FakePollutantRepository;
 import com.ensolution.ems.client_management.application.service.assembler.PollutantCatalogAssembler;
 import com.ensolution.ems.client_management.domain.PollutantCatalog;
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -136,12 +135,12 @@ class PollutantCatalogAssemblerTest {
 		void returnsOwnedAndProjectedValues() {
 			PollutantCatalog nox = catalogRepository.given("NOX", MeasurementField.AIR, "질소산화물", 200, true, PollutantPhase.GAS);
 			Long pollutantId = pollutantRepository
-				.given(TENANT, nox, "질소산화물(자사)", MeasurementMethod.TEDLAR_BAG).getId();
+				.given(TENANT, nox, "질소산화물(자사)", 7L).getId();
 
 			var pollutant = assembler.pollutantById(TENANT).get(pollutantId);
 
 			assertThat(pollutant.getNameKr()).isEqualTo("질소산화물(자사)");
-			assertThat(pollutant.getMethod()).isEqualTo(MeasurementMethod.TEDLAR_BAG);
+			assertThat(pollutant.getMethodId()).isEqualTo(7L);
 			assertThat(pollutant.getCode()).isEqualTo("NOX");
 			assertThat(pollutant.getField()).isEqualTo(MeasurementField.AIR);
 			assertThat(pollutant.getPhase()).isEqualTo(PollutantPhase.GAS);

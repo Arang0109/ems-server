@@ -20,5 +20,8 @@ public interface PollutantRepository {
 	/** 카탈로그 삭제 가능 여부 판단용(tenant 무관 전역 확인). */
 	boolean existsByCatalogId(Long catalogId);
 
+	/** 측정방법 삭제 가능 여부 판단용. methodId가 이미 tenant 종속이라 tenant 파라미터가 없다. */
+	boolean existsByMethodId(Long methodId);
+
 	void deleteById(Long id, Long tenantId);
 }

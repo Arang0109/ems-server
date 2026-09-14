@@ -38,7 +38,10 @@ public class PollutantController {
 			채택 가능한 항목은 `GET /api/pollutants/candidates`로 조회합니다.
 			`nameKr`을 비워 두면 가이드의 표준 국문명이 복사되며, 이후 표기명·시험장비·시험방법은 고객사가 관리합니다.
 			측정분야·형태는 가이드가 정하므로 요청에 담지 않습니다.
-			`method`(측정방법)는 같은 물질이라도 업체마다 다를 수 있으므로 고객사가 채택 시 **필수로** 지정합니다.
+			`methodId`(측정방법)는 같은 물질이라도 업체마다 다를 수 있으므로 고객사가 채택 시 **필수로** 지정합니다.
+			측정방법은 `GET /api/measurement-methods`에서 고르며, 채취 단위·표준 채취시간은 측정방법이 갖습니다.
+			흡수액처럼 항목마다 따로 잡는 방법은 물질마다 시간이 다를 수 있어 `samplingMinutes`로 항목별 채취시간을
+			덮어쓸 수 있습니다(한 병으로 함께 채취하는 방법의 항목에는 지정 불가).
 			""")
 	@PostMapping
 	public ResponseEntity<ApiResponse<PollutantResponse>> createPollutant(
@@ -87,8 +90,8 @@ public class PollutantController {
 
 	@Operation(
 		summary = "측정물질 상세 조회",
-		description = "고객사가 관리하는 값(표기명·측정방법·시험장비·시험방법)에 가이드 값(code·측정분야·형태)을 "
-			+ "채워 반환합니다. 목록 API와 같은 값입니다.")
+		description = "고객사가 관리하는 값(표기명·측정방법·시험장비·시험방법)에 가이드 값(code·측정분야·형태)과 "
+			+ "측정방법 값(채취 단위·통칭 시료명·표준 채취시간)을 채워 반환합니다. 목록 API와 같은 값입니다.")
 	@GetMapping("/{pollutantId}")
 	public ResponseEntity<ApiResponse<PollutantResponse>> getPollutant(
 		@PathVariable Long pollutantId,
@@ -101,7 +104,8 @@ public class PollutantController {
 		summary = "측정물질 수정",
 		description = "전달하지 않은 필드는 기존 값을 유지합니다. "
 			+ "어떤 가이드 항목인지와 측정분야·형태는 수정 대상이 아닙니다. "
-			+ "`method`(측정방법)는 수정할 수 있으며 전달하지 않으면 기존 값이 유지됩니다.")
+			+ "`methodId`(측정방법)는 수정할 수 있으며 전달하지 않으면 기존 값이 유지됩니다. "
+			+ "`samplingMinutes`(항목별 채취시간)만 보낸 값이 그대로 저장되며, 비우면 측정방법 기본값으로 되돌아갑니다.")
 	@PutMapping("/{pollutantId}")
 	public ResponseEntity<ApiResponse<PollutantResponse>> updatePollutant(
 		@PathVariable Long pollutantId,

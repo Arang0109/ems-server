@@ -4,7 +4,6 @@ import com.ensolution.ems.client_management.application.port.out.PollutantReposi
 import com.ensolution.ems.client_management.domain.Pollutant;
 import com.ensolution.ems.client_management.domain.PollutantCatalog;
 import com.ensolution.ems.global.common.enums.MeasurementField;
-import com.ensolution.ems.global.common.enums.MeasurementMethod;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 
@@ -34,9 +33,13 @@ public class FakePollutantRepository implements PollutantRepository {
 		return given(tenantId, catalog, nameKr, null);
 	}
 
-	/** 측정방법은 고객사 채택값이므로 카탈로그가 아니라 인자로 받는다. */
-	public Pollutant given(Long tenantId, PollutantCatalog catalog, String nameKr, MeasurementMethod method) {
-		Pollutant pollutant = Pollutant.register(tenantId, catalog, method, nameKr, null, null, null)
+	/**
+	 * 측정방법은 고객사 채택값이므로 카탈로그가 아니라 인자로 받는다.
+	 * 어댑터가 조인으로 채우는 측정방법 투영값(이름·채취 단위 등)은 흉내내지 않는다 — 서비스 테스트는
+	 * {@code methodId}만 단언한다.
+	 */
+	public Pollutant given(Long tenantId, PollutantCatalog catalog, String nameKr, Long methodId) {
+		Pollutant pollutant = Pollutant.register(tenantId, catalog, methodId, null, nameKr, null, null, null)
 			.toBuilder()
 			.id(nextId++)
 			.build();
@@ -100,6 +103,11 @@ public class FakePollutantRepository implements PollutantRepository {
 	@Override
 	public boolean existsByCatalogId(Long catalogId) {
 		return pollutants.stream().anyMatch(p -> Objects.equals(p.getCatalogId(), catalogId));
+	}
+
+	@Override
+	public boolean existsByMethodId(Long methodId) {
+		return pollutants.stream().anyMatch(p -> Objects.equals(p.getMethodId(), methodId));
 	}
 
 	@Override

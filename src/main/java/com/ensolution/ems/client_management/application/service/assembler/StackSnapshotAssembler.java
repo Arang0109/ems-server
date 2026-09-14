@@ -45,8 +45,8 @@ public class StackSnapshotAssembler {
 	}
 
 	/**
-	 * 측정 시점의 측정항목을 조립한다. 표기명·측정방법·장비·시험방법은 고객사가 보유한 값을,
-	 * code·측정분야·형태는 카탈로그 투영값을 그대로 스냅샷에 남긴다.
+	 * 측정 시점의 측정항목을 조립한다. 표기명·장비·시험방법은 고객사가 보유한 값을,
+	 * code·측정분야·형태는 카탈로그 투영값을, 측정방법은 측정방법 투영값을 그대로 스냅샷에 남긴다.
 	 */
 	private List<StackMeasurementSummary.MeasurementItemInfo> assembleMeasurementItems(Long stackId, Long tenantId) {
 		List<StackPollutantListItem> stackPollutants = stackPollutantRepository.findByStackId(stackId, tenantId);
@@ -64,16 +64,34 @@ public class StackSnapshotAssembler {
 					pollutant == null ? sp.nameKr() : pollutant.getNameKr(),
 					pollutant == null ? sp.nameEn() : pollutant.getNameEn(),
 					pollutant == null ? null : pollutant.getField(),
-					pollutant == null ? null : pollutant.getMethod(),
+					pollutant == null ? null : toMethodInfo(pollutant),
 					pollutant == null ? null : pollutant.getPhase(),
+					pollutant == null ? null : pollutant.getMode(),
 					pollutant == null ? null : pollutant.getEquipment(),
 					pollutant == null ? null : pollutant.getTestMethod(),
+					pollutant == null ? null : pollutant.getEffectiveSamplingMinutes(),
 					sp.cycle(),
 					sp.allowance(),
 					sp.oxygenApplicable()
 				);
 			})
 			.toList();
+	}
+
+	/**
+	 * 측정방법이 정해지지 않은 레거시 행은 필드가 전부 null인 객체가 아니라 <b>null</b>로 낸다 —
+	 * 스냅샷 문서와 프론트가 "측정방법 없음"을 null 하나로 분기하기 때문이다.
+	 */
+	private StackMeasurementSummary.MeasurementMethodInfo toMethodInfo(Pollutant pollutant) {
+		if (pollutant.getMethodId() == null) return null;
+
+		return new StackMeasurementSummary.MeasurementMethodInfo(
+			pollutant.getMethodId(),
+			pollutant.getMethodName(),
+			pollutant.getSampleGrouping(),
+			pollutant.getMergedSampleName(),
+			pollutant.getMethodSamplingMinutes()
+		);
 	}
 
 	private StackMeasurementSummary.ClientInfo toClientInfo(Client client) {

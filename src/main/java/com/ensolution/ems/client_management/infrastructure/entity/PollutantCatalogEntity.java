@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.infrastructure.entity;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.common.enums.MeasurementMode;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -66,6 +67,10 @@ public class PollutantCatalogEntity {
 
 	@Enumerated(EnumType.STRING)
 	private PollutantPhase phase;
+
+	/** 측정방식 분류. 분류 도입(2026-09-14) 이전 행 호환을 위해 nullable — 백필은 마이그레이션이 한다. */
+	@Enumerated(EnumType.STRING)
+	private MeasurementMode mode;
 
 	/** 목록 표시 순서(법령 고시 순서). */
 	@Column(name = "sort_order")

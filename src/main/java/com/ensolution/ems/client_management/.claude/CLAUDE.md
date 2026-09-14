@@ -13,6 +13,8 @@ Client (의뢰기관)
 
 PollutantCatalog (측정물질 가이드 · 전역)
   └── Pollutant (고객사 채택 물질)  1:N  ──< StackPollutant (시설별 측정물질) >── Stack
+        ▲
+MeasurementMethod (측정방법)  ── tenant 직속. Pollutant가 method_id로 참조. 채취 단위·통칭 시료명·표준 채취시간 소유
 
 Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 장비(equipment) id 관리
 ```
@@ -25,14 +27,17 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `Stack` | Workplace 산하의 개별 측정시설/굴뚝. 측정 분야·형태·등급 등 물리적 속성 포함 |
 | `Facility` | Stack 산하의 배출시설. 연료 종류·사용량·투입량 관리 |
 | `Prevention` | Stack 산하의 방지시설. 처리 대상물질명(`targetName`)·제거효율(`removalEfficiency`)을 자체 필드로 보유 |
-| `PollutantCatalog` | 고객사에게 **지원하는 측정물질 가이드**. **이 모듈 유일의 tenant 비종속 애그리거트**(전 tenant 공유). 불변 키 `code`를 보유해 클라이언트가 물질별 분기를 할 수 있게 한다. code는 **측정분야 안에서만 유일**하다(대기 납·수질 납이 모두 `PB`). 표기값(영문명·시험장비·시험방법)과 **측정방법은 소유하지 않는다** |
-| `Pollutant` | 고객사가 가이드에서 **채택한** 물질. `catalogId`는 필수 — 가이드에 없는 물질은 만들 수 없다. `method`·`nameKr`·`nameEn`·`equipment`·`testMethod`는 고객사 소유 컬럼이고, `code`·`field`·`phase`는 카탈로그에서 조인해 채우는 읽기 전용 투영값이다. 측정방법은 채택 시 **필수**로 정한다 |
+| `PollutantCatalog` | 고객사에게 **지원하는 측정물질 가이드**. **이 모듈 유일의 tenant 비종속 애그리거트**(전 tenant 공유). 불변 키 `code`를 보유해 클라이언트가 물질별 분기를 할 수 있게 한다. code는 **측정분야 안에서만 유일**하다(대기 납·수질 납이 모두 `PB`). 표기값(영문명·시험장비·시험방법)과 **측정방법은 소유하지 않는다**. 대신 **측정방식 분류 `mode`**(`MeasurementMode`: 현장측정·먼지·중금속·수은·가스상 채취)는 소유한다 — 회사 측정방법이 아무리 쪼개져도 전 tenant를 관통해 항목을 묶는 축이다 |
+| `MeasurementMethod` | 고객사가 측정물질에 쓰는 **측정방법**(채취 매체·방식). tenant 직속 애그리거트. `sampleGrouping`(채취 단위: `NONE`/`PER_ITEM`/`MERGED`)·`mergedSampleName`(MERGED의 통칭 시료명)·`samplingMinutes`(표준 채취시간)를 소유한다. 이 값들은 물질이 아니라 측정방법에 종속되므로 여기 두어야 카트리지 항목 N개를 동기화할 일이 없다. 불변식 `mergedSampleName != null ⇔ MERGED`. 기본 8종은 `MeasurementMethodPreset` |
+| `Pollutant` | 고객사가 가이드에서 **채택한** 물질. `catalogId`는 필수 — 가이드에 없는 물질은 만들 수 없다. `methodId`·`samplingMinutes`·`nameKr`·`nameEn`·`equipment`·`testMethod`는 고객사 소유 컬럼이고, `code`·`field`·`phase`·`mode`는 카탈로그에서, `methodName`·`sampleGrouping`·`mergedSampleName`·`methodSamplingMinutes`는 측정방법에서 조인해 채우는 읽기 전용 투영값이다. 측정방법은 채택 시 **필수**로 정한다. `samplingMinutes`는 **항목별 채취시간 오버라이드**(흡수액처럼 항목마다 따로 잡는 방법용, MERGED 방법에는 불가)이며 유효값은 `getEffectiveSamplingMinutes()`가 정한다 — `update`에서 이 필드만 전체 채택(null = 걷어냄) |
 | `StackPollutant` | Stack과 Pollutant를 연결하는 시설별 측정물질. 측정주기·허용치 관리 |
 | `Team` | tenant 직속 측정 팀. 사수(mentor)·부사수(mentee) user id와 장비 id 4종(입자샘플러·가스샘플러·피토관·노즐) 관리. users는 `auth`, 장비는 `equipment` 모듈 소유이므로 **plain id 컬럼**만 보관(FK 없음) |
 
 ### Enum 위치
 도메인 속성에서 사용하는 Enum(`Grade`, `MeasurementField`, `Shape`, `Orientation`,
-`MeasurementMethod`, `MeasurementCycle`, `PollutantPhase` 등)은 `global/common/enums/`에서 관리합니다.
+`MeasurementCycle`, `PollutantPhase`, `SampleGrouping` 등)은 `global/common/enums/`에서 관리합니다.
+`MeasurementMethod`는 더 이상 enum이 아닙니다 — 2026-09-14에 이 모듈의 tenant 소유 애그리거트로 승격했습니다.
+`MeasurementMethodPreset`(기본 8종)은 이 모듈만 쓰므로 `domain/`에 둡니다.
 
 ---
 
@@ -49,6 +54,7 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `FacilityService` | `createFacility`, `getFacility`, `getFacilityList(stackId)`, `updateFacility`, `reorderFacilities`, `deleteFacility`. 등록 시 `max(sortOrder)+10`을 부여해 목록 맨 뒤에 붙인다 |
 | `PreventionService` | `createPrevention`, `getPrevention`, `getPreventionList(stackId)`, `updatePrevention`, `reorderPreventions`, `deletePrevention`. 등록 시 `max(sortOrder)+10`을 부여해 목록 맨 뒤에 붙인다 |
 | `PollutantCatalogService` | 운영자용 가이드 CRUD + `deactivateCatalog`/`activateCatalog`, 시드용 멱등 `ensureCatalog`. tenant 범위를 다루지 않는다 |
+| `MeasurementMethodService` | `createMeasurementMethod`(sortOrder 미지정 시 `max+10`), `getMeasurementMethod`, `getMeasurementMethodList`, `updateMeasurementMethod`, `deleteMeasurementMethod`(**소유권 확인이 참조 확인보다 먼저** — 순서가 바뀌면 타 tenant id에 409가 나가 존재가 드러난다), `ensureDefaults`(기본 8종을 **이름 기준 멱등**으로 채움. 고친 값은 되돌리지 않음). platform 발급 시 자동 호출하지 않는다 — 모듈 참조가 생기므로 고객사가 `POST /api/measurement-methods/defaults`로 채운다 |
 | `PollutantService` | `createPollutant`(가이드 항목 채택), `getPollutant`, `getPollutantList(field)`(채택분만), `getPollutantCandidates(field)`(미채택 가이드 항목), `updatePollutant`(고객사 소유값만 — 측정방법 포함), `deletePollutant`. 후보 목록만 `PollutantCatalogAssembler`에 위임 |
 | `StackPollutantService` | `createStackPollutant`, `createStackPollutants`(일괄), `getStackPollutantList(stackId)`, `removeStackPollutant`. **등록 대상은 이미 채택한 `pollutantId`만** — 등록 과정에서 측정물질을 만들지 않는다 |
 | `TeamService` | `createTeam`, `getTeam`, `getTeamList`, `updateTeam`, `deleteTeam`. 사수·부사수 user 검증은 `TeamValidator`에 위임(아래 참고). 장비 id는 검증 없이 저장 |
@@ -62,8 +68,13 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `ClientValidator` | `requireUniqueName(name)` | 의뢰기관명 유일 |
 | `WorkplaceValidator` | `requireUniqueNameInClient(name, clientId)` | 사업장명은 의뢰기관 내 유일 |
 | `StackValidator` | `requireUniqueNameInWorkplace(name, workplaceId, field)` | 측정시설명은 사업장·측정분야 내 유일 |
+| `MeasurementMethodValidator` | `requireUniqueName(name, tenantId)` | 측정방법명은 tenant 내 유일 |
+| | `requireUniqueNameExcluding(name, tenantId, methodId)` | 수정용. 자기 자신은 제외하고, 이름을 보내지 않으면(유지) 통과 |
+| | `requireNotReferenced(methodId)` | 측정물질이 참조 중이면 삭제 차단. **`findById(id, tenantId)` 뒤에 호출**해야 타 tenant id가 404로 은닉된다 |
 | `PollutantValidator` | `requireSelectable(catalog)` | 폐지된(`active=false`) 가이드 항목은 새로 채택할 수 없음. 저장소 재조회를 피하려 도메인 객체를 받는다 |
 | | `requireCatalogNotLinked(catalogId, tenantId)` | 한 tenant는 같은 가이드 항목을 두 번 채택할 수 없음 |
+| | `requireMethodOwned(methodId, tenantId)` | 채택·수정 시 지정한 측정방법이 이 tenant의 것인지 확인. 미존재·타 tenant 모두 `MEASUREMENT_METHOD_NOT_FOUND`로 은닉. null(수정 경로의 유지)은 통과 |
+| | `requireSamplingMinutesAllowed(methodId, samplingMinutes, tenantId)` | 항목별 채취시간 오버라이드는 `MERGED`(한 병으로 함께 채취) 방법의 항목에 둘 수 없음(`POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED`). 수정 경로는 서비스가 "이 수정 뒤 적용될 방법"을 병합해 넘긴다. 오버라이드가 null이거나 방법이 없는 레거시 행은 통과 |
 | `PollutantCatalogValidator` | `requireUniqueCode(field, code)` | 가이드 키는 측정분야 안에서 유일 |
 | | `requireNotReferenced(catalogId)` | 참조 중인 카탈로그 삭제 차단(폐지는 `active=false`로) |
 | `StackPollutantValidator` | `requirePollutantOwned(pollutantId, tenantId)` | 등록 대상이 이 tenant가 채택한 물질인지 확인. 미존재·타 tenant 모두 `NOT_FOUND`로 은닉 |
@@ -95,6 +106,8 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 - **카탈로그 속성 투영은 Assembler가 아니라 `PollutantEntityMapper`가 담당합니다.** `toDomain()`이 `code`·`field`·
   `phase`를 `catalog.*`에서 매핑하므로, 측정물질을 읽는 모든 경로가 한 곳에서 같은 값을 얻습니다.
   덕분에 도메인에 병합 로직이 없고 조회 경로에서 카탈로그를 다시 읽지 않습니다.
+  **측정방법 속성**(`methodName`·`sampleGrouping`·`mergedSampleName`·`samplingMinutes`)도 같은 매퍼가 `method.*`에서
+  투영합니다. `PollutantJpaRepository`의 조회 4개가 전부 `left join fetch p.method`인 이유입니다(nullable 참조라 left).
 - `PollutantCatalogAssembler` — 가이드와 이 tenant의 **채택 현황**을 대조해 `assembleCandidates()`로 **아직 채택하지 않은 항목**을
   뽑습니다. 값을 병합하지는 않습니다(표기값은 `Pollutant`가 소유하고, 카탈로그 속성은 위 매퍼가 이미 채웠습니다).
   조회는 소스당 1회씩 총 2회로 고정하고 `Set`으로 in-memory 대조합니다(항목별 조회 금지).
@@ -105,7 +118,8 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
   users는 별도 모듈이라 JPA 조인 불가 → `UserQueryUseCase`(인바운드 포트)로 채웁니다. 목록은 `getUserList(tenantId)` 1회 + `Map`으로 N+1을 회피합니다.
 - `StackSnapshotAssembler` — 측정시설 트리를 타 모듈 공개용 `StackMeasurementSummary`로 조립합니다.
   `schedule`이 측정 시점 스냅샷을 만들 때 이 경로로 원장을 읽습니다. 조회 결과를 그대로 복사해 가므로
-  이후 원장이 바뀌어도 과거 회차의 성적서는 흔들리지 않습니다.
+  이후 원장이 바뀌어도 과거 회차의 성적서는 흔들리지 않습니다. 측정방법은 `MeasurementMethodInfo` 사본으로 실리며,
+  측정방법이 정해지지 않은 레거시 행은 필드가 전부 null인 객체가 아니라 **null**로 냅니다(스냅샷 문서·프론트가 null 하나로 분기).
 
 ### 외부 공개 (Inbound Port)
 
@@ -117,7 +131,7 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `StackQueryUseCase` | `StackService` | `schedule`(측정 시점 시설·측정항목 스냅샷) |
 | `TeamQueryUseCase` | `TeamService` | `schedule`(측정 팀 스냅샷) |
 
-공개 VO — `ContractSummary` · `StackMeasurementSummary` · `StackMeasurementItemSummary` · `TeamSummary` · `UserTeamSummary`
+공개 VO — `ContractSummary` · `StackMeasurementSummary`(중첩 `MeasurementItemInfo`·`MeasurementMethodInfo`) · `StackMeasurementItemSummary` · `TeamSummary` · `UserTeamSummary`
 
 > 공개 계약을 넓힐 때는 **호출자가 실제로 필요한 것만** 추가합니다(ISP). Repository 전체를 노출하지 않습니다.
 
@@ -145,7 +159,8 @@ Outbound Port는 `application/port/out/`에 둡니다. (`domain/port/`가 아님
 > 이 정렬은 `StackDetailAssembler`를 거쳐 측정계획 스냅샷·엑셀 성적서의 시설 나열 순서까지 그대로 전파됩니다.
 - `application/port/out/PollutantCatalogRepository` — `save()`, `findById(id)`, `findByFieldAndCode(field, code)`, `findAll(field)`, `findAllActive(field)`, `existsByFieldAndCode(field, code)`. **전역 마스터이므로 tenantId 파라미터가 없습니다** — 이 모듈의 유일한 예외입니다.
   - code 조회에 `field`를 함께 받는 이유는 code의 유일 범위가 측정분야이기 때문입니다(위 "전역 마스터" 참고).
-- `application/port/out/PollutantRepository` — `save()`, `findById(id, tenantId)`, `findByField(field, tenantId)`, `findAll(tenantId)`, `findByCatalogIdOrNull(catalogId, tenantId)`, `existsByCatalogId(catalogId)`, `deleteById(id, tenantId)`
+- `application/port/out/MeasurementMethodRepository` — `save()`, `findById(id, tenantId)`, `findAll(tenantId)`(sortOrder 순), `existsByNameAndTenantId()`, `existsByNameAndTenantIdAndIdNot()`, `findMaxSortOrder(tenantId)`, `deleteById(id, tenantId)`
+- `application/port/out/PollutantRepository` — `save()`, `findById(id, tenantId)`, `findByField(field, tenantId)`, `findAll(tenantId)`, `findByCatalogIdOrNull(catalogId, tenantId)`, `existsByCatalogId(catalogId)`, `existsByMethodId(methodId)`, `deleteById(id, tenantId)`
   - `findByCatalogIdOrNull`은 미존재 시 예외 대신 **null을 반환**합니다. "아직 채택하지 않았다"는 정상 상태이며 호출부가 행 생성 여부를 판단하기 때문입니다.
   - `findByField`는 `pollutants`에 `field` 컬럼이 없으므로 **카탈로그의 `field`로 거릅니다.**
 - `application/port/out/StackPollutantRepository` — `save()`, `findByStackId(stackId, tenantId)`, `existsByStackIdAndPollutantId()`, `deleteById(id, tenantId)`
@@ -159,12 +174,20 @@ Outbound Port는 `application/port/out/`에 둡니다. (`domain/port/`가 아님
 고객사에 동일하게 적용되며, 클라이언트가 특정 물질에 반응형 동작을 하려면 전 tenant 공통 키가 필요하기 때문입니다.
 
 **가이드는 "무엇을 쓸 수 있는가"만 정의합니다.** tenant별 표기명·시험장비·공정시험법은 `Pollutant`가 직접 소유하며,
-가이드를 고쳐도 이미 채택한 고객사의 표기는 바뀌지 않습니다. 반대로 `field`·`phase`는 가이드가 단일 진실
+가이드를 고쳐도 이미 채택한 고객사의 표기는 바뀌지 않습니다. 반대로 `field`·`phase`·`mode`는 가이드가 단일 진실
 소스라 조인으로 전파되므로 법령 개정이 즉시 반영됩니다.
 
-**측정방법(`method`)은 가이드가 정하지 않습니다.** 같은 항목(예: 이황화메틸)도 업체에 따라 테드라백·카트리지가
-갈리므로 고객사가 채택 시 지정하고(`POST /api/pollutants` 필수) 이후 수정할 수 있습니다. 카탈로그에는 기본값도
-없습니다. 2026-09-13에 카탈로그에서 이관했습니다(`docs/migration/2026-09-13-pollutants-method.sql`).
+**측정방식 분류(`mode`)와 측정방법(`MeasurementMethod`)은 축이 다릅니다.** 분류는 "이 물질은 본래 어떤 방식의
+측정인가"(전역 사실)이고, 측정방법은 "이 회사는 어떻게 잡는가"(채취 매체·단위·시간)입니다. 현장측정(가스분석기)·
+현장측정(THC)는 서로 다른 측정방법이지만 둘 다 분류 `DIRECT_READING`입니다. 그룹핑·통계·성적서 절 구분은 분류로,
+기록지 행 생성·채취시간은 측정방법으로 합니다.
+
+**측정방법은 가이드가 정하지 않습니다.** 같은 항목(예: 이황화메틸)도 업체에 따라 테드라백·카트리지가
+갈리므로 고객사가 채택 시 지정하고(`POST /api/pollutants`의 `methodId` 필수) 이후 수정할 수 있습니다. 카탈로그에는
+기본값도 없습니다. 2026-09-13에 카탈로그에서 이관했고, 2026-09-14에 enum에서 이 모듈의 tenant 소유 애그리거트
+`MeasurementMethod`로 승격했습니다(`docs/migration/2026-09-14-measurement-methods.sql`, Mongo는
+`2026-09-14-measurement-methods.js`). 승격의 이유는 채취시간·채취 단위가 물질이 아니라 측정방법에 종속되는
+값이기 때문입니다 — `pollutants`에 두면 카트리지 항목마다 반복 저장하고 동기화해야 합니다.
 
 **고객사는 가이드에 없는 물질을 만들 수 없습니다** (`pollutants.catalog_id` NOT NULL). 따라서 가이드에 항목이 없는
 측정분야는 물질 등록 자체가 불가능합니다 — 현재 시드는 `AIR`뿐이므로 다른 분야를 열려면 카탈로그 확충이 선행되어야 합니다.

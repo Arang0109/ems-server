@@ -1,6 +1,7 @@
 package com.ensolution.ems.client_management.domain;
 
 import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.common.enums.MeasurementMode;
 import com.ensolution.ems.global.common.enums.PollutantPhase;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,11 +15,13 @@ import lombok.NoArgsConstructor;
  * <p>카탈로그는 "무엇을 쓸 수 있는가"만 정의한다. 표기명(영문)·시험장비·시험방법 같은 <b>고객사 표기값은
  * 소유하지 않는다</b> — 그 값들은 {@link Pollutant}가 직접 관리한다. 여기서 보유하는 {@code nameKr}은
  * 고객사가 물질을 채택할 때 복사해 가는 <b>초기값</b>이며, 이후 카탈로그를 고쳐도 이미 채택한 고객사에는
- * 반영되지 않는다. 반대로 {@code field}·{@code phase}는 카탈로그가 단일 진실 소스이며
+ * 반영되지 않는다. 반대로 {@code field}·{@code phase}·{@code mode}는 카탈로그가 단일 진실 소스이며
  * 조회 시 조인으로 전파되므로 법령 개정이 즉시 반영된다.
  *
  * <p><b>측정방법은 카탈로그가 갖지 않는다.</b> 같은 물질이라도 업체마다 측정방법이 다를 수 있으므로
  * (예: 이황화메틸은 테드라백·카트리지 둘 다 쓰인다) 고객사가 채택할 때 {@link Pollutant}에 직접 정한다.
+ * 대신 <b>측정방식 분류({@code mode})</b>는 갖는다 — 현장측정·먼지·중금속·수은·가스상 채취라는 사실은
+ * 회사와 무관한 전역 사실이라, 회사가 측정방법을 아무리 잘게 쪼개도 이 축으로는 다시 묶인다.
  *
  * <p>{@code code}는 클라이언트가 특정 물질을 판별하는 불변 키다(예: {@code NOX}). 한번 부여하면 변경하지 않는다 —
  * 측정계획 스냅샷에 영구 보관되고 클라이언트 분기 로직이 이 값에 의존한다.
@@ -38,6 +41,8 @@ public class PollutantCatalog {
 	/** 가이드 표준 국문명. 고객사가 채택할 때 복사해 가는 초기값이다. */
 	private String nameKr;
 	private PollutantPhase phase;
+	/** 측정방식 분류. 시드·운영자 등록이 채우며, 분류 도입 이전 항목만 null이다. */
+	private MeasurementMode mode;
 	private Integer sortOrder;
 	private boolean active;
 
@@ -46,6 +51,7 @@ public class PollutantCatalog {
 		MeasurementField field,
 		String nameKr,
 		PollutantPhase phase,
+		MeasurementMode mode,
 		Integer sortOrder
 	) {
 		return PollutantCatalog.builder()
@@ -53,6 +59,7 @@ public class PollutantCatalog {
 			.field(field)
 			.nameKr(nameKr)
 			.phase(phase)
+			.mode(mode)
 			.sortOrder(sortOrder)
 			.active(true)
 			.build();
@@ -69,12 +76,14 @@ public class PollutantCatalog {
 		MeasurementField field,
 		String nameKr,
 		PollutantPhase phase,
+		MeasurementMode mode,
 		Integer sortOrder
 	) {
 		return this.toBuilder()
 			.field(keep(field, this.field))
 			.nameKr(keep(nameKr, this.nameKr))
 			.phase(keep(phase, this.phase))
+			.mode(keep(mode, this.mode))
 			.sortOrder(keep(sortOrder, this.sortOrder))
 			.build();
 	}

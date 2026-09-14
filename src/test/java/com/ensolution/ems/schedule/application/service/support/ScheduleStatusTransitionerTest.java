@@ -86,7 +86,7 @@ class ScheduleStatusTransitionerTest {
 	private static SamplingItemSnapshot item() {
 		return new SamplingItemSnapshot(
 			1L, 11L, "NOX", "질소산화물", "NOx",
-			MeasurementField.AIR, null, null, null, null,
+			MeasurementField.AIR, null, null, null, null, null, null,
 			MeasurementCycle.QUARTERLY, new BigDecimal("100"), true, null);
 	}
 

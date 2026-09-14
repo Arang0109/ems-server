@@ -378,7 +378,7 @@ class ScheduleExportViewMapperTest {
 
 	private SamplingItemSnapshot item(Long pollutantId, String nameKr, String allowance) {
 		return new SamplingItemSnapshot(pollutantId * 10, pollutantId, "CODE-" + pollutantId, nameKr, "EN-" + pollutantId,
-			null, null, null, "장비-" + pollutantId, "방법-" + pollutantId,
+			null, null, null, null, "장비-" + pollutantId, "방법-" + pollutantId, null,
 			MeasurementCycle.QUARTERLY, allowance == null ? null : new BigDecimal(allowance), true, null);
 	}
 
@@ -502,7 +502,7 @@ class ScheduleExportViewMapperTest {
 	@Test
 	void 측정물질_식별자가_없는_구형_항목도_매핑된다() {
 		SamplingItemSnapshot legacy = new SamplingItemSnapshot(
-			null, null, null, "구형항목", null, null, null, null, null, null, null, null, false, null);
+			null, null, null, "구형항목", null, null, null, null, null, null, null, null, null, null, false, null);
 
 		ScheduleExportView view = toView(itemSnapshot(List.of(legacy)));
 

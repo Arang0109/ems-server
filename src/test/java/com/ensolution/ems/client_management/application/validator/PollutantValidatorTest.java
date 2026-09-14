@@ -1,9 +1,11 @@
 package com.ensolution.ems.client_management.application.validator;
 
+import com.ensolution.ems.client_management.application.FakeMeasurementMethodRepository;
 import com.ensolution.ems.client_management.application.FakePollutantCatalogRepository;
 import com.ensolution.ems.client_management.application.FakePollutantRepository;
 import com.ensolution.ems.client_management.domain.PollutantCatalog;
 import com.ensolution.ems.global.common.enums.MeasurementField;
+import com.ensolution.ems.global.common.enums.SampleGrouping;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,9 +19,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PollutantValidatorTest {
 
 	private static final Long TENANT = 1L;
+	private static final Long OTHER_TENANT = 2L;
 
 	private FakePollutantRepository pollutantRepository;
 	private FakePollutantCatalogRepository catalogRepository;
+	private FakeMeasurementMethodRepository methodRepository;
 	private PollutantValidator validator;
 	private PollutantCatalogValidator catalogValidator;
 
@@ -27,7 +31,8 @@ class PollutantValidatorTest {
 	void setUp() {
 		pollutantRepository = new FakePollutantRepository();
 		catalogRepository = new FakePollutantCatalogRepository();
-		validator = new PollutantValidator(pollutantRepository);
+		methodRepository = new FakeMeasurementMethodRepository();
+		validator = new PollutantValidator(pollutantRepository, methodRepository);
 		catalogValidator = new PollutantCatalogValidator(catalogRepository, pollutantRepository);
 	}
 
@@ -78,6 +83,85 @@ class PollutantValidatorTest {
 
 			assertThatCode(() -> validator.requireCatalogNotLinked(nox.getId(), TENANT))
 				.doesNotThrowAnyException();
+		}
+	}
+
+	@Nested
+	@DisplayName("측정방법 소유")
+	class MethodOwned {
+
+		@Test
+		@DisplayName("이 고객사의 측정방법이면 통과한다")
+		void 이_고객사의_측정방법이면_통과한다() {
+			Long methodId = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
+
+			assertThatCode(() -> validator.requireMethodOwned(methodId, TENANT)).doesNotThrowAnyException();
+		}
+
+		@Test
+		@DisplayName("다른 고객사의 측정방법은 존재를 숨기고 NOT_FOUND 다")
+		void 다른_고객사의_측정방법은_존재를_숨기고_NOT_FOUND다() {
+			Long methodId = methodRepository.given(OTHER_TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
+
+			assertThatThrownBy(() -> validator.requireMethodOwned(methodId, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasMessage(ErrorCode.MEASUREMENT_METHOD_NOT_FOUND.getMessage());
+		}
+
+		@Test
+		@DisplayName("없는 측정방법도 같은 코드다")
+		void 없는_측정방법도_같은_코드다() {
+			assertThatThrownBy(() -> validator.requireMethodOwned(999L, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasMessage(ErrorCode.MEASUREMENT_METHOD_NOT_FOUND.getMessage());
+		}
+
+		@Test
+		@DisplayName("수정 경로의 미전달(null)은 검사하지 않는다")
+		void 수정_경로의_미전달은_검사하지_않는다() {
+			assertThatCode(() -> validator.requireMethodOwned(null, TENANT)).doesNotThrowAnyException();
+		}
+	}
+
+	@Nested
+	@DisplayName("항목별 채취시간 오버라이드")
+	class SamplingMinutesOverride {
+
+		@Test
+		void 항목별로_잡는_방법에는_둘_수_있다() {
+			Long absorption = methodRepository.given(TENANT, "흡수액", SampleGrouping.PER_ITEM, null, 40).getId();
+
+			assertThatCode(() -> validator.requireSamplingMinutesAllowed(absorption, 60, TENANT)).doesNotThrowAnyException();
+		}
+
+		@Test
+		void 한_병으로_함께_잡는_방법에는_둘_수_없다() {
+			Long cartridge = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
+
+			assertThatThrownBy(() -> validator.requireSamplingMinutesAllowed(cartridge, 60, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasMessage(ErrorCode.POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED.getMessage());
+		}
+
+		@Test
+		void 오버라이드를_두지_않으면_방법을_보지_않는다() {
+			Long cartridge = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
+
+			assertThatCode(() -> validator.requireSamplingMinutesAllowed(cartridge, null, TENANT)).doesNotThrowAnyException();
+		}
+
+		@Test
+		void 측정방법이_없는_레거시_행은_오버라이드를_허용한다() {
+			assertThatCode(() -> validator.requireSamplingMinutesAllowed(null, 60, TENANT)).doesNotThrowAnyException();
+		}
+
+		@Test
+		void 다른_고객사의_방법은_존재를_숨기고_NOT_FOUND다() {
+			Long other = methodRepository.given(OTHER_TENANT, "흡수액", SampleGrouping.PER_ITEM, null, 40).getId();
+
+			assertThatThrownBy(() -> validator.requireSamplingMinutesAllowed(other, 60, TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasMessage(ErrorCode.MEASUREMENT_METHOD_NOT_FOUND.getMessage());
 		}
 	}
 

@@ -63,7 +63,7 @@ class MeasurementRecordRecorderTest {
 		Long stackPollutantId, Long pollutantId, MeasurementCycle cycle, boolean oxygenApplicable) {
 		return new SamplingItemSnapshot(
 			stackPollutantId, pollutantId, "NOX", "질소산화물", "NOx",
-			MeasurementField.AIR, null, null, null, null,
+			MeasurementField.AIR, null, null, null, null, null, null,
 			cycle, ALLOWANCE, oxygenApplicable, null);
 	}
 
