@@ -23,6 +23,8 @@ import java.math.BigDecimal;
  *               그 경우 가스상 시료 행을 자동으로 만들 수 없다
  * @param samplingMinutes 이 항목에 적용되는 표준 채취시간(분). 항목별 오버라이드가 반영된 값이라
  *               {@code method.samplingMinutes}(방법 기본값)와 다를 수 있다. 구 문서는 null
+ * @param suctionFlowRate 이 항목에 적용되는 표준 흡인유량(L/min). 항목별 오버라이드가 반영된 값 — 새 가스상 행의
+ *               흡인유량 칸을 이 값으로 채워 시작한다. 구 문서는 null
  */
 public record SamplingItemSnapshotResponse(
 	Long stackPollutantId,
@@ -37,6 +39,7 @@ public record SamplingItemSnapshotResponse(
 	String equipment,
 	String testMethod,
 	Integer samplingMinutes,
+	BigDecimal suctionFlowRate,
 	MeasurementCycle cycle,
 	BigDecimal allowance,
 	boolean oxygenApplicable,

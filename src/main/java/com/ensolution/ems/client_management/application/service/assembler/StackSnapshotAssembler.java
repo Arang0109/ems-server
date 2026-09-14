@@ -70,6 +70,7 @@ public class StackSnapshotAssembler {
 					pollutant == null ? null : pollutant.getEquipment(),
 					pollutant == null ? null : pollutant.getTestMethod(),
 					pollutant == null ? null : pollutant.getEffectiveSamplingMinutes(),
+					pollutant == null ? null : pollutant.getEffectiveSuctionFlowRate(),
 					sp.cycle(),
 					sp.allowance(),
 					sp.oxygenApplicable()
@@ -90,7 +91,8 @@ public class StackSnapshotAssembler {
 			pollutant.getMethodName(),
 			pollutant.getSampleGrouping(),
 			pollutant.getMergedSampleName(),
-			pollutant.getMethodSamplingMinutes()
+			pollutant.getMethodSamplingMinutes(),
+			pollutant.getMethodSuctionFlowRate()
 		);
 	}
 

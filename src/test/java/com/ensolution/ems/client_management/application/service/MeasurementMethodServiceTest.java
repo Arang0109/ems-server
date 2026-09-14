@@ -52,7 +52,7 @@ class MeasurementMethodServiceTest {
 
 	private static CreateMeasurementMethodCommand create(Long tenantId, String name, SampleGrouping grouping,
 	                                                     String mergedSampleName, Integer sortOrder) {
-		return new CreateMeasurementMethodCommand(tenantId, name, grouping, mergedSampleName, null, sortOrder);
+		return new CreateMeasurementMethodCommand(tenantId, name, grouping, mergedSampleName, null, null, sortOrder);
 	}
 
 	@Nested
@@ -80,9 +80,9 @@ class MeasurementMethodServiceTest {
 
 		@Test
 		void 정렬_순서를_주지_않으면_목록_맨_뒤에_붙인다() {
-			methodRepository.save(MeasurementMethod.register(TENANT, "먼지", SampleGrouping.NONE, null, null, 10));
-			methodRepository.save(MeasurementMethod.register(TENANT, "중금속", SampleGrouping.NONE, null, null, 20));
-			methodRepository.save(MeasurementMethod.register(OTHER_TENANT, "남의것", SampleGrouping.NONE, null, null, 500));
+			methodRepository.save(MeasurementMethod.register(TENANT, "먼지", SampleGrouping.NONE, null, null, null, 10));
+			methodRepository.save(MeasurementMethod.register(TENANT, "중금속", SampleGrouping.NONE, null, null, null, 20));
+			methodRepository.save(MeasurementMethod.register(OTHER_TENANT, "남의것", SampleGrouping.NONE, null, null, null, 500));
 
 			MeasurementMethod created = service.createMeasurementMethod(
 				create(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", null));
@@ -116,7 +116,7 @@ class MeasurementMethodServiceTest {
 			Long id = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", null).getId();
 
 			MeasurementMethod updated = service.updateMeasurementMethod(
-				id, TENANT, new UpdateMeasurementMethodCommand("카트리지", null, "VOCs", 30));
+				id, TENANT, new UpdateMeasurementMethodCommand("카트리지", null, "VOCs", 30, null));
 
 			assertThat(updated.getSamplingMinutes()).isEqualTo(30);
 		}
@@ -127,7 +127,7 @@ class MeasurementMethodServiceTest {
 			Long id = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", null).getId();
 
 			assertThatThrownBy(() -> service.updateMeasurementMethod(
-				id, TENANT, new UpdateMeasurementMethodCommand("흡착관", null, "VOCs", null)))
+				id, TENANT, new UpdateMeasurementMethodCommand("흡착관", null, "VOCs", null, null)))
 				.isInstanceOf(CustomException.class)
 				.hasMessage(ErrorCode.MEASUREMENT_METHOD_ALREADY_EXISTS.getMessage());
 		}
@@ -137,7 +137,7 @@ class MeasurementMethodServiceTest {
 			Long id = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
 
 			MeasurementMethod updated = service.updateMeasurementMethod(
-				id, TENANT, new UpdateMeasurementMethodCommand(null, null, "VOCs", null));
+				id, TENANT, new UpdateMeasurementMethodCommand(null, null, "VOCs", null, null));
 
 			assertThat(updated.getSamplingMinutes()).isNull();
 		}
@@ -147,7 +147,7 @@ class MeasurementMethodServiceTest {
 			Long id = methodRepository.given(OTHER_TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", null).getId();
 
 			assertThatThrownBy(() -> service.updateMeasurementMethod(
-				id, TENANT, new UpdateMeasurementMethodCommand(null, null, "VOCs", 30)))
+				id, TENANT, new UpdateMeasurementMethodCommand(null, null, "VOCs", 30, null)))
 				.isInstanceOf(CustomException.class)
 				.hasMessage(ErrorCode.MEASUREMENT_METHOD_NOT_FOUND.getMessage());
 		}

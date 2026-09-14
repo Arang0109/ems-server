@@ -2,9 +2,11 @@ package com.ensolution.ems.schedule.domain.snapshot;
 
 import com.ensolution.ems.global.common.enums.SampleGrouping;
 
+import java.math.BigDecimal;
+
 /**
  * 측정 시점 측정방법 사본. 원장({@code client_management.MeasurementMethod})의 채취 단위·통칭 시료명·
- * 표준 채취시간을 복사해 두어, 이후 고객사가 측정방법을 고쳐도 이 회차의 기록지가 흔들리지 않는다.
+ * 표준 채취시간·표준 흡인유량을 복사해 두어, 이후 고객사가 측정방법을 고쳐도 이 회차의 기록지가 흔들리지 않는다.
  *
  * <p>현장 기록지의 가스상 시료 표는 이 값으로 행을 만든다 — {@code MERGED}면 그 방법의 항목 전부를
  * {@code mergedSampleName} 한 행으로, {@code PER_ITEM}이면 항목별 한 행으로, {@code NONE}이면 행을 만들지 않는다.
@@ -12,11 +14,14 @@ import com.ensolution.ems.global.common.enums.SampleGrouping;
  *
  * @param methodId 원장 연결키. 2026-09-14 이전 문서는 마이그레이션이 enum 문자열을 이 사본으로 바꾼 것이라
  *                 null이다 — 소비처는 {@code methodId ?? name}으로 그룹을 식별해야 한다
+ * @param suctionFlowRate 방법의 표준 흡인유량(L/min). 통칭 시료(VOCs·VOCs-T)의 유량은 이 값이 정하고, 항목별 채취
+ *                 방법의 항목 유효값은 {@code SamplingItemSnapshot.suctionFlowRate}가 갖는다. 도입 이전 문서는 null
  */
 public record MeasurementMethodSnapshot(
 	Long methodId,
 	String name,
 	SampleGrouping sampleGrouping,
 	String mergedSampleName,
-	Integer samplingMinutes
+	Integer samplingMinutes,
+	BigDecimal suctionFlowRate
 ) {}

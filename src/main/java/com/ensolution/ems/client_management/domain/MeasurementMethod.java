@@ -8,12 +8,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 /**
  * 고객사가 측정물질에 쓰는 <b>측정방법</b>(채취 매체·방식). tenant 소유 애그리거트다.
  *
  * <p>한때 전역 enum이었다. enum으로는 "카트리지 항목은 한 번의 채취로 전부 함께 잡는다"는 사실과
- * 그에 딸린 값(표준 채취시간·통칭 시료명)을 둘 곳이 없어, 채취시간을 {@code pollutants}에 두면
- * 카트리지 항목마다 같은 값을 반복 저장하고 바꿀 때마다 동기화해야 했다. 채취시간은 물질이 아니라
+ * 그에 딸린 값(표준 채취시간·흡인유량·통칭 시료명)을 둘 곳이 없어, 채취시간을 {@code pollutants}에 두면
+ * 카트리지 항목마다 같은 값을 반복 저장하고 바꿀 때마다 동기화해야 했다. 채취시간·흡인유량은 물질이 아니라
  * 측정방법에 종속되는 값이므로(이행 종속) 측정방법을 애그리거트로 승격해 그 값들을 여기 둔다.
  * {@code Pollutant}는 {@code methodId}로 참조만 하므로 여기서 값을 바꾸면 그 방법을 쓰는 항목 전부에
  * 즉시 반영된다 — 동기화 경로가 없는 것이 이 구조의 요점이다.
@@ -26,6 +28,9 @@ import lombok.NoArgsConstructor;
  *   <li>{@code mergedSampleName} — {@link SampleGrouping#MERGED}일 때 기록지에 적는 통칭명({@code VOCs}).
  *       불변식: 통칭명이 있으면 반드시 MERGED이고, MERGED면 반드시 통칭명이 있다.</li>
  *   <li>{@code samplingMinutes} — 표준(계획) 채취시간(분). 회차별 실측 시각은 schedule이 따로 갖는다.</li>
+ *   <li>{@code suctionFlowRate} — 표준(계획) 흡인유량(L/min). 통칭 시료({@code VOCs}·{@code VOCs-T})는 한 병을
+ *       한 펌프로 잡으므로 유량이 방법에 속하고, 흡수액처럼 항목마다 다른 방법은 {@code Pollutant}가 오버라이드한다.
+ *       기록지의 가스상 행이 이 값으로 흡인유량 칸을 채워 시작하며, 실측값은 회차가 따로 갖는다.</li>
  * </ul>
  */
 @Builder(toBuilder = true)
@@ -39,6 +44,7 @@ public class MeasurementMethod {
 	private SampleGrouping sampleGrouping;
 	private String mergedSampleName;
 	private Integer samplingMinutes;
+	private BigDecimal suctionFlowRate;
 	private Integer sortOrder;
 
 	public static MeasurementMethod register(
@@ -47,6 +53,7 @@ public class MeasurementMethod {
 		SampleGrouping sampleGrouping,
 		String mergedSampleName,
 		Integer samplingMinutes,
+		BigDecimal suctionFlowRate,
 		Integer sortOrder
 	) {
 		MeasurementMethod method = MeasurementMethod.builder()
@@ -55,6 +62,7 @@ public class MeasurementMethod {
 			.sampleGrouping(sampleGrouping)
 			.mergedSampleName(normalize(mergedSampleName))
 			.samplingMinutes(samplingMinutes)
+			.suctionFlowRate(suctionFlowRate)
 			.sortOrder(sortOrder)
 			.build();
 		method.requireConsistentGrouping();
@@ -64,8 +72,8 @@ public class MeasurementMethod {
 	/**
 	 * 수정한다. {@code name}·{@code sampleGrouping}은 null이면 기존 값을 유지한다.
 	 *
-	 * <p>{@code mergedSampleName}·{@code samplingMinutes}는 <b>전달값을 그대로 채택</b>한다. 둘 다 "없음"이
-	 * 유효한 값이라 null을 "유지"로 읽으면 한번 채운 값을 비울 방법이 없어진다
+	 * <p>{@code mergedSampleName}·{@code samplingMinutes}·{@code suctionFlowRate}는 <b>전달값을 그대로 채택</b>한다.
+	 * 셋 다 "없음"이 유효한 값이라 null을 "유지"로 읽으면 한번 채운 값을 비울 방법이 없어진다
 	 * ({@code StackPollutant#update}의 허용기준과 같은 판단이다). 통칭 채취를 항목별 채취로 바꾸는 요청은
 	 * 그래서 {@code sampleGrouping=PER_ITEM, mergedSampleName=null}을 함께 보내야 한다.
 	 */
@@ -73,13 +81,15 @@ public class MeasurementMethod {
 		String name,
 		SampleGrouping sampleGrouping,
 		String mergedSampleName,
-		Integer samplingMinutes
+		Integer samplingMinutes,
+		BigDecimal suctionFlowRate
 	) {
 		MeasurementMethod updated = this.toBuilder()
 			.name(keep(name, this.name))
 			.sampleGrouping(keep(sampleGrouping, this.sampleGrouping))
 			.mergedSampleName(normalize(mergedSampleName))
 			.samplingMinutes(samplingMinutes)
+			.suctionFlowRate(suctionFlowRate)
 			.build();
 		updated.requireConsistentGrouping();
 		return updated;

@@ -3,6 +3,8 @@ package com.ensolution.ems.client_management.presentation.pollutant.request;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
+import java.math.BigDecimal;
+
 /**
  * 지원 물질 가이드에서 측정물질을 채택합니다. 가이드에 없는 물질은 등록할 수 없습니다.
  *
@@ -13,6 +15,7 @@ import jakarta.validation.constraints.PositiveOrZero;
  * @param methodId  이 고객사가 이 물질에 쓰는 측정방법 id. {@code GET /api/measurement-methods}에서 고릅니다
  * @param samplingMinutes 항목별 채취시간(분). 비우면 측정방법의 표준 채취시간을 따릅니다.
  *                        한 병으로 함께 채취하는(MERGED) 측정방법의 항목에는 지정할 수 없습니다
+ * @param suctionFlowRate 항목별 흡인유량(L/min). 비우면 측정방법의 표준 흡인유량을 따릅니다. 규칙은 samplingMinutes와 같습니다
  * @param nameKr    비워 두면 가이드의 표준 국문명이 복사됩니다. 이후 값은 고객사가 관리합니다
  */
 public record CreatePollutantRequest(
@@ -22,6 +25,8 @@ public record CreatePollutantRequest(
 	Long methodId,
 	@PositiveOrZero
 	Integer samplingMinutes,
+	@PositiveOrZero
+	BigDecimal suctionFlowRate,
 	String nameKr,
 	String nameEn,
 	String equipment,

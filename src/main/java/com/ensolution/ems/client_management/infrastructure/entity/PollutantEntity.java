@@ -12,6 +12,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -95,6 +96,12 @@ public class PollutantEntity {
 	 */
 	@Column(name = "sampling_minutes")
 	private Integer samplingMinutes;
+
+	/**
+	 * 항목별 흡인유량 오버라이드(L/min). null이면 측정방법의 기본값을 따른다. 규칙은 sampling_minutes 와 같다.
+	 */
+	@Column(name = "suction_flow_rate", precision = 10, scale = 3)
+	private BigDecimal suctionFlowRate;
 
 	/** 채택 시 카탈로그 국문명을 복사하므로 항상 값이 있다. 이후 수정은 고객사 몫이다. */
 	@Column(name = "name_kr", nullable = false)

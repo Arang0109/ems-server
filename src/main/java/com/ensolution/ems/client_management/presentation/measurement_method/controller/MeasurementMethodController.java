@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "MeasurementMethod", description = "측정방법 API — 채취 단위·통칭 시료명·표준 채취시간을 고객사가 관리합니다")
+@Tag(name = "MeasurementMethod", description = "측정방법 API — 채취 단위·통칭 시료명·표준 채취시간·표준 흡인유량을 고객사가 관리합니다")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/measurement-methods")
@@ -34,7 +34,8 @@ public class MeasurementMethodController {
 			측정물질을 채택할 때 고를 측정방법을 만듭니다. `sampleGrouping`이 채취 단위입니다 —
 			`MERGED`(한 번의 채취로 항목 전부를 함께, 기록지에는 `mergedSampleName` 한 행)·
 			`PER_ITEM`(항목별로 한 병)·`NONE`(가스상 시료 표에 행 없음).
-			`samplingMinutes`는 표준 채취시간(분)으로, 이 방법을 쓰는 모든 측정항목에 한 번에 적용됩니다.
+			`samplingMinutes`(표준 채취시간, 분)·`suctionFlowRate`(표준 흡인유량, L/min)는 이 방법을 쓰는 모든 측정항목에 한 번에 적용됩니다.
+			통칭 시료(VOCs·VOCs-T)는 한 병을 한 펌프로 잡으므로 유량이 여기서 정해지고, 항목별 채취 방법은 측정물질이 덮어쓸 수 있습니다.
 			""")
 	@PostMapping
 	public ResponseEntity<ApiResponse<MeasurementMethodResponse>> createMeasurementMethod(
@@ -88,8 +89,8 @@ public class MeasurementMethodController {
 		summary = "측정방법 수정",
 		description = """
 			`name`·`sampleGrouping`은 비우면 기존 값이 유지됩니다.
-			`mergedSampleName`·`samplingMinutes`는 **보낸 값이 그대로 저장**됩니다 — 비우면 지워집니다.
-			채취시간을 바꾸면 이 방법을 쓰는 측정항목 전부에 즉시 반영됩니다(항목별 동기화 없음).
+			`mergedSampleName`·`samplingMinutes`·`suctionFlowRate`는 **보낸 값이 그대로 저장**됩니다 — 비우면 지워집니다.
+			채취시간·흡인유량을 바꾸면 이 방법을 쓰는 측정항목 전부에 즉시 반영됩니다(항목별 동기화 없음).
 			이미 만들어진 측정계획의 스냅샷은 사본이라 바뀌지 않습니다.
 			""")
 	@PutMapping("/{methodId}")

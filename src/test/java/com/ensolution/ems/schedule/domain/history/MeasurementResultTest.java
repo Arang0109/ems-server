@@ -121,7 +121,7 @@ class MeasurementResultTest {
 	private static SamplingItemSnapshot item(boolean oxygenApplicable) {
 		return new SamplingItemSnapshot(
 			1L, 11L, "NOX", "질소산화물", "NOx",
-			MeasurementField.AIR, null, null, null, null, null, null,
+			MeasurementField.AIR, null, null, null, null, null, null, null,
 			MeasurementCycle.QUARTERLY, ALLOWANCE, oxygenApplicable, null);
 	}
 

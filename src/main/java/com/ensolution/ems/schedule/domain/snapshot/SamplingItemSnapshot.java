@@ -23,6 +23,8 @@ import java.math.BigDecimal;
  * @param samplingMinutes 이 항목에 적용되는 표준 채취시간(분). 항목별 오버라이드가 반영된 유효값이라
  *                 {@code method.samplingMinutes}(방법 기본값)와 다를 수 있다. 계획 기본값이며 실측 시각은
  *                 {@link AnalysisResult}가 갖는다. 2026-09-14 이전 문서는 null
+ * @param suctionFlowRate 이 항목에 적용되는 표준 흡인유량(L/min). 항목별 오버라이드가 반영된 유효값이며 기록지의
+ *                 가스상 행이 흡인유량 칸을 이 값으로 채워 시작한다. 실측값은 행이 따로 갖는다. 도입 이전 문서는 null
  * @param analysis 실험실 분석 결과. <b>null이면 아직 분석 전</b>이며 정상 상태다 —
  *                 {@link AnalysisResult#empty()}(입력했다가 전부 지움)와 뜻이 다르므로 구분해 다룬다
  */
@@ -39,6 +41,7 @@ public record SamplingItemSnapshot(
 	String equipment,
 	String testMethod,
 	Integer samplingMinutes,
+	BigDecimal suctionFlowRate,
 	MeasurementCycle cycle,
 	BigDecimal allowance,
 	boolean oxygenApplicable,
@@ -66,7 +69,7 @@ public record SamplingItemSnapshot(
 	) {
 		return new SamplingItemSnapshot(
 			stackPollutantId, pollutantId, code, nameKr, nameEn,
-			field, method, phase, mode, equipment, testMethod, samplingMinutes,
+			field, method, phase, mode, equipment, testMethod, samplingMinutes, suctionFlowRate,
 			SnapshotMerge.keep(newCycle, cycle), newAllowance, newOxygenApplicable, analysis);
 	}
 
@@ -78,7 +81,7 @@ public record SamplingItemSnapshot(
 	public SamplingItemSnapshot withAnalysis(AnalysisResult newAnalysis) {
 		return new SamplingItemSnapshot(
 			stackPollutantId, pollutantId, code, nameKr, nameEn,
-			field, method, phase, mode, equipment, testMethod, samplingMinutes,
+			field, method, phase, mode, equipment, testMethod, samplingMinutes, suctionFlowRate,
 			cycle, allowance, oxygenApplicable, newAnalysis);
 	}
 

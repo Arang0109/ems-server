@@ -38,7 +38,7 @@ public class MeasurementMethodService {
 
 		return measurementMethodRepository.save(MeasurementMethod.register(
 			command.tenantId(), command.name(), command.sampleGrouping(),
-			command.mergedSampleName(), command.samplingMinutes(), sortOrder
+			command.mergedSampleName(), command.samplingMinutes(), command.suctionFlowRate(), sortOrder
 		));
 	}
 
@@ -47,7 +47,8 @@ public class MeasurementMethodService {
 		measurementMethodValidator.requireUniqueNameExcluding(command.name(), tenantId, id);
 
 		return measurementMethodRepository.save(method.update(
-			command.name(), command.sampleGrouping(), command.mergedSampleName(), command.samplingMinutes()
+			command.name(), command.sampleGrouping(), command.mergedSampleName(), command.samplingMinutes(),
+			command.suctionFlowRate()
 		));
 	}
 

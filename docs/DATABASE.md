@@ -267,6 +267,7 @@ tenants (테넌트/고객사)
 | sample_grouping | VARCHAR | NOT NULL, ENUM(String) | `SampleGrouping`. **채취 단위** — `NONE`(가스상 시료 행 없음: 먼지·중금속·수은·현장측정) / `PER_ITEM`(항목별 한 병: 흡수액·테드라백) / `MERGED`(한 번의 채취로 항목 전부, 한 병: 흡착관·카트리지) |
 | merged_sample_name | VARCHAR | NULL | `MERGED`일 때 기록지의 통칭 시료명(`VOCs`·`VOCs-T`). 불변식 `merged_sample_name IS NOT NULL ⇔ sample_grouping = MERGED`는 도메인이 지킵니다(`MEASUREMENT_METHOD_GROUPING_MISMATCH`) |
 | sampling_minutes | INT | NULL | **표준(계획) 채취시간, 분 — 이 방법의 기본값.** 항목마다 따로 잡는 방법(`PER_ITEM`)은 `pollutants.sampling_minutes`가 항목별로 덮어쓸 수 있다. 회차별 실측 시각은 `schedule_documents`가 따로 갖습니다 |
+| suction_flow_rate | DECIMAL(10,3) | NULL | **표준(계획) 흡인유량, L/min — 이 방법의 기본값.** 통칭 시료(`VOCs`·`VOCs-T`)는 한 병을 한 펌프로 잡으므로 유량이 방법에 속하고, 항목마다 따로 잡는 방법(`PER_ITEM`)은 `pollutants.suction_flow_rate`가 덮어쓸 수 있다. 2026-09-14 추가 — 컬럼 추가라 ddl-auto가 반영하며 스크립트가 없다 |
 | sort_order | INT | | 등록 시 `max+10`. 목록 표시 순서 |
 | created_at / modified_at | DATETIME | | |
 
@@ -277,11 +278,11 @@ tenants (테넌트/고객사)
   `platform`이 `client_management`를 참조하지 않기 때문이며, 새 고객사가 첫 화면에서 명시적으로 채웁니다.
   마이그레이션은 기존 테넌트 전체에 같은 8종을 넣고 구 `pollutants.method`를 그 이름으로 매핑해 백필합니다.
 - **삭제는 측정물질이 참조 중이면 막습니다**(`MEASUREMENT_METHOD_IN_USE`). 그래서 `pollutants.method_id`에 `ON DELETE`가 없습니다.
-- 수정 시 `merged_sample_name`·`sampling_minutes`는 **전체 채택**(null = 비움)입니다 — "없음"이 유효한 값이라 null을
+- 수정 시 `merged_sample_name`·`sampling_minutes`·`suction_flow_rate`는 **전체 채택**(null = 비움)입니다 — "없음"이 유효한 값이라 null을
   "유지"로 읽으면 비울 방법이 없어집니다(`stack_pollutant.allowance`와 같은 판단).
-- `schedule_documents.items[].method`는 이 행의 **사본**입니다(`{methodId, name, sampleGrouping, mergedSampleName, samplingMinutes}`).
+- `schedule_documents.items[].method`는 이 행의 **사본**입니다(`{methodId, name, sampleGrouping, mergedSampleName, samplingMinutes, suctionFlowRate}`).
   측정방법을 고쳐도 과거 회차의 기록지는 바뀌지 않습니다. 항목에 실제 적용된 채취시간(오버라이드 반영)은
-  `items[].samplingMinutes`에 따로 복사됩니다 — `method.samplingMinutes`는 방법 기본값입니다.
+  `items[].samplingMinutes`에 따로 복사됩니다 — `method.samplingMinutes`는 방법 기본값입니다. 흡인유량도 같다(`items[].suctionFlowRate`).
 
 ---
 
@@ -300,6 +301,7 @@ tenants (테넌트/고객사)
 | catalog_id | BIGINT | **NOT NULL**, FK→pollutant_catalog | `fk_pollutants_catalog`. **ON DELETE 없음**(카탈로그는 폐지만 함) |
 | method_id | BIGINT | NULL, FK→measurement_methods | `fk_pollutants_measurement_methods`. **ON DELETE 없음**(삭제는 Validator가 막음). 고객사가 채택 시 정하는 측정방법 — 같은 항목도 업체마다 다를 수 있어 카탈로그가 아니라 여기서 정함. API(`POST`)는 필수, DB는 백필되지 못한 레거시 행 호환을 위해 nullable |
 | sampling_minutes | INT | NULL | **항목별 채취시간 오버라이드(분).** 흡수액처럼 항목마다 따로 잡는 방법은 물질마다 흡인 시간이 다를 수 있어 방법 기본값을 덮어쓴다. `MERGED` 방법의 항목에는 둘 수 없다(`POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED`). 유효값 = MERGED면 방법 값, 아니면 `sampling_minutes ?? measurement_methods.sampling_minutes`(`Pollutant.getEffectiveSamplingMinutes`). `PUT`에서 이 컬럼만 **전체 채택**(null = 방법 기본값으로 되돌림). 2026-09-14 추가 — 컬럼 추가라 ddl-auto가 반영하며 스크립트가 없다 |
+| suction_flow_rate | DECIMAL(10,3) | NULL | **항목별 흡인유량 오버라이드(L/min).** 흡수액은 물질마다 유량이 정해져 있어 방법 기본값을 덮어쓴다. `MERGED` 방법의 항목에는 둘 수 없다(`POLLUTANT_SUCTION_FLOW_RATE_NOT_ALLOWED`). 유효값 규칙·`PUT` 전체 채택 규칙은 `sampling_minutes`와 같다(`Pollutant.getEffectiveSuctionFlowRate`). 2026-09-14 추가, 스크립트 없음 |
 | name_kr | VARCHAR | NOT NULL | 한글명. 채택 시 가이드 값을 복사하며 이후 고객사가 관리 |
 | name_en | VARCHAR | | 영문명. 고객사 입력값(초기 공백) |
 | equipment | VARCHAR | | 시험장비. 고객사 입력값(초기 공백) |

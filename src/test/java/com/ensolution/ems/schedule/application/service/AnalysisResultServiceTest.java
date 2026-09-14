@@ -83,7 +83,7 @@ class AnalysisResultServiceTest {
 		return new SamplingItemSnapshot(
 			pollutantId * 10, pollutantId, null, nameKr, null,
 			MeasurementField.AIR, null, PollutantPhase.GAS, null,
-			null, null, null, MeasurementCycle.MONTHLY, allowance, false, null);
+			null, null, null, null, MeasurementCycle.MONTHLY, allowance, false, null);
 	}
 
 	private AnalysisResult analysisOf(Long pollutantId) {

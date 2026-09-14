@@ -39,9 +39,10 @@ public class PollutantController {
 			`nameKr`을 비워 두면 가이드의 표준 국문명이 복사되며, 이후 표기명·시험장비·시험방법은 고객사가 관리합니다.
 			측정분야·형태는 가이드가 정하므로 요청에 담지 않습니다.
 			`methodId`(측정방법)는 같은 물질이라도 업체마다 다를 수 있으므로 고객사가 채택 시 **필수로** 지정합니다.
-			측정방법은 `GET /api/measurement-methods`에서 고르며, 채취 단위·표준 채취시간은 측정방법이 갖습니다.
-			흡수액처럼 항목마다 따로 잡는 방법은 물질마다 시간이 다를 수 있어 `samplingMinutes`로 항목별 채취시간을
-			덮어쓸 수 있습니다(한 병으로 함께 채취하는 방법의 항목에는 지정 불가).
+			측정방법은 `GET /api/measurement-methods`에서 고르며, 채취 단위·표준 채취시간·표준 흡인유량은 측정방법이 갖습니다.
+			흡수액처럼 항목마다 따로 잡는 방법은 물질마다 값이 다를 수 있어 `samplingMinutes`(항목별 채취시간)·
+			`suctionFlowRate`(항목별 흡인유량)로 덮어쓸 수 있습니다(한 병으로 함께 채취하는 방법의 항목에는 지정 불가 —
+			VOCs·VOCs-T 같은 통칭 시료의 유량은 측정방법이 정합니다).
 			""")
 	@PostMapping
 	public ResponseEntity<ApiResponse<PollutantResponse>> createPollutant(
@@ -105,7 +106,7 @@ public class PollutantController {
 		description = "전달하지 않은 필드는 기존 값을 유지합니다. "
 			+ "어떤 가이드 항목인지와 측정분야·형태는 수정 대상이 아닙니다. "
 			+ "`methodId`(측정방법)는 수정할 수 있으며 전달하지 않으면 기존 값이 유지됩니다. "
-			+ "`samplingMinutes`(항목별 채취시간)만 보낸 값이 그대로 저장되며, 비우면 측정방법 기본값으로 되돌아갑니다.")
+			+ "`samplingMinutes`(항목별 채취시간)·`suctionFlowRate`(항목별 흡인유량)만 보낸 값이 그대로 저장되며, 비우면 측정방법 기본값으로 되돌아갑니다.")
 	@PutMapping("/{pollutantId}")
 	public ResponseEntity<ApiResponse<PollutantResponse>> updatePollutant(
 		@PathVariable Long pollutantId,

@@ -13,10 +13,11 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 고객사 측정방법. 채취 단위·통칭 시료명·표준 채취시간을 소유하며 {@code pollutants.method_id}가 참조한다.
+ * 고객사 측정방법. 채취 단위·통칭 시료명·표준 채취시간·표준 흡인유량을 소유하며 {@code pollutants.method_id}가 참조한다.
  * 제약 이름은 {@code docs/migration/2026-09-14-measurement-methods.sql}의 DDL과 같아야 한다 —
  * 다르면 {@code ddl-auto: update}가 같은 제약을 한 번 더 만든다.
  */
@@ -70,6 +71,10 @@ public class MeasurementMethodEntity {
 	/** 표준(계획) 채취시간, 분. */
 	@Column(name = "sampling_minutes")
 	private Integer samplingMinutes;
+
+	/** 표준(계획) 흡인유량, L/min. 통칭 시료의 유량은 방법이 정하고, 항목별 방법은 pollutants 가 덮어쓴다. */
+	@Column(name = "suction_flow_rate", precision = 10, scale = 3)
+	private BigDecimal suctionFlowRate;
 
 	@Column(name = "sort_order")
 	private Integer sortOrder;

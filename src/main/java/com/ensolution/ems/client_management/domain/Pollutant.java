@@ -9,13 +9,15 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 /**
  * 고객사가 {@link PollutantCatalog}(지원 물질 가이드)에서 <b>채택한</b> 측정물질.
  * 가이드에 없는 물질은 만들 수 없으므로 {@code catalogId}는 항상 존재한다.
  *
  * <p>필드는 세 부류로 나뉜다.
  * <ul>
- *   <li><b>고객사 소유값</b> — {@code methodId}, {@code samplingMinutes}, {@code nameKr}, {@code nameEn},
+ *   <li><b>고객사 소유값</b> — {@code methodId}, {@code samplingMinutes}, {@code suctionFlowRate}, {@code nameKr}, {@code nameEn},
  *       {@code equipment}, {@code testMethod}.
  *       DB 컬럼이며 고객사가 직접 입력·관리한다. 채택 시 {@code nameKr}만 카탈로그 값을 복사해 두고
  *       나머지는 비워 둔다. 이후 카탈로그를 고쳐도 이 값들은 바뀌지 않는다.
@@ -23,18 +25,20 @@ import lombok.NoArgsConstructor;
  *       때문이다(예: 이황화메틸은 테드라백·카트리지 둘 다 쓰인다). 카탈로그에는 기본값도 없다.
  *       {@code samplingMinutes}는 <b>항목별 채취시간 오버라이드</b>다 — 흡수액처럼 항목마다 따로 잡는 방법은
  *       물질마다 흡인 시간이 다를 수 있어 방법의 기본값을 덮어쓴다. 한 병으로 함께 잡는({@code MERGED}) 방법의
- *       항목에는 둘 수 없다(항목마다 시간이 다르면 한 병이 아니다).</li>
+ *       항목에는 둘 수 없다(항목마다 시간이 다르면 한 병이 아니다). {@code suctionFlowRate}도 같은 구조의
+ *       <b>항목별 흡인유량 오버라이드</b>다 — 흡수액은 물질마다 유량이 정해져 있지만, 통칭 시료({@code VOCs}·{@code VOCs-T})는
+ *       한 병을 한 펌프로 잡으므로 방법이 정한다.</li>
  *   <li><b>카탈로그 투영값</b> — {@code code}, {@code field}, {@code phase}, {@code mode}(측정방식 분류).
  *       DB 컬럼이 아니라 조회 시 카탈로그에서 조인해 채우는 읽기 전용 값이다. 카탈로그가 단일 진실 소스이므로
  *       법령 개정이 즉시 반영된다.</li>
  *   <li><b>측정방법 투영값</b> — {@code methodName}, {@code sampleGrouping}, {@code mergedSampleName},
- *       {@code methodSamplingMinutes}. 역시 DB 컬럼이 아니라 {@link MeasurementMethod}에서 조인해 채우는 읽기 전용
+ *       {@code methodSamplingMinutes}, {@code methodSuctionFlowRate}. 역시 DB 컬럼이 아니라 {@link MeasurementMethod}에서 조인해 채우는 읽기 전용
  *       값이다. 채취 단위와 기본 채취시간은 물질이 아니라 측정방법에 종속되는 값이라 여기 컬럼으로 두지 않는다 —
  *       두면 카트리지 항목마다 같은 값을 반복 저장하고 바꿀 때마다 동기화해야 한다. 측정방법을 고치면
  *       그 방법을 쓰는 항목 전부에 즉시 반영된다.</li>
  * </ul>
  * 두 투영은 모두 {@code PollutantEntityMapper}가 담당한다.
- * 이 항목에 실제로 적용되는 채취시간은 {@link #getEffectiveSamplingMinutes()}가 정한다.
+ * 이 항목에 실제로 적용되는 채취시간·흡인유량은 {@link #getEffectiveSamplingMinutes()}·{@link #getEffectiveSuctionFlowRate()}가 정한다.
  *
  * <p>{@code code}는 측정분야 안에서만 유일하므로 분야가 다르면 같은 값이 나올 수 있다.
  */
@@ -62,6 +66,8 @@ public class Pollutant {
 	private Long methodId;
 	/** 항목별 채취시간 오버라이드(분). null이면 측정방법의 기본값을 따른다. */
 	private Integer samplingMinutes;
+	/** 항목별 흡인유량 오버라이드(L/min). null이면 측정방법의 기본값을 따른다. */
+	private BigDecimal suctionFlowRate;
 	private String nameKr;
 	private String nameEn;
 	private String equipment;
@@ -72,6 +78,7 @@ public class Pollutant {
 	private SampleGrouping sampleGrouping;
 	private String mergedSampleName;
 	private Integer methodSamplingMinutes;
+	private BigDecimal methodSuctionFlowRate;
 
 	/**
 	 * 이 항목에 적용되는 표준 채취시간(분).
@@ -82,6 +89,15 @@ public class Pollutant {
 	public Integer getEffectiveSamplingMinutes() {
 		if (sampleGrouping == SampleGrouping.MERGED) return methodSamplingMinutes;
 		return samplingMinutes != null ? samplingMinutes : methodSamplingMinutes;
+	}
+
+	/**
+	 * 이 항목에 적용되는 표준 흡인유량(L/min). 규칙은 {@link #getEffectiveSamplingMinutes()}와 같다 —
+	 * 한 병으로 함께 잡는 방법은 유량도 하나이므로 방법 값만 보고, 그 외에는 오버라이드가 있으면 그것을 쓴다.
+	 */
+	public BigDecimal getEffectiveSuctionFlowRate() {
+		if (sampleGrouping == SampleGrouping.MERGED) return methodSuctionFlowRate;
+		return suctionFlowRate != null ? suctionFlowRate : methodSuctionFlowRate;
 	}
 
 	/**
@@ -97,6 +113,7 @@ public class Pollutant {
 		PollutantCatalog catalog,
 		Long methodId,
 		Integer samplingMinutes,
+		BigDecimal suctionFlowRate,
 		String nameKr,
 		String nameEn,
 		String equipment,
@@ -111,6 +128,7 @@ public class Pollutant {
 			.mode(catalog.getMode())
 			.methodId(methodId)
 			.samplingMinutes(samplingMinutes)
+			.suctionFlowRate(suctionFlowRate)
 			.nameKr(keep(nameKr, catalog.getNameKr()))
 			.nameEn(nameEn)
 			.equipment(equipment)
@@ -126,13 +144,14 @@ public class Pollutant {
 	 * {@code methodId}는 고객사 소유값이므로 바꿀 수 있다. 측정방법 투영값은 저장 후 어댑터가 다시 채우므로
 	 * 여기서 손대지 않는다.
 	 *
-	 * <p>{@code samplingMinutes}만 <b>전달값을 그대로 채택</b>한다. "오버라이드 없음(방법 기본값으로 되돌림)"이
+	 * <p>{@code samplingMinutes}·{@code suctionFlowRate}만 <b>전달값을 그대로 채택</b>한다. "오버라이드 없음(방법 기본값으로 되돌림)"이
 	 * 유효한 값이라 null을 "유지"로 읽으면 한번 넣은 오버라이드를 걷어낼 방법이 없어진다
 	 * ({@code StackPollutant#update}의 허용기준과 같은 판단이다). 수정 폼이 자기 필드 전부를 보내는 것이 전제다.
 	 */
 	public Pollutant update(
 		Long methodId,
 		Integer samplingMinutes,
+		BigDecimal suctionFlowRate,
 		String nameKr,
 		String nameEn,
 		String equipment,
@@ -141,6 +160,7 @@ public class Pollutant {
 		return this.toBuilder()
 			.methodId(keep(methodId, this.methodId))
 			.samplingMinutes(samplingMinutes)
+			.suctionFlowRate(suctionFlowRate)
 			.nameKr(keep(nameKr, this.nameKr))
 			.nameEn(keep(nameEn, this.nameEn))
 			.equipment(keep(equipment, this.equipment))

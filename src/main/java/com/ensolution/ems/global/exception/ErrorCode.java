@@ -47,6 +47,7 @@ public enum ErrorCode {
   POLLUTANT_CATALOG_INACTIVE(HttpStatus.BAD_REQUEST, "폐지된 측정물질은 새로 등록할 수 없습니다."),
   POLLUTANT_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 등록된 카탈로그 측정물질입니다."),
   POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "한 병으로 함께 채취하는 측정방법의 항목에는 항목별 채취시간을 둘 수 없습니다."),
+  POLLUTANT_SUCTION_FLOW_RATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "한 병으로 함께 채취하는 측정방법의 항목에는 항목별 흡인유량을 둘 수 없습니다."),
   MEASUREMENT_METHOD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 측정방법입니다."),
   MEASUREMENT_METHOD_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 같은 이름의 측정방법이 있습니다."),
   MEASUREMENT_METHOD_IN_USE(HttpStatus.CONFLICT, "측정물질이 사용 중인 측정방법은 삭제할 수 없습니다."),

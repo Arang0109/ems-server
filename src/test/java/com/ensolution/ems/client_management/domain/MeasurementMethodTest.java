@@ -7,6 +7,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,7 +24,7 @@ class MeasurementMethodTest {
 	private static final Long TENANT = 1L;
 
 	private static MeasurementMethod cartridge() {
-		return MeasurementMethod.register(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30, 80);
+		return MeasurementMethod.register(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30, null, 80);
 	}
 
 	@Nested
@@ -31,27 +33,27 @@ class MeasurementMethodTest {
 
 		@Test
 		void 통칭_채취는_통칭명이_있어야_한다() {
-			assertThatThrownBy(() -> MeasurementMethod.register(TENANT, "카트리지", SampleGrouping.MERGED, null, null, 10))
+			assertThatThrownBy(() -> MeasurementMethod.register(TENANT, "카트리지", SampleGrouping.MERGED, null, null, null, 10))
 				.isInstanceOf(CustomException.class)
 				.hasMessage(ErrorCode.MEASUREMENT_METHOD_GROUPING_MISMATCH.getMessage());
 		}
 
 		@Test
 		void 항목별_채취에는_통칭명을_둘_수_없다() {
-			assertThatThrownBy(() -> MeasurementMethod.register(TENANT, "흡수액", SampleGrouping.PER_ITEM, "VOCs", null, 10))
+			assertThatThrownBy(() -> MeasurementMethod.register(TENANT, "흡수액", SampleGrouping.PER_ITEM, "VOCs", null, null, 10))
 				.isInstanceOf(CustomException.class)
 				.hasMessage(ErrorCode.MEASUREMENT_METHOD_GROUPING_MISMATCH.getMessage());
 		}
 
 		@Test
 		void 공백_통칭명은_없는_것으로_본다() {
-			assertThatCode(() -> MeasurementMethod.register(TENANT, "흡수액", SampleGrouping.PER_ITEM, "  ", null, 10))
+			assertThatCode(() -> MeasurementMethod.register(TENANT, "흡수액", SampleGrouping.PER_ITEM, "  ", null, null, 10))
 				.doesNotThrowAnyException();
 		}
 
 		@Test
 		void 통칭명은_앞뒤_공백을_지워_저장한다() {
-			MeasurementMethod method = MeasurementMethod.register(TENANT, "카트리지", SampleGrouping.MERGED, " VOCs ", null, 10);
+			MeasurementMethod method = MeasurementMethod.register(TENANT, "카트리지", SampleGrouping.MERGED, " VOCs ", null, null, 10);
 
 			assertThat(method.getMergedSampleName()).isEqualTo("VOCs");
 		}
@@ -63,7 +65,7 @@ class MeasurementMethodTest {
 
 		@Test
 		void 이름과_채취_단위는_전달하지_않으면_유지된다() {
-			MeasurementMethod updated = cartridge().update(null, null, "VOCs", 40);
+			MeasurementMethod updated = cartridge().update(null, null, "VOCs", 40, null);
 
 			assertThat(updated.getName()).isEqualTo("카트리지");
 			assertThat(updated.getSampleGrouping()).isEqualTo(SampleGrouping.MERGED);
@@ -72,14 +74,14 @@ class MeasurementMethodTest {
 
 		@Test
 		void 채취시간은_null을_보내면_비워진다() {
-			MeasurementMethod updated = cartridge().update(null, null, "VOCs", null);
+			MeasurementMethod updated = cartridge().update(null, null, "VOCs", null, null);
 
 			assertThat(updated.getSamplingMinutes()).isNull();
 		}
 
 		@Test
 		void 통칭_채취를_항목별_채취로_바꾸려면_통칭명도_함께_비워야_한다() {
-			MeasurementMethod updated = cartridge().update(null, SampleGrouping.PER_ITEM, null, 30);
+			MeasurementMethod updated = cartridge().update(null, SampleGrouping.PER_ITEM, null, 30, null);
 
 			assertThat(updated.getSampleGrouping()).isEqualTo(SampleGrouping.PER_ITEM);
 			assertThat(updated.getMergedSampleName()).isNull();
@@ -87,7 +89,7 @@ class MeasurementMethodTest {
 
 		@Test
 		void 통칭명만_비우고_채취_단위를_두면_거부한다() {
-			assertThatThrownBy(() -> cartridge().update(null, null, null, 30))
+			assertThatThrownBy(() -> cartridge().update(null, null, null, 30, null))
 				.isInstanceOf(CustomException.class)
 				.hasMessage(ErrorCode.MEASUREMENT_METHOD_GROUPING_MISMATCH.getMessage());
 		}
@@ -96,11 +98,20 @@ class MeasurementMethodTest {
 		void 수정은_id와_tenant를_바꾸지_않는다() {
 			MeasurementMethod original = cartridge().toBuilder().id(9L).build();
 
-			MeasurementMethod updated = original.update("카트리지(DNPH)", null, "VOCs", 30);
+			MeasurementMethod updated = original.update("카트리지(DNPH)", null, "VOCs", 30, null);
 
 			assertThat(updated.getId()).isEqualTo(9L);
 			assertThat(updated.getTenantId()).isEqualTo(TENANT);
 			assertThat(updated.getName()).isEqualTo("카트리지(DNPH)");
+		}
+
+		@Test
+		void 흡인유량은_채취시간과_같이_전달값을_그대로_채택한다() {
+			MeasurementMethod withRate = cartridge().update(null, null, "VOCs", 30, new BigDecimal("1.5"));
+			assertThat(withRate.getSuctionFlowRate()).isEqualByComparingTo("1.5");
+
+			MeasurementMethod cleared = withRate.update(null, null, "VOCs", 30, null);
+			assertThat(cleared.getSuctionFlowRate()).isNull();
 		}
 	}
 }

@@ -11,7 +11,7 @@ import lombok.Getter;
  * (2) {@code docs/migration/2026-09-14-measurement-methods.sql}이 기존 {@code pollutants.method} enum 값을
  * 이 표의 이름으로 매핑해 백필한다. <b>이 표와 마이그레이션의 CASE 매핑은 반드시 같아야 한다.</b>
  *
- * <p>표준 채취시간은 기본값이 없다. 업체마다 다르므로 tenant가 채운다.
+ * <p>표준 채취시간·흡인유량은 기본값이 없다. 업체마다 다르므로 tenant가 채운다.
  */
 @Getter
 @AllArgsConstructor
@@ -31,6 +31,6 @@ public enum MeasurementMethodPreset {
 	private final int sortOrder;
 
 	public MeasurementMethod toDomain(Long tenantId) {
-		return MeasurementMethod.register(tenantId, methodName, sampleGrouping, mergedSampleName, null, sortOrder);
+		return MeasurementMethod.register(tenantId, methodName, sampleGrouping, mergedSampleName, null, null, sortOrder);
 	}
 }

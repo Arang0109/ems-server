@@ -71,7 +71,7 @@ class ScheduleExportAssemblerTest {
 	private SamplingItemSnapshot item(Long pollutantId, String nameKr, String allowance) {
 		return new SamplingItemSnapshot(
 			pollutantId * 10, pollutantId, "CODE-" + pollutantId, nameKr, null,
-			null, null, null, null, null, null, null,
+			null, null, null, null, null, null, null, null,
 			MeasurementCycle.QUARTERLY, allowance == null ? null : new BigDecimal(allowance), true, null);
 	}
 

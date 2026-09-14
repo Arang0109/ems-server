@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -124,21 +125,21 @@ class PollutantValidatorTest {
 	}
 
 	@Nested
-	@DisplayName("항목별 채취시간 오버라이드")
-	class SamplingMinutesOverride {
+	@DisplayName("항목별 채취시간·흡인유량 오버라이드")
+	class ItemOverrides {
 
 		@Test
 		void 항목별로_잡는_방법에는_둘_수_있다() {
 			Long absorption = methodRepository.given(TENANT, "흡수액", SampleGrouping.PER_ITEM, null, 40).getId();
 
-			assertThatCode(() -> validator.requireSamplingMinutesAllowed(absorption, 60, TENANT)).doesNotThrowAnyException();
+			assertThatCode(() -> validator.requireItemOverridesAllowed(absorption, 60, null, TENANT)).doesNotThrowAnyException();
 		}
 
 		@Test
 		void 한_병으로_함께_잡는_방법에는_둘_수_없다() {
 			Long cartridge = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
 
-			assertThatThrownBy(() -> validator.requireSamplingMinutesAllowed(cartridge, 60, TENANT))
+			assertThatThrownBy(() -> validator.requireItemOverridesAllowed(cartridge, 60, null, TENANT))
 				.isInstanceOf(CustomException.class)
 				.hasMessage(ErrorCode.POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED.getMessage());
 		}
@@ -147,21 +148,41 @@ class PollutantValidatorTest {
 		void 오버라이드를_두지_않으면_방법을_보지_않는다() {
 			Long cartridge = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
 
-			assertThatCode(() -> validator.requireSamplingMinutesAllowed(cartridge, null, TENANT)).doesNotThrowAnyException();
+			assertThatCode(() -> validator.requireItemOverridesAllowed(cartridge, null, null, TENANT)).doesNotThrowAnyException();
 		}
 
 		@Test
 		void 측정방법이_없는_레거시_행은_오버라이드를_허용한다() {
-			assertThatCode(() -> validator.requireSamplingMinutesAllowed(null, 60, TENANT)).doesNotThrowAnyException();
+			assertThatCode(() -> validator.requireItemOverridesAllowed(null, 60, null, TENANT)).doesNotThrowAnyException();
 		}
 
 		@Test
 		void 다른_고객사의_방법은_존재를_숨기고_NOT_FOUND다() {
 			Long other = methodRepository.given(OTHER_TENANT, "흡수액", SampleGrouping.PER_ITEM, null, 40).getId();
 
-			assertThatThrownBy(() -> validator.requireSamplingMinutesAllowed(other, 60, TENANT))
+			assertThatThrownBy(() -> validator.requireItemOverridesAllowed(other, 60, null, TENANT))
 				.isInstanceOf(CustomException.class)
 				.hasMessage(ErrorCode.MEASUREMENT_METHOD_NOT_FOUND.getMessage());
+		}
+
+		@Test
+		void 흡인유량_오버라이드도_항목별로_잡는_방법에만_둘_수_있다() {
+			Long absorption = methodRepository.given(TENANT, "흡수액", SampleGrouping.PER_ITEM, null, 40).getId();
+			Long cartridge = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
+
+			assertThatCode(() -> validator.requireItemOverridesAllowed(absorption, null, new BigDecimal("1.5"), TENANT))
+				.doesNotThrowAnyException();
+			assertThatThrownBy(() -> validator.requireItemOverridesAllowed(cartridge, null, new BigDecimal("1.5"), TENANT))
+				.isInstanceOf(CustomException.class)
+				.hasMessage(ErrorCode.POLLUTANT_SUCTION_FLOW_RATE_NOT_ALLOWED.getMessage());
+		}
+
+		@Test
+		void 둘_다_있으면_채취시간_거부가_먼저다() {
+			Long cartridge = methodRepository.given(TENANT, "카트리지", SampleGrouping.MERGED, "VOCs", 30).getId();
+
+			assertThatThrownBy(() -> validator.requireItemOverridesAllowed(cartridge, 60, new BigDecimal("1.5"), TENANT))
+				.hasMessage(ErrorCode.POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED.getMessage());
 		}
 	}
 

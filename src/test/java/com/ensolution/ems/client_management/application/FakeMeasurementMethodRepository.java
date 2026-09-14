@@ -22,7 +22,7 @@ public class FakeMeasurementMethodRepository implements MeasurementMethodReposit
 
 	public MeasurementMethod given(Long tenantId, String name, SampleGrouping grouping,
 	                               String mergedSampleName, Integer samplingMinutes) {
-		return save(MeasurementMethod.register(tenantId, name, grouping, mergedSampleName, samplingMinutes, (int) nextId * 10));
+		return save(MeasurementMethod.register(tenantId, name, grouping, mergedSampleName, samplingMinutes, null, (int) nextId * 10));
 	}
 
 	@Override

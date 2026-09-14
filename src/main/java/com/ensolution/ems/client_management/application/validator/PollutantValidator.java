@@ -10,6 +10,8 @@ import com.ensolution.ems.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+
 /**
  * 측정물질(Pollutant) 채택·수정 시의 비즈니스 규칙 검증을 담당한다.
  * 단건 존재·소유권 검증은 Adapter의 {@code findById(id, tenantId)}가 담당하므로 여기서 다루지 않는다.
@@ -57,18 +59,25 @@ public class PollutantValidator {
 	}
 
 	/**
-	 * 항목별 채취시간 오버라이드는 항목마다 따로 잡는 방법에서만 뜻이 있다. 한 병으로 함께 잡는(MERGED) 방법의
-	 * 항목에 시간을 따로 두면 "한 병인데 항목마다 시간이 다르다"는 모순이라 거부한다.
+	 * 항목별 채취시간·흡인유량 오버라이드는 항목마다 따로 잡는 방법에서만 뜻이 있다. 한 병으로 함께 잡는(MERGED) 방법의
+	 * 항목에 값을 따로 두면 "한 병인데 항목마다 시간·유량이 다르다"는 모순이라 거부한다 — 통칭 시료(VOCs·VOCs-T)의
+	 * 유량은 방법이 정한다.
 	 *
 	 * <p>{@code methodId}는 이 수정 뒤 실제로 적용될 측정방법이다(수정 경로는 호출자가 기존 값과 병합해 넘긴다).
 	 * 측정방법이 정해지지 않은 레거시 행(null)은 오버라이드만이 유일한 값이므로 허용한다.
+	 * 두 오버라이드를 한 번에 보는 것은 방법을 한 번만 읽기 위해서다.
 	 */
-	public void requireSamplingMinutesAllowed(Long methodId, Integer samplingMinutes, Long tenantId) {
-		if (samplingMinutes == null || methodId == null) return;
+	public void requireItemOverridesAllowed(
+		Long methodId, Integer samplingMinutes, BigDecimal suctionFlowRate, Long tenantId
+	) {
+		if ((samplingMinutes == null && suctionFlowRate == null) || methodId == null) return;
 
 		MeasurementMethod method = measurementMethodRepository.findById(methodId, tenantId);
-		if (method.getSampleGrouping() == SampleGrouping.MERGED) {
+		if (method.getSampleGrouping() != SampleGrouping.MERGED) return;
+
+		if (samplingMinutes != null) {
 			throw new CustomException(ErrorCode.POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED);
 		}
+		throw new CustomException(ErrorCode.POLLUTANT_SUCTION_FLOW_RATE_NOT_ALLOWED);
 	}
 }

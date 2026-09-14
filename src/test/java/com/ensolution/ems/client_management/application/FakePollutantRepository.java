@@ -39,7 +39,7 @@ public class FakePollutantRepository implements PollutantRepository {
 	 * {@code methodId}만 단언한다.
 	 */
 	public Pollutant given(Long tenantId, PollutantCatalog catalog, String nameKr, Long methodId) {
-		Pollutant pollutant = Pollutant.register(tenantId, catalog, methodId, null, nameKr, null, null, null)
+		Pollutant pollutant = Pollutant.register(tenantId, catalog, methodId, null, null, nameKr, null, null, null)
 			.toBuilder()
 			.id(nextId++)
 			.build();

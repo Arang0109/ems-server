@@ -33,10 +33,11 @@ public class PollutantService {
 		pollutantValidator.requireSelectable(catalog);
 		pollutantValidator.requireCatalogNotLinked(catalog.getId(), command.tenantId());
 		pollutantValidator.requireMethodOwned(command.methodId(), command.tenantId());
-		pollutantValidator.requireSamplingMinutesAllowed(command.methodId(), command.samplingMinutes(), command.tenantId());
+		pollutantValidator.requireItemOverridesAllowed(
+			command.methodId(), command.samplingMinutes(), command.suctionFlowRate(), command.tenantId());
 
 		return pollutantRepository.save(Pollutant.register(
-			command.tenantId(), catalog, command.methodId(), command.samplingMinutes(),
+			command.tenantId(), catalog, command.methodId(), command.samplingMinutes(), command.suctionFlowRate(),
 			command.nameKr(), command.nameEn(), command.equipment(), command.testMethod()
 		));
 	}
@@ -44,17 +45,18 @@ public class PollutantService {
 	/**
 	 * 고객사 소유값만 수정한다. 측정분야·형태는 카탈로그 소유이므로 대상이 아니다.
 	 * 측정방법은 고객사 소유값이라 바꿀 수 있으며, 바꾸는 방법도 이 고객사의 것이어야 한다.
-	 * 항목별 채취시간은 이 수정 뒤 적용될 측정방법(바꾸면 새 방법, 아니면 기존 방법) 기준으로 허용 여부를 본다.
+	 * 항목별 채취시간·흡인유량은 이 수정 뒤 적용될 측정방법(바꾸면 새 방법, 아니면 기존 방법) 기준으로 허용 여부를 본다.
 	 */
 	public Pollutant updatePollutant(Long id, Long tenantId, UpdatePollutantCommand command) {
 		Pollutant pollutant = pollutantRepository.findById(id, tenantId);
 		pollutantValidator.requireMethodOwned(command.methodId(), tenantId);
 
 		Long effectiveMethodId = command.methodId() != null ? command.methodId() : pollutant.getMethodId();
-		pollutantValidator.requireSamplingMinutesAllowed(effectiveMethodId, command.samplingMinutes(), tenantId);
+		pollutantValidator.requireItemOverridesAllowed(
+			effectiveMethodId, command.samplingMinutes(), command.suctionFlowRate(), tenantId);
 
 		return pollutantRepository.save(pollutant.update(
-			command.methodId(), command.samplingMinutes(),
+			command.methodId(), command.samplingMinutes(), command.suctionFlowRate(),
 			command.nameKr(), command.nameEn(), command.equipment(), command.testMethod()
 		));
 	}

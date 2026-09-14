@@ -49,7 +49,7 @@ class SnapshotSheetReCalculatorTest {
 
 	private static SamplingItemSnapshot item(Long pollutantId, MeasurementMode mode, Integer samplingMinutes) {
 		return new SamplingItemSnapshot(pollutantId * 10, pollutantId, null, "물질" + pollutantId, null,
-			null, null, null, mode, null, null, samplingMinutes, null, null, false, null);
+			null, null, null, mode, null, null, samplingMinutes, null, null, null, false, null);
 	}
 
 	/** 계산 입력이 있으려면 측정시설 스냅샷이 있어야 한다 — 없으면 재계산기가 조기 반환한다. */

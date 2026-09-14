@@ -16,7 +16,7 @@ class ScheduleSnapshotItemOrderTest {
 
 	private SamplingItemSnapshot item(Long pollutantId, String nameKr) {
 		return new SamplingItemSnapshot(pollutantId * 10, pollutantId, null, nameKr, null,
-			null, null, null, null, null, null, null, null, null, false, null);
+			null, null, null, null, null, null, null, null, null, null, false, null);
 	}
 
 	private ScheduleSnapshot snapshot(SamplingItemSnapshot... items) {

@@ -91,6 +91,7 @@ public record StackMeasurementSummary(
 	 * @param method 이 고객사가 이 물질에 쓰는 측정방법의 사본. 측정방법이 정해지지 않은 레거시 행은 null
 	 * @param samplingMinutes 이 항목에 적용되는 표준 채취시간(분). 항목 오버라이드가 있으면 그것, 없으면 방법 기본값.
 	 *                        {@code method.samplingMinutes}는 방법의 기본값이므로 항목 값은 이것을 본다
+	 * @param suctionFlowRate 이 항목에 적용되는 표준 흡인유량(L/min). 규칙은 samplingMinutes와 같다
 	 */
 	public record MeasurementItemInfo(
 		Long stackPollutantId,
@@ -105,6 +106,7 @@ public record StackMeasurementSummary(
 		String equipment,
 		String testMethod,
 		Integer samplingMinutes,
+		BigDecimal suctionFlowRate,
 		MeasurementCycle cycle,
 		BigDecimal allowance,
 		boolean oxygenApplicable
@@ -112,16 +114,18 @@ public record StackMeasurementSummary(
 
 	/**
 	 * 측정방법 요약. 채취 단위와 통칭 시료명은 현장 기록지가 가스상 시료 행을 만드는 근거이고,
-	 * 표준 채취시간은 계획 기본값이다. 소비 모듈은 이것을 사본으로 저장한다.
+	 * 표준 채취시간·흡인유량은 계획 기본값이다. 소비 모듈은 이것을 사본으로 저장한다.
 	 *
 	 * @param mergedSampleName {@link SampleGrouping#MERGED}일 때만 값이 있다
 	 * @param samplingMinutes  표준 채취시간(분). 미지정이면 null
+	 * @param suctionFlowRate  표준 흡인유량(L/min). 미지정이면 null
 	 */
 	public record MeasurementMethodInfo(
 		Long methodId,
 		String name,
 		SampleGrouping sampleGrouping,
 		String mergedSampleName,
-		Integer samplingMinutes
+		Integer samplingMinutes,
+		BigDecimal suctionFlowRate
 	) {}
 }

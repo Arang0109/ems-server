@@ -64,8 +64,8 @@ class ScheduleMapperSnapshotTest {
 		SamplingItemSnapshot item = new SamplingItemSnapshot(
 			31L, 32L, "NOX", "질소산화물", "NOx",
 			MeasurementField.AIR,
-			new MeasurementMethodSnapshot(4L, "카트리지", SampleGrouping.MERGED, "VOCs", 30),
-			null, MeasurementMode.DIRECT_READING, null, null, 30,
+			new MeasurementMethodSnapshot(4L, "카트리지", SampleGrouping.MERGED, "VOCs", 30, null),
+			null, MeasurementMode.DIRECT_READING, null, null, 30, null,
 			null, new BigDecimal("150"), false,
 			AnalysisResult.empty().applyAnalysisResult(new BigDecimal("12.5"), "ppm", null, null));
 

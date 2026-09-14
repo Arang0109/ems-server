@@ -81,7 +81,7 @@ class ScheduleValidatorTest {
 
 	private SamplingItemSnapshot item(Long pollutantId) {
 		return new SamplingItemSnapshot(pollutantId * 10, pollutantId, null, "물질" + pollutantId, null,
-			null, null, null, null, null, null, null, null, null, false, null);
+			null, null, null, null, null, null, null, null, null, null, false, null);
 	}
 
 	private List<SamplingItemSnapshot> items(Long... pollutantIds) {
@@ -227,7 +227,7 @@ class ScheduleValidatorTest {
 
 		private SamplingItemSnapshot item(Long pollutantId, MeasurementMode mode) {
 			return new SamplingItemSnapshot(pollutantId * 10, pollutantId, null, "물질" + pollutantId, null,
-				null, null, null, mode, null, null, null, null, null, false, null);
+				null, null, null, mode, null, null, null, null, null, null, false, null);
 		}
 
 		private final List<SamplingItemSnapshot> items = List.of(

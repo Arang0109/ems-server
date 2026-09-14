@@ -25,13 +25,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SamplingItemSnapshotTest {
 
 	private static final MeasurementMethodSnapshot CARTRIDGE =
-		new MeasurementMethodSnapshot(4L, "카트리지", SampleGrouping.MERGED, "VOCs", 30);
+		new MeasurementMethodSnapshot(4L, "카트리지", SampleGrouping.MERGED, "VOCs", 30, null);
 
 	private static SamplingItemSnapshot item(Long pollutantId, String nameKr, BigDecimal allowance) {
 		return new SamplingItemSnapshot(
 			pollutantId * 100, pollutantId, "CODE-" + pollutantId, nameKr, nameKr,
 			MeasurementField.AIR, CARTRIDGE, PollutantPhase.GAS, null,
-			"가스분석기", "ES 01310", 30, MeasurementCycle.MONTHLY, allowance, false, null);
+			"가스분석기", "ES 01310", 30, null, MeasurementCycle.MONTHLY, allowance, false, null);
 	}
 
 	@Nested

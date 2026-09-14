@@ -14,7 +14,7 @@ Client (의뢰기관)
 PollutantCatalog (측정물질 가이드 · 전역)
   └── Pollutant (고객사 채택 물질)  1:N  ──< StackPollutant (시설별 측정물질) >── Stack
         ▲
-MeasurementMethod (측정방법)  ── tenant 직속. Pollutant가 method_id로 참조. 채취 단위·통칭 시료명·표준 채취시간 소유
+MeasurementMethod (측정방법)  ── tenant 직속. Pollutant가 method_id로 참조. 채취 단위·통칭 시료명·표준 채취시간·표준 흡인유량 소유
 
 Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 장비(equipment) id 관리
 ```
@@ -28,8 +28,8 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `Facility` | Stack 산하의 배출시설. 연료 종류·사용량·투입량 관리 |
 | `Prevention` | Stack 산하의 방지시설. 처리 대상물질명(`targetName`)·제거효율(`removalEfficiency`)을 자체 필드로 보유 |
 | `PollutantCatalog` | 고객사에게 **지원하는 측정물질 가이드**. **이 모듈 유일의 tenant 비종속 애그리거트**(전 tenant 공유). 불변 키 `code`를 보유해 클라이언트가 물질별 분기를 할 수 있게 한다. code는 **측정분야 안에서만 유일**하다(대기 납·수질 납이 모두 `PB`). 표기값(영문명·시험장비·시험방법)과 **측정방법은 소유하지 않는다**. 대신 **측정방식 분류 `mode`**(`MeasurementMode`: 현장측정·먼지·중금속·수은·가스상 채취)는 소유한다 — 회사 측정방법이 아무리 쪼개져도 전 tenant를 관통해 항목을 묶는 축이다 |
-| `MeasurementMethod` | 고객사가 측정물질에 쓰는 **측정방법**(채취 매체·방식). tenant 직속 애그리거트. `sampleGrouping`(채취 단위: `NONE`/`PER_ITEM`/`MERGED`)·`mergedSampleName`(MERGED의 통칭 시료명)·`samplingMinutes`(표준 채취시간)를 소유한다. 이 값들은 물질이 아니라 측정방법에 종속되므로 여기 두어야 카트리지 항목 N개를 동기화할 일이 없다. 불변식 `mergedSampleName != null ⇔ MERGED`. 기본 8종은 `MeasurementMethodPreset` |
-| `Pollutant` | 고객사가 가이드에서 **채택한** 물질. `catalogId`는 필수 — 가이드에 없는 물질은 만들 수 없다. `methodId`·`samplingMinutes`·`nameKr`·`nameEn`·`equipment`·`testMethod`는 고객사 소유 컬럼이고, `code`·`field`·`phase`·`mode`는 카탈로그에서, `methodName`·`sampleGrouping`·`mergedSampleName`·`methodSamplingMinutes`는 측정방법에서 조인해 채우는 읽기 전용 투영값이다. 측정방법은 채택 시 **필수**로 정한다. `samplingMinutes`는 **항목별 채취시간 오버라이드**(흡수액처럼 항목마다 따로 잡는 방법용, MERGED 방법에는 불가)이며 유효값은 `getEffectiveSamplingMinutes()`가 정한다 — `update`에서 이 필드만 전체 채택(null = 걷어냄) |
+| `MeasurementMethod` | 고객사가 측정물질에 쓰는 **측정방법**(채취 매체·방식). tenant 직속 애그리거트. `sampleGrouping`(채취 단위: `NONE`/`PER_ITEM`/`MERGED`)·`mergedSampleName`(MERGED의 통칭 시료명)·`samplingMinutes`(표준 채취시간)·`suctionFlowRate`(표준 흡인유량, L/min)를 소유한다. 이 값들은 물질이 아니라 측정방법에 종속되므로 여기 두어야 카트리지 항목 N개를 동기화할 일이 없다. 불변식 `mergedSampleName != null ⇔ MERGED`. 기본 8종은 `MeasurementMethodPreset` |
+| `Pollutant` | 고객사가 가이드에서 **채택한** 물질. `catalogId`는 필수 — 가이드에 없는 물질은 만들 수 없다. `methodId`·`samplingMinutes`·`suctionFlowRate`·`nameKr`·`nameEn`·`equipment`·`testMethod`는 고객사 소유 컬럼이고, `code`·`field`·`phase`·`mode`는 카탈로그에서, `methodName`·`sampleGrouping`·`mergedSampleName`·`methodSamplingMinutes`·`methodSuctionFlowRate`는 측정방법에서 조인해 채우는 읽기 전용 투영값이다. 측정방법은 채택 시 **필수**로 정한다. `samplingMinutes`는 **항목별 채취시간 오버라이드**(흡수액처럼 항목마다 따로 잡는 방법용, MERGED 방법에는 불가)이며 유효값은 `getEffectiveSamplingMinutes()`가 정한다. `suctionFlowRate`는 같은 구조의 **항목별 흡인유량 오버라이드**다 — 흡수액은 물질마다 유량이 정해져 있지만 통칭 시료(VOCs·VOCs-T)는 방법이 정한다(`getEffectiveSuctionFlowRate()`). `update`에서 이 두 필드만 전체 채택(null = 걷어냄) |
 | `StackPollutant` | Stack과 Pollutant를 연결하는 시설별 측정물질. 측정주기·허용치 관리 |
 | `Team` | tenant 직속 측정 팀. 사수(mentor)·부사수(mentee) user id와 장비 id 4종(입자샘플러·가스샘플러·피토관·노즐) 관리. users는 `auth`, 장비는 `equipment` 모듈 소유이므로 **plain id 컬럼**만 보관(FK 없음) |
 
@@ -74,7 +74,7 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 | `PollutantValidator` | `requireSelectable(catalog)` | 폐지된(`active=false`) 가이드 항목은 새로 채택할 수 없음. 저장소 재조회를 피하려 도메인 객체를 받는다 |
 | | `requireCatalogNotLinked(catalogId, tenantId)` | 한 tenant는 같은 가이드 항목을 두 번 채택할 수 없음 |
 | | `requireMethodOwned(methodId, tenantId)` | 채택·수정 시 지정한 측정방법이 이 tenant의 것인지 확인. 미존재·타 tenant 모두 `MEASUREMENT_METHOD_NOT_FOUND`로 은닉. null(수정 경로의 유지)은 통과 |
-| | `requireSamplingMinutesAllowed(methodId, samplingMinutes, tenantId)` | 항목별 채취시간 오버라이드는 `MERGED`(한 병으로 함께 채취) 방법의 항목에 둘 수 없음(`POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED`). 수정 경로는 서비스가 "이 수정 뒤 적용될 방법"을 병합해 넘긴다. 오버라이드가 null이거나 방법이 없는 레거시 행은 통과 |
+| | `requireItemOverridesAllowed(methodId, samplingMinutes, suctionFlowRate, tenantId)` | 항목별 채취시간·흡인유량 오버라이드는 `MERGED`(한 병으로 함께 채취) 방법의 항목에 둘 수 없음(`POLLUTANT_SAMPLING_MINUTES_NOT_ALLOWED`·`POLLUTANT_SUCTION_FLOW_RATE_NOT_ALLOWED`). 방법을 한 번만 읽으려고 둘을 함께 본다. 수정 경로는 서비스가 "이 수정 뒤 적용될 방법"을 병합해 넘긴다. 오버라이드가 null이거나 방법이 없는 레거시 행은 통과 |
 | `PollutantCatalogValidator` | `requireUniqueCode(field, code)` | 가이드 키는 측정분야 안에서 유일 |
 | | `requireNotReferenced(catalogId)` | 참조 중인 카탈로그 삭제 차단(폐지는 `active=false`로) |
 | `StackPollutantValidator` | `requirePollutantOwned(pollutantId, tenantId)` | 등록 대상이 이 tenant가 채택한 물질인지 확인. 미존재·타 tenant 모두 `NOT_FOUND`로 은닉 |
@@ -106,7 +106,7 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 - **카탈로그 속성 투영은 Assembler가 아니라 `PollutantEntityMapper`가 담당합니다.** `toDomain()`이 `code`·`field`·
   `phase`를 `catalog.*`에서 매핑하므로, 측정물질을 읽는 모든 경로가 한 곳에서 같은 값을 얻습니다.
   덕분에 도메인에 병합 로직이 없고 조회 경로에서 카탈로그를 다시 읽지 않습니다.
-  **측정방법 속성**(`methodName`·`sampleGrouping`·`mergedSampleName`·`samplingMinutes`)도 같은 매퍼가 `method.*`에서
+  **측정방법 속성**(`methodName`·`sampleGrouping`·`mergedSampleName`·`samplingMinutes`·`suctionFlowRate`)도 같은 매퍼가 `method.*`에서
   투영합니다. `PollutantJpaRepository`의 조회 4개가 전부 `left join fetch p.method`인 이유입니다(nullable 참조라 left).
 - `PollutantCatalogAssembler` — 가이드와 이 tenant의 **채택 현황**을 대조해 `assembleCandidates()`로 **아직 채택하지 않은 항목**을
   뽑습니다. 값을 병합하지는 않습니다(표기값은 `Pollutant`가 소유하고, 카탈로그 속성은 위 매퍼가 이미 채웠습니다).
