@@ -11,6 +11,7 @@ import com.ensolution.ems.schedule.application.service.support.PreviousSheetFind
 import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
 import com.ensolution.ems.schedule.application.service.support.SnapshotSheetReCalculator;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
+import com.ensolution.ems.schedule.application.validator.ScheduleValidator;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleProgress;
 import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
@@ -49,6 +50,7 @@ public class ScheduleSheetService {
 	private final PreviousSheetFinder previousSheetFinder;
 	private final ScheduleEventBroadcaster eventBroadcaster;
 	private final ScheduleStatusTransitioner statusTransitioner;
+	private final ScheduleValidator scheduleValidator;
 
 	/**
 	 * 측정 시트를 저장한다. 저장 시 계산 파이프라인을 실행해 계산 결과가 반영된 시트를 함께 저장한다.
@@ -132,6 +134,7 @@ public class ScheduleSheetService {
 	) {
 		return snapshotWriter.write(id, tenantId, snapshot -> {
 			List<SamplingSheet> merged = SheetMerge.merge(snapshot.sheets(), sheets, deletedSheets);
+			scheduleValidator.requireIsokineticRowsOnSourceSheet(snapshot.items(), merged);
 			ScheduleSnapshot withSheets = snapshot.withSheets(reCalculator.reCalculate(snapshot, merged));
 			return withSheets.withSampling(samplingOf(withSheets).update(
 				samplingStartedAt, samplingEndedAt, facilityManager, samplingWitness));

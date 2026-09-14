@@ -3,8 +3,12 @@ package com.ensolution.ems.schedule.application.validator;
 import com.ensolution.ems.auth.application.port.in.UserQueryUseCase;
 import com.ensolution.ems.auth.application.port.in.UserSummary;
 import com.ensolution.ems.global.exception.CustomException;
+import com.ensolution.ems.global.common.enums.MeasurementMode;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.schedule.application.FakeScheduleRepository;
+import com.ensolution.ems.schedule.domain.sampling.GaseousSampling;
+import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingItemSnapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -77,7 +81,7 @@ class ScheduleValidatorTest {
 
 	private SamplingItemSnapshot item(Long pollutantId) {
 		return new SamplingItemSnapshot(pollutantId * 10, pollutantId, null, "물질" + pollutantId, null,
-			null, null, null, null, null, null, null, null, false, null);
+			null, null, null, null, null, null, null, null, null, false, null);
 	}
 
 	private List<SamplingItemSnapshot> items(Long... pollutantIds) {
@@ -210,6 +214,89 @@ class ScheduleValidatorTest {
 			// null == null 을 중복으로 판정하면 미배정 계획을 등록할 수 없게 된다.
 			assertThatCode(() -> validator.requireMeasurersInTenant(null, null, TENANT))
 				.doesNotThrowAnyException();
+		}
+	}
+
+	@Nested
+	@DisplayName("requireIsokineticRowsOnSourceSheet")
+	class RequireIsokineticRowsOnSourceSheet {
+
+		private static final Long ARSENIC = 31L;
+		private static final Long SO2 = 32L;
+		private static final Long HG = 33L;
+
+		private SamplingItemSnapshot item(Long pollutantId, MeasurementMode mode) {
+			return new SamplingItemSnapshot(pollutantId * 10, pollutantId, null, "물질" + pollutantId, null,
+				null, null, null, mode, null, null, null, null, null, false, null);
+		}
+
+		private final List<SamplingItemSnapshot> items = List.of(
+			item(ARSENIC, MeasurementMode.HEAVY_METAL),
+			item(SO2, MeasurementMode.GAS_SAMPLING),
+			item(HG, MeasurementMode.MERCURY));
+
+		private SamplingSheet sheet(MeasurementCategory category, List<Long>... rows) {
+			return SamplingSheet.builder()
+				.category(category)
+				.gaseousSamplings(Arrays.stream(rows)
+					.map(ids -> GaseousSampling.builder().pollutantIds(ids).build())
+					.toList())
+				.build();
+		}
+
+		@Test
+		void 비소_행이_중금속_기록지에_있으면_통과한다() {
+			assertThatCode(() -> validator.requireIsokineticRowsOnSourceSheet(items, List.of(
+				sheet(MeasurementCategory.HEAVY_METAL, List.of(ARSENIC)),
+				sheet(MeasurementCategory.GAS, List.of(SO2)))))
+				.doesNotThrowAnyException();
+		}
+
+		@Test
+		void 비소_행이_가스상_기록지에_있으면_거절한다() {
+			assertThatThrownBy(() -> validator.requireIsokineticRowsOnSourceSheet(items, List.of(
+				sheet(MeasurementCategory.GAS, List.of(ARSENIC)))))
+				.isInstanceOf(CustomException.class)
+				.hasMessage(ErrorCode.SCHEDULE_SHEET_ISOKINETIC_ROW_MISPLACED.getMessage());
+		}
+
+		@Test
+		void 수은_행이_중금속_기록지에_있어도_거절한다() {
+			// 입자상 기록지라고 다 되는 것이 아니다 — 그 방식의 기록지여야 한다.
+			assertThatThrownBy(() -> validator.requireIsokineticRowsOnSourceSheet(items, List.of(
+				sheet(MeasurementCategory.HEAVY_METAL, List.of(HG)))))
+				.isInstanceOf(CustomException.class);
+		}
+
+		@Test
+		void 정유량_항목과_섞인_병도_등속흡인_항목_기준으로_판정한다() {
+			assertThatThrownBy(() -> validator.requireIsokineticRowsOnSourceSheet(items, List.of(
+				sheet(MeasurementCategory.GAS, List.of(SO2, ARSENIC)))))
+				.isInstanceOf(CustomException.class);
+		}
+
+		@Test
+		void 정유량_행은_어느_기록지에_있어도_통과한다() {
+			assertThatCode(() -> validator.requireIsokineticRowsOnSourceSheet(items, List.of(
+				sheet(MeasurementCategory.DUST, List.of(SO2)))))
+				.doesNotThrowAnyException();
+		}
+
+		@Test
+		void 항목을_모르는_행과_구_문서_항목은_걸리지_않는다() {
+			List<SamplingItemSnapshot> legacy = List.of(item(ARSENIC, null));
+
+			assertThatCode(() -> validator.requireIsokineticRowsOnSourceSheet(legacy, List.of(
+				sheet(MeasurementCategory.GAS, List.of(ARSENIC)),
+				SamplingSheet.builder().category(MeasurementCategory.GAS)
+					.gaseousSamplings(List.of(GaseousSampling.builder().build())).build())))
+				.doesNotThrowAnyException();
+		}
+
+		@Test
+		void 항목이나_시트가_없으면_통과한다() {
+			assertThatCode(() -> validator.requireIsokineticRowsOnSourceSheet(null, List.of())).doesNotThrowAnyException();
+			assertThatCode(() -> validator.requireIsokineticRowsOnSourceSheet(items, null)).doesNotThrowAnyException();
 		}
 	}
 }

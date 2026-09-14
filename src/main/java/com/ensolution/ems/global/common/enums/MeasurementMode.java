@@ -36,4 +36,13 @@ public enum MeasurementMode {
 	GAS_SAMPLING("가스상 채취");
 
 	private final String desc;
+
+	/**
+	 * 등속흡인 트레인으로 채취하는 방식인가. 먼지·중금속·수은이 그렇다.
+	 * 이런 항목이 가스상 시료 행에 실리면(비소화합물 흡수액) 그 행의 채취시각·흡인유량·채취량은 입력값이 아니라
+	 * 같은 시트의 입자상 집계에서 파생되는 값이다 — {@code schedule}의 {@code IsokineticSampleStep}이 이 판정을 쓴다.
+	 */
+	public boolean isIsokinetic() {
+		return this == DUST || this == HEAVY_METAL || this == MERCURY;
+	}
 }

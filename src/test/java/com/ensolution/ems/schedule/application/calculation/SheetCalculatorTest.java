@@ -7,10 +7,12 @@ import com.ensolution.ems.schedule.application.calculation.step.DensityStep;
 import com.ensolution.ems.schedule.application.calculation.step.ExhaustGasStep;
 import com.ensolution.ems.schedule.application.calculation.step.FlowStep;
 import com.ensolution.ems.schedule.application.calculation.step.InitStep;
+import com.ensolution.ems.schedule.application.calculation.step.IsokineticSampleStep;
 import com.ensolution.ems.schedule.application.calculation.step.MoistureStep;
 import com.ensolution.ems.schedule.application.calculation.step.ParticleStep;
 import com.ensolution.ems.schedule.application.calculation.step.PressureStep;
 import com.ensolution.ems.schedule.application.calculation.step.QuantityStep;
+import com.ensolution.ems.schedule.application.calculation.step.SamplingEndTimeStep;
 import com.ensolution.ems.schedule.application.calculation.step.SheetStep;
 import com.ensolution.ems.schedule.application.calculation.StackData;
 import com.ensolution.ems.schedule.domain.sampling.ExhaustGasData;
@@ -44,6 +46,8 @@ class SheetCalculatorTest {
 			new FlowStep(),
 			new QuantityStep(calc),
 			new ParticleStep(calc),
+			new IsokineticSampleStep(calc),
+			new SamplingEndTimeStep(),
 			new ApplyResultStep()
 		);
 		return new SheetCalculator(steps);
@@ -93,7 +97,7 @@ class SheetCalculatorTest {
 			.build();
 
 		MoistureData result = calculator()
-			.calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H)
+			.calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H, List.of())
 			.getMoisture();
 
 		// 13.6 mmH2O ÷ 13.6 = 1.00 mmHg
@@ -114,7 +118,7 @@ class SheetCalculatorTest {
 			.build();
 
 		MoistureData result = calculator()
-			.calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H)
+			.calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H, List.of())
 			.getMoisture();
 
 		assertThat(result.getGasMeterGaugePressureMmHg()).isNull();
@@ -134,7 +138,7 @@ class SheetCalculatorTest {
 			))
 			.build();
 
-		SamplingSheet result = calculator().calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H);
+		SamplingSheet result = calculator().calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H, List.of());
 
 		// 대기압: 1013.25 hPa → 760.0 mmHg
 		assertThat(result.getWeather().getAtmosphericPressureMmHg()).isEqualByComparingTo("760.0");
@@ -191,7 +195,7 @@ class SheetCalculatorTest {
 			.samplingPoints(List.of(particlePoint))
 			.build();
 
-		SamplingSheet result = calculator().calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H);
+		SamplingSheet result = calculator().calculate(sheet, stackData(), pitotCoefficients(), null, DELTA_H, List.of());
 
 		SamplingPoint point = result.getSamplingPoints().get(0);
 		IsokineticSamplingData ps = point.getIsokineticSampling();
@@ -229,7 +233,7 @@ class SheetCalculatorTest {
 	void 입력이_비어도_예외없이_통과한다() {
 		SamplingSheet empty = SamplingSheet.builder().build();
 
-		SamplingSheet result = calculator().calculate(empty, null, null, null, null);
+		SamplingSheet result = calculator().calculate(empty, null, null, null, null, null);
 
 		assertThat(result).isNotNull();
 	}

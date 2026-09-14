@@ -4,12 +4,16 @@ import com.ensolution.ems.auth.application.port.in.UserQueryUseCase;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.schedule.application.port.out.ScheduleRepository;
+import com.ensolution.ems.schedule.domain.sampling.GaseousSampling;
+import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
+import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 import com.ensolution.ems.schedule.domain.snapshot.SamplingItemSnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -79,6 +83,40 @@ public class ScheduleValidator {
 
 		if (!currentIds.equals(Set.copyOf(orderedPollutantIds))) {
 			throw new CustomException(ErrorCode.SCHEDULE_ITEM_ORDER_MISMATCH);
+		}
+	}
+
+	/**
+	 * 등속흡인 방식(먼지·중금속·수은) 항목이 담긴 가스상 시료 행은 <b>그 방식의 입자상 기록지에만</b> 적힐 수 있다 —
+	 * 비소화합물 흡수액은 중금속 기록지에만 있다. 그 행의 채취시각·흡인유량·채취량이 같은 기록지 입자상 집계의
+	 * 파생값이라({@code IsokineticSampleStep}) 다른 기록지에 놓이면 출처가 없어지고, 현장 기록지 서식도 그렇게 되어 있다.
+	 * <p>
+	 * 병합이 끝난 저장 대상 시트 전체를 대조한다. 서비스가 이미 읽어온 스냅샷 항목과 대조하므로 포트를 재조회하지 않으며,
+	 * 측정방식 도입 이전 문서(mode null)의 항목은 등속흡인이 아니어서 걸리지 않는다.
+	 */
+	public void requireIsokineticRowsOnSourceSheet(List<SamplingItemSnapshot> items, List<SamplingSheet> sheets) {
+		if (items == null || sheets == null) return;
+
+		Map<Long, MeasurementCategory> sourceByPollutantId = items.stream()
+			.filter(item -> item.pollutantId() != null)
+			.filter(item -> MeasurementCategory.particulateSourceOf(item.mode()) != null)
+			.collect(Collectors.toMap(
+				SamplingItemSnapshot::pollutantId,
+				item -> MeasurementCategory.particulateSourceOf(item.mode()),
+				(a, b) -> a));
+		if (sourceByPollutantId.isEmpty()) return;
+
+		for (SamplingSheet sheet : sheets) {
+			if (sheet == null || sheet.getGaseousSamplings() == null) continue;
+			for (GaseousSampling row : sheet.getGaseousSamplings()) {
+				if (row == null || row.getPollutantIds() == null) continue;
+				boolean misplaced = row.getPollutantIds().stream()
+					.map(sourceByPollutantId::get)
+					.anyMatch(source -> source != null && source != sheet.getCategory());
+				if (misplaced) {
+					throw new CustomException(ErrorCode.SCHEDULE_SHEET_ISOKINETIC_ROW_MISPLACED);
+				}
+			}
 		}
 	}
 }

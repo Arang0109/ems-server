@@ -60,13 +60,14 @@ Schedule (MySQL 메타 · 진실의 원천)
   들어갑니다. 시트만 담는 컬렉션이 없습니다
 - 계산 입력이 전부 같은 스냅샷에서 나옵니다(`SnapshotSheetReCalculator`) —
   피토관 계수·노즐경·오리피스 보정계수는 `snapshot.equipments()`(= `team.equipments`)에서,
-  표준산소농도·굴뚝 형상/치수는 `snapshot.client().workplace().stack()`에서 취합니다.
+  표준산소농도·굴뚝 형상/치수는 `snapshot.client().workplace().stack()`에서,
+  측정항목의 등속흡인 여부·표준 채취시간은 `snapshot.items()`에서 취합니다.
   **시트는 스냅샷 없이 계산될 수 없습니다**
 - 역방향 의존도 있습니다 — `ScheduleProgress.hasMeasuredValue()`가 `SamplingPoint`의 `gasTemperature`·`dynamicPressure`·`staticPressure`를
   직접 읽어 `SCHEDULED → MEASURING` 전이를 판정합니다. 메타의 상태 머신이 시트 내부 필드에 의존합니다
 
-**단, 계산 엔진은 이미 절연되어 있습니다.** `application/calculation/`의 13개 클래스는 스냅샷을 전혀
-모르고 `StackData` DTO로만 소통합니다. `SnapshotSheetReCalculator`가 유일한 어댑터입니다.
+**단, 계산 엔진은 이미 절연되어 있습니다.** `application/calculation/`의 클래스들은 스냅샷을 전혀
+모르고 `StackData`·`SamplingItemInput` DTO로만 소통합니다. `SnapshotSheetReCalculator`가 유일한 어댑터입니다.
 훗날 분리 논의가 다시 나온다면 **여기가 유일하게 깨끗한 이음매**입니다.
 
 ### 2. Schedule과 ScheduleSnapshot은 한 개념의 두 저장소 표현
@@ -281,15 +282,29 @@ REPORT_COMPLETED · CANCELED ──reopen──► 스냅샷에서 재도출한 
 |---|---|
 | `ScheduleStatusTransitioner` | 상태 전이 저장과 이력 동기화. **경로별 문서 저장 시점**을 한곳에 모음 (아래 참고) |
 | `SnapshotWriter` | 문서 단위 낙관적 락 아래의 부분 갱신. 문서를 쓰는 **모든 경로가 여기를 지납니다** |
-| `SnapshotSheetReCalculator` | 스냅샷에서 계산 입력(장비 spec·굴뚝 정보)을 뽑아 시트 재계산. 계산 엔진과 스냅샷 사이의 **유일한 어댑터** |
+| `SnapshotSheetReCalculator` | 스냅샷에서 계산 입력(장비 spec·굴뚝 정보·측정항목)을 뽑아 시트 재계산. 계산 엔진과 스냅샷 사이의 **유일한 어댑터** |
 | `PreviousSheetFinder` | 새 기록지를 채울 이전 회차 시트 탐색. 직전 회차만 보지 않고 그 기록지를 실제로 쓴 회차를 거슬러 찾음(깊이 제한 `MAX_LOOKBACK`) |
 | `MeasurementRecordRecorder` | 완료 시 이행 이력 기록 / 재개방·취소·삭제 시 해제 |
 
 ### 계산 엔진 (`application/calculation/`)
 
-시트 계산 파이프라인. `SheetStep` 9개가 `@Order`로 실행:
-Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flow(6) → Quantity(7) → Particle(8) → ApplyResult(999).
-입력 DTO `StackData`도 여기 있습니다 — Command도 조회 VO도 아니어서 `command/`에 두지 않습니다.
+시트 계산 파이프라인. `SheetStep` 11개가 `@Order`로 실행:
+Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flow(6) → Quantity(7) → Particle(8)
+→ IsokineticSample(9) → SamplingEndTime(10) → ApplyResult(999).
+입력 DTO `StackData`·`SamplingItemInput`도 여기 있습니다 — Command도 조회 VO도 아니어서 `command/`에 두지 않습니다.
+
+**가스상 시료 행의 파생값 두 가지는 서버가 정합니다.** 흡인유량·가스미터압 자체는 현장에서 사용자가 적는 입력값이고
+측정방법·측정물질·장비에 계획값을 두지 않습니다(2026-09-14에 그 모델링을 검토했다가 접었습니다).
+
+- `IsokineticSample(9)` — 카탈로그 측정방식이 등속흡인(먼지·중금속·수은, `MeasurementMode.isIsokinetic()`)인 항목이
+  담긴 가스상 행(비소화합물 흡수액)은 채취시각·흡인유량(`Vm×1000/총채취시간`)·채취량(`Vm×1000`)을 같은 시트의
+  `particulateSampling`으로 **매 저장마다 덮어씁니다**. 클라이언트가 보낸 값은 무시되며, 출처가 비면 파생값도 비웁니다.
+  프론트는 이 칸들을 잠그고 같은 값을 입력에서 실시간 파생해 보여 줍니다(`ems-web` `sample-rules.ts`).
+  **그런 행은 그 방식의 입자상 기록지에만 적힙니다** — 비소는 중금속 기록지에만. 출처가 같은 기록지여야 하고 현장 서식도
+  그렇습니다. `ScheduleValidator.requireIsokineticRowsOnSourceSheet`가 시트 저장 시 병합 결과 전체를 대조해 거부하며
+  (`SCHEDULE_SHEET_ISOKINETIC_ROW_MISPLACED`), 항목→기록지 매핑은 `MeasurementCategory.particulateSourceOf(mode)`입니다.
+- `SamplingEndTime(10)` — 시작시각만 적힌 정유량 행은 종료시각을 `시작 + 항목의 표준 채취시간`으로 **비어 있을 때만** 채웁니다.
+  기본값이지 확정값이 아니라, 적힌 종료시각은 유지되고 시작시각을 고친 뒤의 재계산은 화면 몫입니다.
 
 ### 상태 전이의 문서 저장 시점
 
@@ -309,7 +324,7 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 
 | Validator | 메서드 |
 |---|---|
-| `ScheduleValidator` | `requireUniqueSchedule(tenantId, stackId, teamId, sampledAt)`, `requireMeasurersInTenant(mentorId, menteeId, tenantId)`, `requireExactItemOrder(items, orderedPollutantIds)` |
+| `ScheduleValidator` | `requireUniqueSchedule(tenantId, stackId, teamId, sampledAt)`, `requireMeasurersInTenant(mentorId, menteeId, tenantId)`, `requireExactItemOrder(items, orderedPollutantIds)`, `requireIsokineticRowsOnSourceSheet(items, sheets)` |
 
 시트 전용 validator는 없습니다 — `SheetMerge`가 버전 충돌 판정을 겸합니다.
 실험분석정보 validator도 없습니다 — 항목 유일성은 `items[]` 구조가 보장하고, 요청 내부 중복 검사는

@@ -25,9 +25,10 @@ public class SheetCalculator {
 		StackData stackData,
 		List<PitotTubeSpec.PitotCoefficient> pitotCoefficients,
 		List<NozzleSpec.NozzleDiameter> diameters,
-		BigDecimal deltaH
+		BigDecimal deltaH,
+		List<SamplingItemInput> items
 	) {
-		SheetContext context = new SheetContext(sheet, stackData, pitotCoefficients, diameters, deltaH);
+		SheetContext context = new SheetContext(sheet, stackData, pitotCoefficients, diameters, deltaH, items);
 		for (SheetStep step : steps) {
 			step.execute(context);
 		}

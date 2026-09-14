@@ -23,6 +23,7 @@ public enum ErrorCode {
   SCHEDULE_ITEM_ORDER_MISMATCH(HttpStatus.BAD_REQUEST, "측정항목 목록이 변경되었습니다. 새로고침 후 다시 시도해 주세요."),
   SCHEDULE_ANALYSIS_DUPLICATE_ITEM(HttpStatus.BAD_REQUEST, "요청에 같은 측정항목이 두 번 이상 담겨 있습니다."),
   SCHEDULE_SHEET_VERSION_CONFLICT(HttpStatus.CONFLICT, "다른 사용자가 이 측정 데이터를 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장해 주세요."),
+  SCHEDULE_SHEET_ISOKINETIC_ROW_MISPLACED(HttpStatus.BAD_REQUEST, "먼지·중금속·수은 항목의 시료는 해당 입자상 기록지에만 적을 수 있습니다."),
   SCHEDULE_EXPORT_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "엑셀 템플릿 처리에 실패했습니다. 템플릿의 jxls 문법을 확인해 주세요."),
   SCHEDULE_MENTOR_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사수입니다."),
   SCHEDULE_MENTEE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부사수입니다."),

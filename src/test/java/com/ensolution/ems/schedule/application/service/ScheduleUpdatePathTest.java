@@ -17,6 +17,7 @@ import com.ensolution.ems.schedule.application.port.out.ScheduleEventBroadcaster
 import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
 import com.ensolution.ems.schedule.application.service.support.SnapshotSheetReCalculator;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
+import com.ensolution.ems.schedule.application.validator.ScheduleValidator;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
 import com.ensolution.ems.schedule.domain.sampling.MeasurementCategory;
@@ -116,7 +117,8 @@ class ScheduleUpdatePathTest {
 			new SnapshotSheetReCalculator(null),
 			null,
 			NOOP_BROADCASTER,
-			new ScheduleStatusTransitioner(scheduleRepository, documentRepository, null));
+			new ScheduleStatusTransitioner(scheduleRepository, documentRepository, null),
+			new ScheduleValidator(null, null));
 
 		givenSchedule(ScheduleStatus.MEASURING);
 		givenSnapshot();
