@@ -4,11 +4,14 @@ import com.ensolution.ems.schedule.application.command.create.CreateScheduleComm
 import com.ensolution.ems.schedule.application.command.detail.PreviousSheetCandidate;
 import com.ensolution.ems.schedule.application.command.detail.PreviousSheetDetail;
 import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
+import com.ensolution.ems.schedule.application.command.export.CheckTemplateResult;
+import com.ensolution.ems.schedule.application.command.export.TemplateIssue;
 import com.ensolution.ems.schedule.application.command.list_item.ScheduleListItem;
 import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeTeamSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeTenantSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.SaveScheduleCustomFieldsCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateReportDatesCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleItemCommand;
@@ -17,6 +20,7 @@ import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequ
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeTeamSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeTenantSnapshotRequest;
+import com.ensolution.ems.schedule.presentation.request.SaveScheduleCustomFieldsRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateReportDatesRequest;
 import com.ensolution.ems.schedule.presentation.request.UpdateScheduleItemRequest;
@@ -25,6 +29,8 @@ import com.ensolution.ems.schedule.presentation.response.PreviousSheetCandidateR
 import com.ensolution.ems.schedule.presentation.response.PreviousSheetResponse;
 import com.ensolution.ems.schedule.presentation.response.ScheduleListResponse;
 import com.ensolution.ems.schedule.presentation.response.ScheduleResponse;
+import com.ensolution.ems.schedule.presentation.response.TemplateCheckResponse;
+import com.ensolution.ems.schedule.presentation.response.TemplateIssueResponse;
 import com.ensolution.ems.schedule.presentation.response.snapshot.ScheduleSnapshotResponse;
 import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
@@ -53,6 +59,8 @@ public interface ScheduleMapper {
 	UpdateReportDatesCommand toUpdateReportDatesCommand(UpdateReportDatesRequest request);
 
 	ChangeTeamSnapshotCommand toChangeTeamCommand(ChangeTeamSnapshotRequest request);
+
+	SaveScheduleCustomFieldsCommand toSaveCustomFieldsCommand(SaveScheduleCustomFieldsRequest request);
 
 	UpdateScheduleItemCommand toUpdateItemCommand(UpdateScheduleItemRequest request);
 
@@ -84,6 +92,12 @@ public interface ScheduleMapper {
 	 * 생성하므로 따로 선언하지 않는다.
 	 */
 	ScheduleSnapshotResponse toSnapshotResponse(ScheduleSnapshot snapshot);
+
+	@Mapping(target = "valid", expression = "java(result.valid())")
+	TemplateCheckResponse toTemplateCheckResponse(CheckTemplateResult result);
+
+	@Mapping(target = "cell", source = "cellAddress")
+	TemplateIssueResponse toTemplateIssueResponse(TemplateIssue issue);
 
 	List<ScheduleListResponse> toListResponses(List<ScheduleListItem> items);
 

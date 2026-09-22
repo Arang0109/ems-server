@@ -68,7 +68,8 @@ public class ScheduleSnapshotAssembler {
 			assembleTeam(meta, teamSummary, equipmentSummaries),
 			samplingData,
 			snapshotMapper.toItemSnapshots(selectedItems)
-		);
+		,
+			Map.of());
 	}
 
 	/**

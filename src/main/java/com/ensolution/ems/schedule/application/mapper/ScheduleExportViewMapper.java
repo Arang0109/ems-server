@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 측정계획 스냅샷을 엑셀 템플릿용 뷰({@link ScheduleExportView})로 평탄화한다.
@@ -110,6 +111,8 @@ public class ScheduleExportViewMapper {
 			.nozzle(slot(equipments, EquipType.NOZZLE))
 			.equipments(toEquipmentViews(equipments))
 			.sheets(sheetExportViewMapper.toSheetViews(snapshot.sheets()))
+			// 필드 도입 전 문서는 null — 템플릿 계약상 custom 은 항상 맵이어야 한다.
+			.customFields(snapshot.customFields() == null ? Map.of() : Map.copyOf(snapshot.customFields()))
 			.build();
 	}
 

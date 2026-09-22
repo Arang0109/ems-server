@@ -44,7 +44,7 @@ class ScheduleProgressTest {
 
 	private static ScheduleSnapshot snapshotWith(LocalTime samplingStartedAt, List<SamplingSheet> sheets) {
 		SamplingSnapshot sampling = new SamplingSnapshot(samplingStartedAt, null, null, null, sheets);
-		return new ScheduleSnapshot("1", 1L, 10L, null, null, null, null, sampling, null);
+		return new ScheduleSnapshot("1", 1L, 10L, null, null, null, null, sampling, null, null);
 	}
 
 	/** 측정점에 실측값(배출가스 온도)이 들어온 시트. */
@@ -109,7 +109,7 @@ class ScheduleProgressTest {
 		@DisplayName("채취 스냅샷이 아직 없어도 판정에 실패하지 않는다")
 		void toleratesMissingSamplingSnapshot() {
 			Schedule meta = metaWith(ScheduleStatus.SCHEDULED);
-			ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 10L, null, null, null, null, null, null);
+			ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 10L, null, null, null, null, null, null, null);
 
 			assertThat(ScheduleProgress.advance(meta, snapshot).getStatus())
 				.isEqualTo(ScheduleStatus.SCHEDULED);

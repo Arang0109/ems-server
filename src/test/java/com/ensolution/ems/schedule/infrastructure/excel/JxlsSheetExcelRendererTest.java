@@ -8,6 +8,7 @@ import com.ensolution.ems.schedule.application.command.export.MoistureExportView
 import com.ensolution.ems.schedule.application.command.export.PitotCoefficientExportView;
 import com.ensolution.ems.schedule.application.command.export.PointExportView;
 import com.ensolution.ems.schedule.application.command.export.SamplingItemExportView;
+import com.ensolution.ems.schedule.application.command.export.SamplingRecordVariable;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
 import com.ensolution.ems.schedule.application.command.export.SheetExportView;
 import com.ensolution.ems.schedule.application.command.export.WeatherExportView;
@@ -28,6 +29,7 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -544,5 +546,58 @@ class JxlsSheetExcelRendererTest {
 				assertThat(wb.getSheetAt(0).getRow(0).getCell(0).getStringCellValue()).isEqualTo("[먼지][질소산화물]");
 			}
 		}
+	}
+	// ── custom 네임스페이스 ────────────────────────────────────────────────
+
+	// A1(area): 정의된 키·정의되지 않은 키·대괄호 표기를 한 셀에
+	private byte[] customFieldsTemplate() throws Exception {
+		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			XSSFSheet s = wb.createSheet("Report");
+			XSSFCell a1 = s.createRow(0).createCell(0);
+			a1.setCellValue("[${custom.siteCode}][${custom.nope}][${custom['inspector']}]");
+			XSSFCell a2 = s.createRow(1).createCell(0);
+			a2.setCellValue("${custom.nope}");
+			addComment(wb, s, a1, "jx:area(lastCell=\"A2\")");
+			wb.write(out);
+			return out.toByteArray();
+		}
+	}
+
+	private ScheduleExportView customFieldsView(Map<String, String> customFields) {
+		return ScheduleExportView.builder()
+			.referenceNumber("REF-123")
+			.customFields(customFields)
+			.sheets(List.of(SheetExportView.builder().category("먼지").build()))
+			.build();
+	}
+
+	@Test
+	void 커스텀_필드는_custom_네임스페이스로_바인딩되고_없는_키는_빈칸이다() throws Exception {
+		byte[] rendered = renderOne(customFieldsTemplate(),
+			customFieldsView(Map.of("siteCode", "A-01", "inspector", "홍길동")));
+
+		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(rendered))) {
+			Sheet s = wb.getSheetAt(0);
+			// 정의되지 않은 키는 예외도 원문 출력도 아닌 빈 문자열이다(jxls 기본 JEXL은 silent·non-strict).
+			assertThat(s.getRow(0).getCell(0).getStringCellValue()).isEqualTo("[A-01][][홍길동]");
+			// 셀 전체가 없는 키 하나면 BLANK 셀이 된다.
+			assertThat(s.getRow(1).getCell(0).getCellType()).isEqualTo(org.apache.poi.ss.usermodel.CellType.BLANK);
+		}
+	}
+
+	@Test
+	void 커스텀_필드가_비어_있어도_렌더링은_깨지지_않는다() throws Exception {
+		byte[] template = customFieldsTemplate();
+
+		assertThatCode(() -> renderOne(template, customFieldsView(Map.of()))).doesNotThrowAnyException();
+	}
+
+	/** 렌더러가 담는 변수 이름은 {@link SamplingRecordVariable}이 소유한다 — 검사기와 같은 표여야 한다. */
+	@Test
+	void 컨텍스트_변수_집합은_SamplingRecordVariable과_같다() {
+		assertThat(SamplingRecordVariable.values())
+			.extracting(SamplingRecordVariable::getVariableName)
+			.containsExactlyInAnyOrder("plan", "sheet", "weather", "moisture", "gas", "flow", "particle",
+				"points", "gaseousSamplings", "items", "custom");
 	}
 }

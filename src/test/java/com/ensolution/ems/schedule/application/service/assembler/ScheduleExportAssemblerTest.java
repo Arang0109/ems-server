@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -82,7 +83,7 @@ class ScheduleExportAssemblerTest {
 
 	private void givenDocument(List<SamplingItemSnapshot> items) {
 		documentRepository.given(new ScheduleSnapshot(
-			String.valueOf(SCHEDULE_ID), SCHEDULE_ID, TENANT_ID, 0L, null, null, null, null, items));
+			String.valueOf(SCHEDULE_ID), SCHEDULE_ID, TENANT_ID, 0L, null, null, null, null, items, null));
 	}
 
 	@Test
@@ -154,5 +155,16 @@ class ScheduleExportAssemblerTest {
 		assertThatThrownBy(() -> assembler.assemble(SCHEDULE_ID, 999L))
 			.isInstanceOf(CustomException.class)
 			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.SCHEDULE_NOT_FOUND);
+	}
+	@Test
+	void 문서의_커스텀_필드_값이_뷰까지_온다() {
+		givenSchedule();
+		documentRepository.given(new ScheduleSnapshot(
+			String.valueOf(SCHEDULE_ID), SCHEDULE_ID, TENANT_ID, 0L, null, null, null, null, List.of(),
+			Map.of("siteCode", "A-01")));
+
+		ScheduleExportView view = assembler.assemble(SCHEDULE_ID, TENANT_ID);
+
+		assertThat(view.getCustomFields()).containsExactly(Map.entry("siteCode", "A-01"));
 	}
 }

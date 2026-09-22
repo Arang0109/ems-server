@@ -5,12 +5,14 @@ import com.ensolution.ems.schedule.application.command.update.ChangeClientSnapsh
 import com.ensolution.ems.schedule.application.command.update.ChangeScheduleEquipmentsCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeTeamSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeTenantSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.SaveScheduleCustomFieldsCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleItemCommand;
 import com.ensolution.ems.schedule.application.port.out.ScheduleRepository;
 import com.ensolution.ems.schedule.application.service.assembler.ScheduleSnapshotAssembler;
 import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
 import com.ensolution.ems.schedule.application.service.support.SnapshotSheetReCalculator;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
+import com.ensolution.ems.schedule.application.validator.CustomFieldDefinitionValidator;
 import com.ensolution.ems.schedule.application.validator.ScheduleValidator;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleProgress;
@@ -24,11 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 측정 시점 스냅샷(MongoDB 문서) 편집 유스케이스.
  *
- * <p>수정 경로가 일곱인 것은 <b>의도된 설계</b>다. 경로마다 재계산 여부·null 시맨틱·부작용 범위가
+ * <p>수정 경로가 여덟인 것은 <b>의도된 설계</b>다. 경로마다 재계산 여부·null 시맨틱·부작용 범위가
  * 달라, 하나로 합치면 그 차이가 전부 서비스 내부 조건문으로 이동한다. 근거는
  * {@code schedule/.claude/CLAUDE.md}의 "수정 경로 규약"에 있다.
  *
@@ -48,6 +51,7 @@ public class ScheduleSnapshotService {
 	private final SnapshotWriter snapshotWriter;
 	private final ScheduleValidator scheduleValidator;
 	private final ScheduleStatusTransitioner statusTransitioner;
+	private final CustomFieldDefinitionValidator customFieldDefinitionValidator;
 
 	/**
 	 * 측정계획 문서의 의뢰기관(→사업장→측정시설) 스냅샷을 수정한다. 전달되지 않은 필드는 기존 값을 유지하며,
@@ -120,6 +124,27 @@ public class ScheduleSnapshotService {
 		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
 	}
 	
+	/**
+	 * 이 회차의 커스텀 필드 값을 저장한다. 커스텀 필드 폼이 단독 소유하는 일괄 저장이라 <b>전체 채택</b>이다 —
+	 * 요청에 없는 키와 빈 값은 지워진다. 키는 이 tenant에 정의된 것이어야 한다({@code CUSTOM_FIELD_NOT_DEFINED}).
+	 * 정의 목록이 곧 템플릿 검사의 "알려진 커스텀 키"라, 미정의 키가 문서에 들어가면 검사 결과와 어긋난다.
+	 * <p>
+	 * 계산 입력이 아니므로 시트를 재계산하지 않고, 서명란 담당자와 같은 성격이라 {@code ANALYZING} 이후에도
+	 * 고칠 수 있다({@code requireSheetEditable}을 지나지 않는다). 완료·취소된 계획은 변경할 수 없다.
+	 * 문서 락을 공유하는 여덟 번째 경로이며 자기 소유 필드는 {@code customFields} 하나다.
+	 */
+	public ScheduleDetail saveCustomFields(Long id, Long tenantId, SaveScheduleCustomFieldsCommand command) {
+		Schedule meta = scheduleRepository.findById(id, tenantId);
+		meta.requireEditable();
+
+		// 정의 조회는 변경 함수 밖에서 끝낸다 — 재시도로 여러 번 호출되는 자리이기 때문이다.
+		customFieldDefinitionValidator.requireDefinedKeys(
+			command.values() == null ? Set.of() : command.values().keySet(), tenantId);
+
+		ScheduleSnapshot saved = snapshotWriter.write(id, tenantId, snapshot -> snapshot.withCustomFields(command.values()));
+		return statusTransitioner.advanceAfterDocumentSaved(meta, saved);
+	}
+
 	/**
 	 * 측정계획의 측정장비를 교체한다. 전달된 목록으로 <b>전체 교체</b>하며(부분 갱신이 아니다),
 	 * 장비 유형은 장비 원장이 알고 있으므로 요청이 슬롯을 지정하지 않는다.

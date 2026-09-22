@@ -40,6 +40,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -82,7 +83,7 @@ class ScheduleExportViewMapperTest {
 
 	private ScheduleSnapshot snapshot(TeamSnapshot team, List<EquipmentSnapshot> equipments) {
 		return new ScheduleSnapshot("1", 1L, 1L, null, null, null,
-			team == null ? team(equipments) : team.withEquipments(equipments), null, null);
+			team == null ? team(equipments) : team.withEquipments(equipments), null, null, null);
 	}
 
 	/** 배출·방지시설이 달린 측정시설 트리(의뢰기관 → 사업장 → 측정시설)를 품은 스냅샷. */
@@ -92,7 +93,7 @@ class ScheduleExportViewMapperTest {
 		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
 			null, null, workplace);
-		return new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, null);
+		return new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, null, null);
 	}
 
 	@Test
@@ -335,7 +336,7 @@ class ScheduleExportViewMapperTest {
 			new TenantSnapshot(1L, "고객사", null, null, null, null, null, "박분석", "최기술"),
 			team(List.of()),
 			new SamplingSnapshot(LocalTime.of(9, 30), LocalTime.of(11, 0), "이관리", "정입회", List.of()),
-			null);
+			null, null);
 
 		ScheduleExportView view = toView(snapshot);
 
@@ -358,7 +359,7 @@ class ScheduleExportViewMapperTest {
 		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null,
 			null, null, workplace);
-		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, null);
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, null, null);
 
 		ScheduleExportView view = toView(snapshot);
 
@@ -383,7 +384,7 @@ class ScheduleExportViewMapperTest {
 	}
 
 	private ScheduleSnapshot itemSnapshot(List<SamplingItemSnapshot> items) {
-		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null, items);
+		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null, items, null);
 	}
 
 	@Test
@@ -433,7 +434,7 @@ class ScheduleExportViewMapperTest {
 	void 측정_시트가_시트_뷰_목록으로_위임된다() {
 		SamplingSheet sheet = SamplingSheet.builder().category(MeasurementCategory.DUST).build();
 		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null,
-			new SamplingSnapshot(null, null, null, null, List.of(sheet)), null);
+			new SamplingSnapshot(null, null, null, null, List.of(sheet)), null, null);
 
 		ScheduleExportView view = toView(snapshot);
 
@@ -544,5 +545,24 @@ class ScheduleExportViewMapperTest {
 
 		assertThat(view.getItems().getFirst().getSamplingStartedAt()).isEqualTo(LocalTime.of(23, 0));
 		assertThat(view.getItems().getFirst().getSamplingEndedAt()).isEqualTo(LocalTime.of(1, 0));
+	}
+	// ── 커스텀 필드 ────────────────────────────────────────────────
+
+	@Test
+	void 커스텀_필드_값이_그대로_뷰에_실린다() {
+		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null, null,
+			Map.of("siteCode", "A-01", "inspector", "홍길동"));
+
+		ScheduleExportView view = toView(snapshot);
+
+		assertThat(view.getCustomFields()).containsExactlyInAnyOrderEntriesOf(Map.of("siteCode", "A-01", "inspector", "홍길동"));
+	}
+
+	/** 필드 도입 전 문서는 customFields 가 null 이다 — 템플릿 계약상 custom 은 항상 맵이어야 한다. */
+	@Test
+	void 커스텀_필드가_없는_구_스냅샷도_빈_맵으로_매핑된다() {
+		ScheduleExportView view = toView(new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null, null, null));
+
+		assertThat(view.getCustomFields()).isNotNull().isEmpty();
 	}
 }

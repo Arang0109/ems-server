@@ -18,6 +18,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 측정계획 세부 스냅샷 문서. 도메인 스냅샷 record를 그대로 보관하며,
@@ -54,6 +55,9 @@ public class ScheduleDocument {
 	private TeamSnapshot team;
 	private SamplingSnapshot samplingData;
 	private List<SamplingItemSnapshot> items;
+
+	// 회차별 커스텀 필드 값. 키 = 이 tenant의 schedule_custom_fields.field_key. 필드 도입 전 문서에는 없다(null).
+	private Map<String, String> customFields;
 
 	// 도메인이 들고 다니지 않는다(측정 사실이 아니라 저장 메타다). @CreatedDate는 신규 문서에만
 	// 값을 채우므로, 갱신 시에는 어댑터가 기존 값을 읽어 되돌린다.

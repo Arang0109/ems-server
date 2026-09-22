@@ -84,6 +84,6 @@ public class FakeScheduleDocumentRepository implements ScheduleDocumentRepositor
 	private static ScheduleSnapshot withVersion(ScheduleSnapshot snapshot, Long version) {
 		return new ScheduleSnapshot(
 			snapshot.id(), snapshot.scheduleId(), snapshot.tenantId(), version,
-			snapshot.client(), snapshot.tenant(), snapshot.team(), snapshot.samplingData(), snapshot.items());
+			snapshot.client(), snapshot.tenant(), snapshot.team(), snapshot.samplingData(), snapshot.items(), snapshot.customFields());
 	}
 }

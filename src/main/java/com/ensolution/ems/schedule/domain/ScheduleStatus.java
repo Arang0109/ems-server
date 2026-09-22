@@ -18,7 +18,7 @@ public enum ScheduleStatus {
 
 	public boolean isTerminal() { return this == REPORT_COMPLETED || this == CANCELED; }
 	public boolean canEdit() { return !isTerminal(); }
-	public boolean canEditSheets() { return this == SCHEDULED || this == MEASURING; }
+	public boolean canEditSheets() { return this == SCHEDULED || this == MEASURING || this == ANALYZING; }
 	public boolean canAutoAdvanced() { return !isTerminal(); }
 	public boolean canReopen() { return isTerminal(); }
 	public boolean canDelete() { return this == SCHEDULED || this == CANCELED; }

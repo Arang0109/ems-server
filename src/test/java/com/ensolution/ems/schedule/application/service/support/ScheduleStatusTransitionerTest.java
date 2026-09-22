@@ -78,7 +78,7 @@ class ScheduleStatusTransitionerTest {
 	private ScheduleSnapshot givenSnapshot(SamplingSnapshot sampling) {
 		ScheduleSnapshot snapshot = new ScheduleSnapshot(
 			String.valueOf(SCHEDULE), SCHEDULE, TENANT, 0L,
-			null, null, null, sampling, List.of(item()));
+			null, null, null, sampling, List.of(item()), null);
 		documentRepository.given(snapshot);
 		return snapshot;
 	}

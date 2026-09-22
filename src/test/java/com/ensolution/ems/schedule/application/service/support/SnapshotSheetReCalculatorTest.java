@@ -58,7 +58,7 @@ class SnapshotSheetReCalculatorTest {
 			10.0, 1.0, null, Shape.CIRCULAR, null, null, null);
 		WorkplaceSnapshot workplace = new WorkplaceSnapshot(1L, "사업장", null, null, null, null, null, null, stack);
 		ClientSnapshot client = new ClientSnapshot(1L, "의뢰기관", null, null, null, null, null, null, null, workplace);
-		return new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, items);
+		return new ScheduleSnapshot("1", 1L, 1L, null, client, null, null, null, items, null);
 	}
 
 	private static List<SamplingSheet> sheets() {

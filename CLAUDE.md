@@ -236,7 +236,7 @@ Lombok `@RequiredArgsConstructor`를 통한 생성자 주입만 사용합니다.
 |---|---|---|
 | `{대상}Assembler` | 여러 포트를 모아 조회 VO로 조립 | `StackDetailAssembler`, `ScheduleSnapshotAssembler`, `TeamAssembler` |
 | `{대상}Recorder` | 유스케이스 완료 시 파생 이력 기록 | `MeasurementRecordRecorder` |
-| `{대상}Finder` | 단순 조회를 넘는 탐색 규칙 캡슐화 | `PreviousSheetFinder` |
+| `{대상}Finder` | 단순 조회를 넘는 탐색 규칙 캡슐화 | `PreviousSheetFinder`, `UnknownExpressionFinder` |
 | `{대상}Indexer` | 두 애그리거트의 결합 규칙 캡슐화 | *(현재 없음 — `AnalysisRecordIndexer`는 실험분석정보를 측정항목 안으로 들이면서 사라졌습니다)* |
 | `{대상}ReCalculator` | 도메인 계산 엔진과 애그리거트 사이의 어댑터 | `SnapshotSheetReCalculator` |
 | `{대상}Writer` | 동시 쓰기 정책(재읽기·재시도)·되돌릴 수 없는 쓰기의 순서 캡슐화 | `SnapshotWriter`, `DirectRoomWriter`, `ChatAttachmentWriter` |

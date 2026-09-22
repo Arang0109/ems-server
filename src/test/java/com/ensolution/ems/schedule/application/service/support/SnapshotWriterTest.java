@@ -37,7 +37,7 @@ class SnapshotWriterTest {
 		writer = new SnapshotWriter(documentRepository);
 		documentRepository.given(new ScheduleSnapshot(
 			"1", SCHEDULE, TENANT, 0L, null, null, null,
-			SamplingSnapshot.create("김담당", "이입회"), List.of()));
+			SamplingSnapshot.create("김담당", "이입회"), List.of(), null));
 	}
 
 	@Test

@@ -2,6 +2,7 @@ package com.ensolution.ems.schedule.infrastructure.excel;
 
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
+import com.ensolution.ems.schedule.application.command.export.SamplingRecordVariable;
 import com.ensolution.ems.schedule.application.command.export.ScheduleExportView;
 import com.ensolution.ems.schedule.application.command.export.SheetExportView;
 import com.ensolution.ems.schedule.application.port.out.SheetExcelRenderer;
@@ -21,11 +22,14 @@ import java.util.zip.ZipOutputStream;
 /**
  * jxls-poi 기반 엑셀 렌더러. 업로드된 템플릿에 측정계획 뷰를 채운다.
  * <ul>
- *   <li>채취기록부({@link #renderSamplingRecordsZip}): 시트마다 {@code plan}(원장 데이터)과 {@code sheet}(해당 시트),
- *       시트의 측정 영역별 하위 뷰, {@code items}(측정항목 목록)를 최상위 변수로 함께 노출해
+ *   <li>채취기록부({@link #renderSamplingRecordsZip}): 시트마다 {@link SamplingRecordVariable}이 정의한 최상위 변수
+ *       ({@code plan}·{@code sheet}·측정 영역별 하위 뷰·{@code items}·{@code custom})를 노출해
  *       시트별 파일을 만든 뒤 하나의 ZIP으로 묶는다.</li>
  * </ul>
- * 두 경우 모두 노출 변수만 컨텍스트에 담아, 표현식이 노출 데이터 밖으로 벗어나지 못하도록 제한한다.
+ * 노출 변수만 컨텍스트에 담아, 표현식이 노출 데이터 밖으로 벗어나지 못하도록 제한한다.
+ * <p>
+ * 템플릿이 없는 이름을 쓰면 jxls 기본 JEXL(silent·non-strict)이 null로 평가해 <b>빈칸</b>이 된다 — 예외도,
+ * 원문 출력도 아니다. 이름 오류는 렌더링이 아니라 템플릿 검사({@code ScheduleExportService#checkTemplate})가 잡는다.
  */
 @Slf4j
 @Component
@@ -60,26 +64,14 @@ public class JxlsSheetExcelRenderer implements SheetExcelRenderer {
 	}
 
 	/**
-	 * 채취기록부 한 장의 컨텍스트. 원장({@code plan})과 해당 시트({@code sheet})에 더해,
-	 * 시트의 측정 영역별 하위 뷰와 반복 목록을 최상위 변수로도 노출한다.
-	 * 템플릿이 {@code ${sheet.moisture.ratio}} 대신 {@code ${moisture.ratio}}로 짧게 쓸 수 있게 하기 위함이며,
-	 * 하위 뷰는 매퍼가 항상 채우므로({@link SheetExportView} 참고) 여기서 null 검사는 필요하지 않다.
-	 * <p>
-	 * 측정항목({@code items})은 시트가 아니라 계획에 딸린 값이지만, 기록부 서식도 측정항목 칸을 가지므로
-	 * 성적서와 같은 이름으로 함께 노출한다.
+	 * 채취기록부 한 장의 컨텍스트. 변수 이름과 값의 출처는 {@link SamplingRecordVariable}이 소유한다 —
+	 * 템플릿 검사기가 같은 표를 보므로 여기서 이름을 따로 적지 않는다.
 	 */
 	private Map<String, Object> samplingRecordModel(ScheduleExportView data, SheetExportView sheet) {
 		Map<String, Object> model = new HashMap<>();
-		model.put("plan", data);
-		model.put("sheet", sheet);
-		model.put("weather", sheet.getWeather());
-		model.put("moisture", sheet.getMoisture());
-		model.put("gas", sheet.getGas());
-		model.put("flow", sheet.getFlow());
-		model.put("particle", sheet.getParticle());
-		model.put("points", sheet.getPoints());
-		model.put("gaseousSamplings", sheet.getGaseousSamplings());
-		model.put("items", data.getItems());
+		for (SamplingRecordVariable variable : SamplingRecordVariable.values()) {
+			model.put(variable.getVariableName(), variable.extract(data, sheet));
+		}
 		return model;
 	}
 

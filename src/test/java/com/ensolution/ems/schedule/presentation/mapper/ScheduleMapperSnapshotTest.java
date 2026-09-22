@@ -75,7 +75,7 @@ class ScheduleMapperSnapshotTest {
 			new TenantSnapshot(1L, "고객사", "333-33-33333", "대표", "도로명", "상세", "11111", "분석자", "책임자"),
 			new TeamSnapshot(33L, "1팀", "멘토", "멘티", List.of()),
 			new SamplingSnapshot(LocalTime.of(9, 30), LocalTime.of(11, 0), "관리자", "입회자", List.of(sheet)),
-			List.of(item));
+			List.of(item), null);
 	}
 
 	@Test
@@ -157,7 +157,7 @@ class ScheduleMapperSnapshotTest {
 
 		// 상태·관리번호·일자는 최상위 메타에만, 장비·기록지는 각각 team·samplingData 아래에만 있다.
 		assertThat(root.fieldNames()).toIterable()
-			.containsExactlyInAnyOrder("team", "tenant", "client", "samplingData", "items");
+			.containsExactlyInAnyOrder("team", "tenant", "client", "samplingData", "items", "customFields");
 		assertThat(root.get("samplingData").get("sheets").get(0).get("version").asLong()).isEqualTo(7L);
 	}
 

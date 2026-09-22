@@ -1,6 +1,7 @@
 package com.ensolution.ems.schedule.presentation.response.snapshot;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 측정계획 세부 스냅샷 응답. 측정 시점의 대상·팀·장비·측정항목 사본과 채취 정보를 담는다.
@@ -14,11 +15,15 @@ import java.util.List;
  * <p>
  * 장비는 팀 아래({@code team.equipments}), 채취 기록지는 채취 정보 아래
  * ({@code samplingData.sheets})에 있다. 실험분석 결과는 측정항목 안({@code items[].analysis})에 있다.
+ * <p>
+ * {@code customFields}는 이 회차의 커스텀 필드 값(키 → 값)이다. 라벨은 정의({@code GET /api/schedules/custom-fields})에서
+ * 따로 받는다 — 응답에 라벨을 섞으면 정의의 사본이 된다. 필드 도입 전 문서는 null일 수 있다.
  */
 public record ScheduleSnapshotResponse(
 	TeamSnapshotResponse team,
 	TenantSnapshotResponse tenant,
 	ClientSnapshotResponse client,
 	SamplingSnapshotResponse samplingData,
-	List<SamplingItemSnapshotResponse> items
+	List<SamplingItemSnapshotResponse> items,
+	Map<String, String> customFields
 ) {}

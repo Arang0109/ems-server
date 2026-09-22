@@ -76,7 +76,7 @@ class MeasurementRecordRecorderTest {
 	private static ScheduleSnapshot snapshotWith(SamplingItemSnapshot... items) {
 		return new ScheduleSnapshot(
 			String.valueOf(SCHEDULE_ID), SCHEDULE_ID, TENANT_ID, 0L,
-			null, null, null, null, List.of(items));
+			null, null, null, null, List.of(items), null);
 	}
 
 	@Nested

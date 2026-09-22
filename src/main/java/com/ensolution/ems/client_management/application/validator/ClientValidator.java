@@ -17,8 +17,8 @@ public class ClientValidator {
 	private final ClientRepository clientRepository;
 
 	/** 의뢰기관명은 유일해야 한다. */
-	public void requireUniqueName(String name) {
-		if (clientRepository.existsByName(name)) {
+	public void requireUniqueName(String name, Long tenantId) {
+		if (clientRepository.existsByName(name, tenantId)) {
 			throw new CustomException(ErrorCode.CONFLICT);
 		}
 	}

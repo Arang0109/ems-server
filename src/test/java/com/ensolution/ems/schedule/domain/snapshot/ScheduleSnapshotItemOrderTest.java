@@ -21,7 +21,7 @@ class ScheduleSnapshotItemOrderTest {
 
 	private ScheduleSnapshot snapshot(SamplingItemSnapshot... items) {
 		return new ScheduleSnapshot("1", 1L, 1L, null, null, null, null, null,
-			items == null ? null : Arrays.asList(items));
+			items == null ? null : Arrays.asList(items), null);
 	}
 
 	@Test
@@ -51,7 +51,7 @@ class ScheduleSnapshotItemOrderTest {
 		List<SamplingSheet> sheets = List.of(SamplingSheet.builder().build());
 		ScheduleSnapshot snapshot = new ScheduleSnapshot("1", 5L, 7L, 3L, null, null, null,
 			new SamplingSnapshot(null, null, null, null, sheets),
-			List.of(item(1L, "먼지"), item(2L, "질소산화물")));
+			List.of(item(1L, "먼지"), item(2L, "질소산화물")), null);
 
 		ScheduleSnapshot reordered = snapshot.withItemOrder(List.of(2L, 1L));
 

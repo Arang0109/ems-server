@@ -22,7 +22,9 @@ tenants (테넌트/고객사)
 ├── schedules          (측정계획 메타)     tenant_id, stack_id, team_id
 │   └── schedule_documents (MongoDB 세부 스냅샷)  scheduleId 로 연결
 │       ├── samplingData.sheets[]  측정 시트
-│       └── items[].analysis       실험분석정보
+│       ├── items[].analysis       실험분석정보
+│       └── customFields{}         회차별 커스텀 필드 값 (키 = schedule_custom_fields.field_key)
+├── schedule_custom_fields (측정계획 커스텀 필드 정의) tenant_id
 └── chat_rooms         (1:1 대화방)        tenant_id, pair_key
     ├── chat_room_participants (참가자)     tenant_id, room_id, user_id
     └── chat_messages  (MongoDB 대화 본문)  roomId 로 연결
@@ -34,7 +36,7 @@ tenants (테넌트/고객사)
 
 **`tenant_id` 연관 방식 두 가지**
 - **JPA 연관(@ManyToOne → TenantEntity)**: `clients`, `workplaces`, `stacks`, `facilities`, `preventions`, `measurement_methods`, `pollutants`, `stack_pollutant` — 실제 FK(`fk_*_tenants`) + `ON DELETE CASCADE`.
-- **plain 컬럼(Long, FK 제약 없음)**: `users`, `contract`, `chat_rooms`, `chat_room_participants` — `tenant_id`를 값으로만 보유(모듈 경계상 TenantEntity에 의존하지 않음). 애플리케이션이 정합성 보장.
+- **plain 컬럼(Long, FK 제약 없음)**: `users`, `contract`, `schedules`, `schedule_custom_fields`, `chat_rooms`, `chat_room_participants` — `tenant_id`를 값으로만 보유(모듈 경계상 TenantEntity에 의존하지 않음). 애플리케이션이 정합성 보장.
 
 ---
 
@@ -433,8 +435,8 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
 | 시트(`SamplingSheet`) | `version` (Long, 신규는 null → 0) | 문서 안 `samplingData.sheets[].version` |
 | 문서(`ScheduleDocument`) | `@Version version` (Spring Data MongoDB) | `schedule_documents.version` |
 
-**문서 락을 공유하는 경로가 여섯입니다.** 실험분석정보를 `items[].analysis`로 문서에 합치면서
-기록지 저장뿐 아니라 분석 결과·채취시각 저장과 항목 편집이 같은 `@Version`을 놓고 경합합니다.
+**문서 락을 공유하는 경로가 여덟입니다.** 실험분석정보를 `items[].analysis`로 문서에 합치면서
+기록지 저장뿐 아니라 분석 결과·채취시각 저장과 항목 편집·스냅샷 편집·커스텀 필드 값 저장이 같은 `@Version`을 놓고 경합합니다.
 전부 `SnapshotWriter`를 지나며, 각 경로는 **자기 소유 필드만** 씁니다 — 재적용이 남의 입력을
 되돌리지 않는 근거가 그것뿐입니다.
 
@@ -444,6 +446,9 @@ MongoDB `schedule_documents`는 측정 시점의 대상·팀·장비·측정항�
 | `PUT /{id}/analyses/results` | `items[].analysis` 의 실험실 입력 4필드 |
 | `PUT /{id}/analyses/sampling-times` | `items[].analysis` 의 채취시각 2필드 |
 | `PATCH /{id}/items` · `PUT /{id}/items/order` · `PATCH /{id}/items/{pollutantId}` | `items` 집합·순서·조건 |
+| `PATCH /{id}/equipments` · `PATCH /{id}/client` | `team.equipments` · `client` 트리 + 재계산된 `sheets` |
+| `PATCH /{id}/tenant` · `PATCH /{id}/team` | `tenant` 서명란 담당자 · `team` 측정자 표기 |
+| `PUT /{id}/custom-fields` | `customFields` 전체(전체 채택 — 빠진 키·빈 값은 지움) |
 
 분석 결과에는 시트 `version` 같은 2층 토큰이 없습니다. 실험·분석 탭과 성적서 탭이 쓰는 필드가
 겹치지 않아 논리 충돌이 성립하지 않기 때문이며, 그것이 두 저장 경로가 나뉘어 있는 이유입니다.
@@ -547,6 +552,34 @@ mysql -u <user> -p ems < docs/migration/2026-08-25-schedule-drop-status-log.sql
 
 ---
 
+## schedule_custom_fields — 측정계획 커스텀 필드 정의 (테넌트 소유)
+
+고객사가 성적서(채취기록부) 템플릿에 쓰려고 **스스로 정의한 이름**입니다. 서버 코드에 고정된 필드(`~ExportView`) 밖의
+칸(현장 코드·결재선 등)을 템플릿이 `${custom.<field_key>}`로 읽을 수 있게 합니다. 이 테이블은 **이름만** 갖고,
+회차별 **값**은 MongoDB `schedule_documents.customFields`(`Map<String,String>`)에 있습니다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| field_id | BIGINT | PK, AUTO_INCREMENT | |
+| tenant_id | BIGINT | NOT NULL | 소속 테넌트(plain 컬럼, FK 제약 없음) |
+| field_key | VARCHAR(50) | NOT NULL | 템플릿이 참조하는 키. `^[A-Za-z_][A-Za-z0-9_]*$`, JEXL 예약어·`class`·`empty`·`size` 불가. **등록 후 변경 불가**(배포된 템플릿과 저장된 값의 계약). 컬럼명이 `key`가 아닌 것은 MySQL 예약어 회피이며 도메인·JSON은 `key` |
+| label | VARCHAR(100) | NOT NULL | 화면 라벨 |
+| sort_order | INT | NULL | 표시 순서. 미지정 등록은 `max+10` |
+| created_at | DATETIME | | 생성일시 |
+| modified_at | DATETIME | | 수정일시 |
+
+- **UNIQUE** `uk_schedule_custom_fields_tenant_key` (tenant_id, field_key)
+- **INDEX** `idx_schedule_custom_fields_tenant_id` (tenant_id)
+
+> 기본값·필수 여부 컬럼은 두지 않습니다. 기본값을 "언제" 적용할지(회차 생성 시 복사 vs 내보내기 시 폴백)가 곧
+> 메타/문서 사본 문제이고, 정의되지 않은 키는 어차피 빈칸으로 출력되기 때문입니다.
+>
+> **정의를 삭제해도 문서에 저장된 값은 건드리지 않습니다.** 스냅샷은 측정 시점 사본이며, 남은 값은 그 회차의
+> 커스텀 필드를 다음에 저장할 때(전체 채택) 사라집니다. 같은 키를 다시 등록하면 그 사이 저장이 없던 회차에서는 옛 값이 다시 보입니다.
+>
+> 순수 신규 테이블이라 `ddl-auto: update`가 만들고 백필이 없어 `docs/migration/` 스크립트는 두지 않습니다.
+
+---
 ## schedule_documents.items[].analysis — 실험분석정보 (MongoDB)
 
 한 측정계획의 측정항목 하나에 대한 **성적서용 기록**입니다. 현장 측정값(측정 시트)이 아니라

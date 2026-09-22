@@ -17,6 +17,6 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
       AuthenticationException exception) throws IOException {
     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     response.setContentType("application/json;charset=UTF-8");
-    response.getWriter().write("{\"success\":false, \"message\":인증에 실패했습니다.}");
+    response.getWriter().write("{\"success\":false, \"message\":\"인증에 실패했습니다.\"}");
   }
 }

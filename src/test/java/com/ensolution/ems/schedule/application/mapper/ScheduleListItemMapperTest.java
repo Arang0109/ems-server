@@ -43,7 +43,7 @@ class ScheduleListItemMapperTest {
 	}
 
 	private ScheduleSnapshot snapshot(ClientSnapshot client, TeamSnapshot team) {
-		return new ScheduleSnapshot("11", 11L, 1L, null, client, null, team, null, null);
+		return new ScheduleSnapshot("11", 11L, 1L, null, client, null, team, null, null, null);
 	}
 
 	private ClientSnapshot client(WorkplaceSnapshot workplace) {

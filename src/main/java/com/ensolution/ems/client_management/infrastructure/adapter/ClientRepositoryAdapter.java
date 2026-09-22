@@ -56,5 +56,5 @@ public class ClientRepositoryAdapter implements ClientRepository {
 	}
 
 	@Override
-	public boolean existsByName(String name) { return jpaClientRepository.existsByName(name); }
+	public boolean existsByName(String name, Long tenantId) { return jpaClientRepository.existsByNameAndTenant_TenantId(name, tenantId); }
 }

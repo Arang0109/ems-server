@@ -7,6 +7,7 @@ import lombok.Getter;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 엑셀(jxls) 템플릿이 바인딩하는 측정계획 최상위 뷰. 내부 도메인/스냅샷 구조와 분리된 <b>안정적·평평한 계약</b>이며,
@@ -93,4 +94,13 @@ public class ScheduleExportView {
 
 	// 측정 시트 목록 (jx:each 대상)
 	private final List<SheetExportView> sheets;
+
+	/**
+	 * 회차 커스텀 필드 값. 템플릿은 {@code custom} 네임스페이스로 읽는다({@code ${custom.siteCode}} 또는
+	 * {@code ${custom['siteCode']}}). 키는 테넌트가 정의하고 값은 회차 문서가 갖는다.
+	 * 정의되지 않았거나 채우지 않은 키는 JEXL이 null로 평가해 <b>빈칸</b>이 된다(예외 없음).
+	 * 하위 뷰 non-null 계약과 같은 이유로 항상 non-null이다.
+	 */
+	@Builder.Default
+	private final Map<String, String> customFields = Map.of();
 }

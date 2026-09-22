@@ -149,7 +149,7 @@ Team (측정 팀)  ── tenant 직속. 사수·부사수(auth users)·측정 �
 ### Repository Port (Outbound)
 Outbound Port는 `application/port/out/`에 둡니다. (`domain/port/`가 아님 — 루트 `CLAUDE.md` 4번 규칙 참고.)
 
-- `application/port/out/ClientRepository` — `save()`, `findById(id, tenantId)`, `findAll(tenantId)`, `existsByName()`, `deleteById(id, tenantId)`
+- `application/port/out/ClientRepository` — `save()`, `findById(id, tenantId)`, `findAll(tenantId)`, `existsByName(id, tenantId)`, `deleteById(id, tenantId)`
 - `application/port/out/WorkplaceRepository` — `save()`, `findById(id, tenantId)`, `findByClientId(clientId, tenantId)`, `findAll(tenantId)`, `existsByNameAndClientId()`, `existsById()`, `deleteById(id, tenantId)`
 - `application/port/out/StackRepository` — `save()`, `findById(id, tenantId)`, `findByWorkplaceId(workplaceId, tenantId)`, `findAll(tenantId)`, `findFieldsByWorkplaceIds(ids, tenantId)`, `existsByNameAndWorkplaceIdAndField()`, `deleteById(id, tenantId)`
 - `application/port/out/FacilityRepository` — `save()`, `saveAll()`, `findById(id, tenantId)`, `findByStackId(stackId, tenantId)`, `findMaxSortOrder(stackId, tenantId)`, `deleteById(id, tenantId)`

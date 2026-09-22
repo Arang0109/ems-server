@@ -4,10 +4,12 @@ import com.ensolution.ems.equipment.domain.EquipType;
 import com.ensolution.ems.global.common.enums.MeasurementField;
 import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
+import com.ensolution.ems.schedule.application.FakeCustomFieldDefinitionRepository;
 import com.ensolution.ems.schedule.application.FakeScheduleDocumentRepository;
 import com.ensolution.ems.schedule.application.FakeScheduleRepository;
 import com.ensolution.ems.schedule.application.command.detail.ScheduleDetail;
 import com.ensolution.ems.schedule.application.command.update.ChangeTeamSnapshotCommand;
+import com.ensolution.ems.schedule.application.command.update.SaveScheduleCustomFieldsCommand;
 import com.ensolution.ems.schedule.application.command.update.ChangeTenantSnapshotCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateReportDatesCommand;
 import com.ensolution.ems.schedule.application.command.update.UpdateScheduleCommand;
@@ -17,6 +19,7 @@ import com.ensolution.ems.schedule.application.port.out.ScheduleEventBroadcaster
 import com.ensolution.ems.schedule.application.service.support.ScheduleStatusTransitioner;
 import com.ensolution.ems.schedule.application.service.support.SnapshotSheetReCalculator;
 import com.ensolution.ems.schedule.application.service.support.SnapshotWriter;
+import com.ensolution.ems.schedule.application.validator.CustomFieldDefinitionValidator;
 import com.ensolution.ems.schedule.application.validator.ScheduleValidator;
 import com.ensolution.ems.schedule.domain.Schedule;
 import com.ensolution.ems.schedule.domain.ScheduleStatus;
@@ -35,7 +38,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <tr><td>{@code PATCH /{id}/tenant}</td><td>서명란 담당자</td><td>부분 갱신(두 탭 공유)</td></tr>
  *   <tr><td>{@code PATCH /{id}/team}</td><td>측정자 표기</td><td>부분 갱신</td></tr>
  *   <tr><td>{@code PUT /{id}/sheets}</td><td>채취시각·현장 담당자</td><td>부분 갱신</td></tr>
+ *   <tr><td>{@code PUT /{id}/custom-fields}</td><td>회차 커스텀 필드 값</td><td>전체 채택</td></tr>
  * </table>
  */
 class ScheduleUpdatePathTest {
@@ -86,10 +92,11 @@ class ScheduleUpdatePathTest {
 
 	private FakeScheduleRepository scheduleRepository;
 	private FakeScheduleDocumentRepository documentRepository;
+	private FakeCustomFieldDefinitionRepository customFieldRepository;
 
 	/** {@code PUT /{id}} 와 {@code PATCH /{id}/report-dates} — 메타를 쓰는 두 경로. */
 	private ScheduleService scheduleService;
-	/** {@code PATCH /{id}/tenant} · {@code /team} — 문서를 쓰는 두 경로. */
+	/** {@code PATCH /{id}/tenant} · {@code /team} · {@code PUT /{id}/custom-fields} — 문서를 쓰는 세 경로. */
 	private ScheduleSnapshotService snapshotService;
 	/** {@code PUT /{id}/sheets} — 채취시각·현장 담당자가 시트와 함께 저장된다. */
 	private ScheduleSheetService sheetService;
@@ -98,6 +105,7 @@ class ScheduleUpdatePathTest {
 	void setUp() {
 		scheduleRepository = new FakeScheduleRepository();
 		documentRepository = new FakeScheduleDocumentRepository();
+		customFieldRepository = new FakeCustomFieldDefinitionRepository();
 
 		// 조립·이력·탐색·목록 협력자는 이 경로들이 지나지 않는다.
 		scheduleService = new ScheduleService(
@@ -108,7 +116,8 @@ class ScheduleUpdatePathTest {
 		snapshotService = new ScheduleSnapshotService(
 			scheduleRepository, null, null,
 			new SnapshotWriter(documentRepository), null,
-			new ScheduleStatusTransitioner(scheduleRepository, documentRepository, null));
+			new ScheduleStatusTransitioner(scheduleRepository, documentRepository, null),
+			new CustomFieldDefinitionValidator(customFieldRepository));
 
 		// 측정시설 스냅샷이 없어 계산 입력이 없으므로 재계산은 시트를 그대로 돌려준다.
 		sheetService = new ScheduleSheetService(
@@ -151,7 +160,7 @@ class ScheduleUpdatePathTest {
 				List.of(new EquipmentSnapshot("E1", EquipType.PITOT_TUBE,
 					null, null, null, null, null, null, null, null))),
 			new SamplingSnapshot(LocalTime.of(9, 30), LocalTime.of(11, 0), "이관리", "정입회", List.of()),
-			List.of()));
+			List.of(), Map.of("siteCode", "A-01", "inspector", "홍길동")));
 	}
 
 	private Schedule savedMeta() {
@@ -443,6 +452,98 @@ class ScheduleUpdatePathTest {
 	}
 
 	@Nested
+	@DisplayName("PUT /{id}/custom-fields — 회차 커스텀 필드 값 (전체 채택)")
+	class SaveCustomFields {
+
+		@BeforeEach
+		void givenDefinitions() {
+			customFieldRepository.given(TENANT, "siteCode", "현장 코드", 10);
+			customFieldRepository.given(TENANT, "inspector", "점검자", 20);
+			customFieldRepository.given(TENANT, "note", "비고", 30);
+		}
+
+		private static SaveScheduleCustomFieldsCommand valuesOf(Map<String, String> values) {
+			return new SaveScheduleCustomFieldsCommand(values);
+		}
+
+		@Test
+		void 보낸_값으로_통째로_교체한다() {
+			snapshotService.saveCustomFields(SCHEDULE, TENANT, valuesOf(Map.of("siteCode", "B-02", "note", "야간")));
+
+			assertThat(savedSnapshot().customFields())
+				.containsExactlyInAnyOrderEntriesOf(Map.of("siteCode", "B-02", "note", "야간"));
+		}
+
+		/** 폼이 단독 소유하므로 빠진 키는 "지웠다"다 — 부분 갱신이 아니다. */
+		@Test
+		void 요청에_없는_키는_지워진다() {
+			snapshotService.saveCustomFields(SCHEDULE, TENANT, valuesOf(Map.of("siteCode", "B-02")));
+
+			assertThat(savedSnapshot().customFields()).containsOnlyKeys("siteCode");
+		}
+
+		@Test
+		void 빈_값은_지운_것으로_읽는다() {
+			Map<String, String> values = new HashMap<>();
+			values.put("siteCode", "  ");
+			values.put("inspector", "김점검");
+
+			snapshotService.saveCustomFields(SCHEDULE, TENANT, valuesOf(values));
+
+			assertThat(savedSnapshot().customFields()).containsExactly(Map.entry("inspector", "김점검"));
+		}
+
+		@Test
+		void 정의되지_않은_키는_거부하고_아무것도_저장하지_않는다() {
+			assertThatThrownBy(() -> snapshotService.saveCustomFields(SCHEDULE, TENANT,
+				valuesOf(Map.of("siteCode", "B-02", "nope", "x"))))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.CUSTOM_FIELD_NOT_DEFINED)
+				.hasMessageContaining("nope");
+
+			assertThat(savedSnapshot().customFields()).containsEntry("siteCode", "A-01");
+		}
+
+		@Test
+		void 메타와_다른_스냅샷_노드는_건드리지_않는다() {
+			snapshotService.saveCustomFields(SCHEDULE, TENANT, valuesOf(Map.of("siteCode", "B-02")));
+
+			assertThat(savedMeta().getReferenceNumber()).isEqualTo("2026-A-001");
+			assertThat(savedSnapshot().tenant().analyst()).isEqualTo("박분석");
+			assertThat(savedSnapshot().team().mentorName()).isEqualTo("홍길동");
+			assertThat(savedSnapshot().samplingData().samplingStartedAt()).isEqualTo(LocalTime.of(9, 30));
+		}
+
+		/** 문서 락을 공유하는 여덟 번째 경로 — 물리 충돌은 다시 읽어 재적용한다. */
+		@Test
+		void 물리_충돌은_재시도로_흡수하고_문서_버전이_오른다() {
+			Long before = savedSnapshot().version();
+			documentRepository.failNextSaves(1);
+
+			snapshotService.saveCustomFields(SCHEDULE, TENANT, valuesOf(Map.of("siteCode", "B-02")));
+
+			assertThat(savedSnapshot().customFields()).containsEntry("siteCode", "B-02");
+			assertThat(savedSnapshot().version()).isGreaterThan(before);
+		}
+
+		@Test
+		void 완료된_계획은_변경할_수_없다() {
+			givenSchedule(ScheduleStatus.REPORT_COMPLETED);
+
+			assertThatThrownBy(() -> snapshotService.saveCustomFields(SCHEDULE, TENANT, valuesOf(Map.of("siteCode", "B-02"))))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.SCHEDULE_NOT_EDITABLE);
+		}
+
+		@Test
+		void 다른_고객사의_계획은_찾지_못한다() {
+			assertThatThrownBy(() -> snapshotService.saveCustomFields(SCHEDULE, OTHER_TENANT, valuesOf(Map.of("siteCode", "B-02"))))
+				.isInstanceOf(CustomException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.SCHEDULE_NOT_FOUND);
+		}
+	}
+
+	@Nested
 	@DisplayName("PUT /{id}/sheets — 채취시각·현장 담당자는 시트와 함께 저장된다")
 	class SaveSamplingInfo {
 
@@ -500,7 +601,7 @@ class ScheduleUpdatePathTest {
 		void 채취_스냅샷이_없는_문서에도_저장된다() {
 			documentRepository.given(new ScheduleSnapshot(
 				String.valueOf(SCHEDULE), SCHEDULE, TENANT, 0L,
-				null, null, null, null, List.of()));
+				null, null, null, null, List.of(), null));
 
 			save(LocalTime.of(10, 0), null, "박관리", null);
 
@@ -508,13 +609,23 @@ class ScheduleUpdatePathTest {
 			assertThat(savedSnapshot().samplingData().facilityManager()).isEqualTo("박관리");
 		}
 
+		/** 분석값 입력 중에도 현장 기록지는 고칠 수 있다 — 잠기는 것은 성적서 작성 완료부터다. */
 		@Test
-		void 분석값_입력_중이면_거부한다() {
+		void 분석값_입력_중에도_저장된다() {
 			givenSchedule(ScheduleStatus.ANALYZING);
+
+			save(LocalTime.of(10, 0), null, "박관리", null);
+
+			assertThat(savedSnapshot().samplingData().samplingStartedAt()).isEqualTo(LocalTime.of(10, 0));
+		}
+
+		@Test
+		void 성적서_작성이_완료되면_거부한다() {
+			givenSchedule(ScheduleStatus.REPORT_COMPLETED);
 
 			assertThatThrownBy(() -> save(LocalTime.of(10, 0), null, null, null))
 				.isInstanceOf(CustomException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.SCHEDULE_SHEET_NOT_EDITABLE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.SCHEDULE_NOT_EDITABLE);
 		}
 
 		@Test

@@ -105,7 +105,7 @@ class SamplingItemSnapshotTest {
 	class WithItemReplaced {
 
 		private ScheduleSnapshot snapshotOf(List<SamplingItemSnapshot> items) {
-			return new ScheduleSnapshot("1", 1L, 1L, 0L, null, null, null, null, items);
+			return new ScheduleSnapshot("1", 1L, 1L, 0L, null, null, null, null, items, null);
 		}
 
 		@Test

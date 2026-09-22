@@ -11,13 +11,14 @@
 
 ## 애그리거트 지도
 
-**4개 애그리거트, 2개 저장소(MySQL 2 · MongoDB 2).** 저장소가 애그리거트별로 갈립니다.
+**4개 애그리거트, 2개 저장소(MySQL 3 · MongoDB 1).** 저장소가 애그리거트별로 갈립니다.
 
 | 애그리거트 | 저장소 | 도메인 루트 | 담는 것 |
 |---|---|---|---|
 | **Schedule** (메타) | MySQL `schedules` | `domain/Schedule` | 상태·성적서 기본정보(관리번호·측정분야·측정용도·일자 4종)·연결키(stackId·teamId) |
-| **ScheduleSnapshot** (세부) | MongoDB `schedule_documents` | `domain/snapshot/ScheduleSnapshot` | 측정 시점 원장 사본 + **측정 시트·실험분석정보 임베드** |
+| **ScheduleSnapshot** (세부) | MongoDB `schedule_documents` | `domain/snapshot/ScheduleSnapshot` | 측정 시점 원장 사본 + **측정 시트·실험분석정보·커스텀 필드 값 임베드** |
 | **MeasurementRecord** (주기 이행 이력) | MySQL `measurement_records` | `domain/history/MeasurementRecord` | 완료 시점에 파생되는 확정 이력 |
+| **CustomFieldDefinition** (커스텀 필드 정의) | MySQL `schedule_custom_fields` | `domain/custom_field/CustomFieldDefinition` | 테넌트가 성적서 템플릿용으로 정의한 이름(키·라벨). 값은 스냅샷이 가짐 |
 
 ```
 Schedule (MySQL 메타 · 진실의 원천)
@@ -26,11 +27,18 @@ Schedule (MySQL 메타 · 진실의 원천)
         ├── TenantSnapshot                고객사 사본 + 성적서 서명란 담당자
         ├── TeamSnapshot                  측정자 + EquipmentSnapshot[]
         ├── SamplingSnapshot              채취시각·현장 담당자 + SamplingSheet[]
-        └── SamplingItemSnapshot[]        측정항목 (성적서 항목 순서 = 배열 순서)
-              ├── MeasurementMethodSnapshot 측정방법 사본 (채취 단위·통칭 시료명·표준 채취시간·표준 흡인유량)
-              └── AnalysisResult          실험분석정보 (null = 아직 분석 전)
+        ├── SamplingItemSnapshot[]        측정항목 (성적서 항목 순서 = 배열 순서)
+        │     ├── MeasurementMethodSnapshot 측정방법 사본 (채취 단위·통칭 시료명·표준 채취시간·표준 흡인유량)
+        │     └── AnalysisResult          실험분석정보 (null = 아직 분석 전)
+        └── customFields{}                회차 커스텀 필드 값 (키 = CustomFieldDefinition.key, 템플릿은 ${custom.key})
   └── MeasurementRecord (MySQL)          1:N, 완료 시 파생
+CustomFieldDefinition (MySQL, tenant 소유)  이름만. 값은 위 customFields{}
 ```
+
+> **커스텀 필드는 "정의"와 "값"이 저장소를 달리합니다.** 정의(키·라벨)는 테넌트 설정이라 MySQL 원장이고, 값은 회차의
+> 사실이라 스냅샷 문서 안에 있습니다. 정의를 지워도 문서의 값은 건드리지 않습니다(스냅샷 불변) — 다음 저장 때 전체 채택으로
+> 정리됩니다. 정의 관리 API가 `/api/admin/**`이 아니라 `/api/schedules/custom-fields`인 이유는 `CustomFieldDefinitionController`
+> javadoc에 있습니다(원장 없는 admin 모듈에 규칙 있는 애그리거트를 둘 수 없고, `port/in`을 새로 열 이유가 없음).
 
 > **메타와 겹치는 값은 스냅샷에 두지 않습니다.** 상태와 성적서 기본정보 표의 값(관리번호·측정분야·
 > 측정용도·채취일자·시료접수일·분석완료일·성적서발행일)은 전부 메타가 진실입니다. 2PC를 쓸 수 없는
@@ -129,9 +137,9 @@ MySQL(메타)과 MongoDB(세부)에 걸쳐 있고 **2PC를 쓸 수 없으므로*
 시트에는 식별자가 없고 `category`가 자연키이므로 충돌 판정 단위를 문서 전체가 아니라 **시트**로
 잡습니다 — 두 사람이 서로 다른 기록지를 나눠 입력하는 흔한 경우에 충돌이 나지 않아야 합니다.
 
-#### 문서 락을 공유하는 경로 7개
+#### 문서 락을 공유하는 경로 8개
 
-실험분석정보를 `items[].analysis`로 문서에 합치면서 아래 일곱이 같은 `@Version`을 놓고 경합합니다.
+실험분석정보를 `items[].analysis`로 문서에 합치면서 아래 여덟이 같은 `@Version`을 놓고 경합합니다.
 **문서를 쓰는 경로는 예외 없이 `SnapshotWriter`를 지납니다** — 어느 경로가 재시도를 타는지 사람이
 외우게 두면 나중에 추가되는 경로에서 반드시 빠집니다.
 
@@ -143,6 +151,7 @@ MySQL(메타)과 MongoDB(세부)에 걸쳐 있고 **2PC를 쓸 수 없으므로*
 | `changeItems` · `reorderItems` · `updateItem` | `items` 집합·순서·조건 |
 | `changeEquipments` · `changeClient` | `team.equipments` · `client` 트리 + 재계산된 `sheets` |
 | `changeTenant` · `changeTeam` | `tenant` 서명란 담당자 · `team` 측정자 표기 |
+| `saveCustomFields` | `customFields` 전체(전체 채택) |
 
 **변경 함수의 계약 3조**(정본은 `SnapshotWriter` javadoc) — ① 자기 소유 필드만 쓴다 ② 순수해야 한다
 (재시도로 여러 번 호출되므로 이벤트 발행·MySQL 저장 금지) ③ 스냅샷과 무관한 검증은 루프 밖에서 끝낸다.
@@ -256,12 +265,13 @@ REPORT_COMPLETED · CANCELED ──reopen──► 스냅샷에서 재도출한 
 | 클래스 | 역할 |
 |---|---|
 | `ScheduleService` | 애그리거트 생명주기 — 생성·삭제·메타 수정(`PUT /{id}`·`PATCH /{id}/report-dates`)·상태 전이(완료·취소·재개방)·조회·목록 |
-| `ScheduleSnapshotService` | 문서(스냅샷) 편집 7경로 — `changeEquipments`·`changeClient`·`changeTenant`·`changeTeam`·`changeItems`·`reorderItems`·`updateItem` |
+| `ScheduleSnapshotService` | 문서(스냅샷) 편집 8경로 — `changeEquipments`·`changeClient`·`changeTenant`·`changeTeam`·`changeItems`·`reorderItems`·`updateItem`·`saveCustomFields` |
+| `CustomFieldDefinitionService` | 커스텀 필드 정의 CRUD. 삭제가 문서를 건드리지 않는 근거는 javadoc |
 | `ScheduleSheetService` | 측정 시트 저장(병합·재계산·SSE)과 채취 정보 저장, 이전 회차 불러오기 |
 | `ScheduleStatisticsService` | `ScheduleStatisticsUseCase` 구현. **타 모듈(`dashboard`)에 여는 유일한 계약** |
 | `AnalysisResultService` | 실험분석정보 유스케이스. 실험·분석 탭과 성적서 탭의 저장 경로를 분리 (결과는 `items[].analysis`에 저장) |
 | `MeasurementHistoryService` | 이력 **조회만**. 쓰기는 완료 유스케이스에 종속된 부수효과이므로 한 서비스에 섞지 않음 |
-| `ScheduleExportService` | jxls 템플릿 엑셀 내보내기(채취기록부 ZIP) |
+| `ScheduleExportService` | jxls 템플릿 엑셀 내보내기(채취기록부 ZIP) + 템플릿 검사(`checkTemplate`) |
 | `ScheduleStreamService` | SSE 구독. 구독 전 tenant 소속 확인 — 없으면 id만 바꿔 타 고객사 편집 알림을 받을 수 있음 |
 
 > `ScheduleController` 하나가 앞의 세 서비스를 주입받습니다. **엔드포인트가 곧 의도 선언**이라는
@@ -284,6 +294,7 @@ REPORT_COMPLETED · CANCELED ──reopen──► 스냅샷에서 재도출한 
 | `SnapshotWriter` | 문서 단위 낙관적 락 아래의 부분 갱신. 문서를 쓰는 **모든 경로가 여기를 지납니다** |
 | `SnapshotSheetReCalculator` | 스냅샷에서 계산 입력(장비 spec·굴뚝 정보·측정항목)을 뽑아 시트 재계산. 계산 엔진과 스냅샷 사이의 **유일한 어댑터** |
 | `PreviousSheetFinder` | 새 기록지를 채울 이전 회차 시트 탐색. 직전 회차만 보지 않고 그 기록지를 실제로 쓴 회차를 거슬러 찾음(깊이 제한 `MAX_LOOKBACK`) |
+| `UnknownExpressionFinder` | 템플릿 표현식을 바인딩 계약(`SamplingRecordVariable` + `~ExportView` 리플렉션 + 커스텀 키)과 대조. 반복 변수(`jx:each var`)를 `items` 원소 타입에 묶어 하위 경로까지 검사 |
 | `MeasurementRecordRecorder` | 완료 시 이행 이력 기록 / 재개방·취소·삭제 시 해제 |
 
 ### 계산 엔진 (`application/calculation/`)
@@ -330,6 +341,7 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 | Validator | 메서드 |
 |---|---|
 | `ScheduleValidator` | `requireUniqueSchedule(tenantId, stackId, teamId, sampledAt)`, `requireMeasurersInTenant(mentorId, menteeId, tenantId)`, `requireExactItemOrder(items, orderedPollutantIds)`, `requireIsokineticRowsOnSourceSheet(items, sheets)` |
+| `CustomFieldDefinitionValidator` | `requireUniqueKey(key, tenantId)`, `requireDefinedKeys(keys, tenantId)` — 후자는 회차 값 저장이 정의에 없는 키를 들이지 않게 함(정의 = 템플릿 검사의 알려진 키) |
 
 시트 전용 validator는 없습니다 — `SheetMerge`가 버전 충돌 판정을 겸합니다.
 실험분석정보 validator도 없습니다 — 항목 유일성은 `items[]` 구조가 보장하고, 요청 내부 중복 검사는
@@ -356,6 +368,7 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 | `StackSnapshot.standardOxygen` | 위와 동일 |
 | `AnalysisResult` 채취시간 (`applySamplingTime`) | 성적서 탭이 항목 표 **전체**를 보내는 일괄 저장이라 빈 칸은 "지웠다"는 뜻 |
 | `AnalysisResult` 분석값 4필드 (`applyAnalysisResult`) | 실험·분석 탭도 동일 |
+| `ScheduleSnapshot.customFields` (`withCustomFields`) | 커스텀 필드 폼이 **단독 소유**하는 일괄 저장. 빠진 키·빈 값 = 지웠다 |
 
 > `AnalysisResult`는 두 메서드 모두 전체 채택입니다 — 단건 부분 수정 경로를 두지 않기 때문입니다.
 > 대신 **각자 자기 필드만** 건드립니다. 두 탭이 같은 문서를 쓰게 된 뒤에도 서로를 덮어쓰지 않는
@@ -385,10 +398,15 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 `POST /{id}/completion` · `POST /{id}/cancellation` · `POST /{id}/reopen` · `DELETE /{id}` ·
 `PATCH /{id}/client` · `PATCH /{id}/tenant` · `PATCH /{id}/team` · `PATCH /{id}/equipments` ·
 `PATCH /{id}/items` · `PUT /{id}/items/order` · `PATCH /{id}/items/{pollutantId}` · `PUT /{id}/sheets` ·
-`GET /{id}/sheets/{category}/previous` · `GET /{id}/sheets/{category}/previous/candidates`
+`PUT /{id}/custom-fields` · `GET /{id}/sheets/{category}/previous` · `GET /{id}/sheets/{category}/previous/candidates`
+
+**커스텀 필드 정의** (`CustomFieldDefinitionController`, `/api/schedules/custom-fields` — 리터럴이라 `/{id}`보다 먼저 매칭)
+`GET /` · `POST /`(ADMIN) · `PUT /{fieldId}`(ADMIN) · `DELETE /{fieldId}`(ADMIN)
 
 **엑셀** (`ScheduleExportController`, multipart 템플릿 업로드)
-`POST /{id}/sampling-records/export` (채취기록부 ZIP)
+`POST /{id}/sampling-records/export` (채취기록부 ZIP) · `POST /sampling-records/template-check` (템플릿 검사, `ApiResponse` 봉투)
+
+라우팅 우선순위 회귀는 `ScheduleRoutingTest`(standaloneSetup)가 고정합니다.
 
 **SSE** (`ScheduleStreamController`) `GET /{id}/stream`
 
@@ -408,7 +426,7 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 
 ## 수정 경로 규약 — API를 하나로 합치지 않는 이유
 
-측정계획 수정 경로가 11개인 것은 **의도된 설계**입니다. "측정계획 수정 API 하나"로 통합하지 않습니다.
+측정계획 수정 경로가 12개인 것은 **의도된 설계**입니다. "측정계획 수정 API 하나"로 통합하지 않습니다.
 
 | 경로 | 서비스 메서드 | 시트 재계산 | 문서 락 | 부작용 |
 |---|---|---|---|---|
@@ -424,6 +442,7 @@ Init(1) → Pressure(2) → Moisture(3) → ExhaustGas(4) → Density(5) → Flo
 | `PUT /{id}/sheets` | `saveSheets` | **함** | ○ | 시트 병합 + **채취시각·현장 담당자** + SSE 발행. `ANALYZING`부터 잠김 |
 | `PUT /{id}/analyses/results` | `saveAnalysisResults` | 안 함 | ○ | `items[].analysis`의 실험실 입력 4필드 |
 | `PUT /{id}/analyses/sampling-times` | `saveSamplingTimes` | 안 함 | ○ | `items[].analysis`의 채취시각 2필드 |
+| `PUT /{id}/custom-fields` | `saveCustomFields` | 안 함 | ○ | 회차 커스텀 필드 값 전체 교체(전체 채택). 정의에 없는 키는 400. `ANALYZING` 이후에도 편집 가능 |
 
 **모든 경로가 원장(`client_management`·`equipment`·`platform`)을 변경하지 않습니다.**
 그리고 모두 `requireEditable()`을 지납니다 — 완료·취소된 계획은 수정할 수 없습니다.
@@ -498,6 +517,8 @@ SSE 구독도 예외가 아닙니다(`ScheduleStreamService`).
 | `MeasurementRecordRepository` | MySQL 이력 |
 | `ScheduleEventBroadcaster` | SSE. **시그니처에 `SseEmitter`가 드러납니다** — 의도된 예외이며 근거는 포트 javadoc에 있음 |
 | `SheetExcelRenderer` | jxls 템플릿 렌더링 |
+| `ExcelTemplateReader` | 템플릿에서 jxls 표현식 읽기(POI·JEXL은 인프라에만). 검사용 |
+| `CustomFieldDefinitionRepository` | MySQL 커스텀 필드 정의 |
 
 ### Inbound Port (`application/port/in/`)
 
@@ -530,6 +551,15 @@ SSE 구독도 예외가 아닙니다(`ScheduleStreamService`).
 
 `~ExportView` 15개는 **record가 아니라 `@Getter` 클래스**입니다 — jxls의 JEXL이 getter로 해석하기
 때문입니다. 하위 뷰는 항상 non-null을 보장합니다.
+
+- **`SamplingRecordVariable`**(enum)이 채취기록부 최상위 변수(`plan`·`sheet`·`weather`…·`items`·`custom`)의 단일 진실입니다.
+  렌더러는 여기서 값을, 템플릿 검사기는 타입을 읽습니다 — 이름 목록이 둘이면 반드시 어긋납니다.
+- **`custom`은 `Map<String,String>`**입니다. JEXL이 Map도 `${custom.key}`로 해석하므로 타입 계약을 건드리지 않고
+  고객 자유도를 엽니다. 키는 `CustomFieldDefinition`, 값은 `ScheduleSnapshot.customFields`.
+- **없는 이름은 빈칸입니다.** jxls 기본 JEXL(`silent=true, strict=false`)은 미정의 이름을 null로 평가하고 셀을 BLANK로
+  만듭니다 — 예외도, `${…}` 원문 출력도 아닙니다(원문이 남는 유일한 경우는 `jx:area` 밖의 셀). 그래서 이름 오류는
+  렌더링이 아니라 `POST /sampling-records/template-check`가 잡습니다. 검사 VO(`TemplateExpressionRef`·`TemplateIssue`·
+  `CheckTemplateResult`)도 이 패키지에 둡니다.
 
 ---
 

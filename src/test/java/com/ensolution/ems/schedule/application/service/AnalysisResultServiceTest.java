@@ -76,7 +76,7 @@ class AnalysisResultServiceTest {
 
 	private void givenSnapshot(SamplingItemSnapshot... items) {
 		documentRepository.given(new ScheduleSnapshot(
-			String.valueOf(SCHEDULE), SCHEDULE, TENANT, 0L, null, null, null, null, List.of(items)));
+			String.valueOf(SCHEDULE), SCHEDULE, TENANT, 0L, null, null, null, null, List.of(items), null));
 	}
 
 	private static SamplingItemSnapshot item(Long pollutantId, String nameKr, BigDecimal allowance) {

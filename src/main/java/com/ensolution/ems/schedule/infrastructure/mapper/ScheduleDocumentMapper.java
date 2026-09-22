@@ -29,6 +29,7 @@ public interface ScheduleDocumentMapper {
 	@Mapping(target = "withSampling", ignore = true)
 	@Mapping(target = "withItems", ignore = true)
 	@Mapping(target = "withItemOrder", ignore = true)
+	@Mapping(target = "withCustomFields", ignore = true)
 	@Mapping(target = "applyTenantChange", ignore = true)
 	@Mapping(target = "applyTeamChange", ignore = true)
 	ScheduleSnapshot toDomain(ScheduleDocument document);

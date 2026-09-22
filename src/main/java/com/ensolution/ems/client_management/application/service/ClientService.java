@@ -20,7 +20,7 @@ public class ClientService {
 	private final ClientValidator clientValidator;
 
 	public Client createClient(CreateClientCommand command) {
-		clientValidator.requireUniqueName(command.name());
+		clientValidator.requireUniqueName(command.name(), command.tenantId());
 
 		Client newClient = Client.register(
 			command.tenantId(),

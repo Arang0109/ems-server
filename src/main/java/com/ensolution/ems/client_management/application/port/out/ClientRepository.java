@@ -10,5 +10,5 @@ public interface ClientRepository {
 	List<Client> findAll(Long tenantId);
 	void deleteById(Long clientId, Long tenantId);
 
-	boolean existsByName(String name);
+	boolean existsByName(String name, Long tenantId);
 }

@@ -26,5 +26,5 @@ public interface ClientJpaRepository extends JpaRepository<ClientEntity, Long> {
 		@Param("tenantId") Long tenantId
 	);
 	
-	boolean existsByName(String name);
+	boolean existsByNameAndTenant_TenantId(String name, Long tenantId);
 }

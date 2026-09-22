@@ -4,6 +4,10 @@ import com.ensolution.ems.global.exception.CustomException;
 import com.ensolution.ems.global.exception.ErrorCode;
 import com.ensolution.ems.schedule.domain.sampling.SamplingSheet;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,7 +30,13 @@ public record ScheduleSnapshot(
 	TeamSnapshot team,
 	SamplingSnapshot samplingData,
 
-	List<SamplingItemSnapshot> items
+	List<SamplingItemSnapshot> items,
+
+	/**
+	 * 회차별 커스텀 필드 값. 키는 tenant가 정의한 {@code CustomFieldDefinition.key}, 값은 성적서 템플릿이
+	 * {@code ${custom.<key>}}로 읽는 문자열. 필드 도입 전 문서는 null이며 소비처가 빈 맵으로 읽는다.
+	 */
+	Map<String, String> customFields
 ) {
 	
 	public List<SamplingSheet> sheets() { 					// 채취 기록지 목록
@@ -47,12 +57,12 @@ public record ScheduleSnapshot(
 		SamplingSnapshot sampling = samplingData == null
 			? SamplingSnapshot.create(null, null).withSheets(newSheets)
 			: samplingData.withSheets(newSheets);
-		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, sampling, items);
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, sampling, items, customFields);
 	}
 
 	/** 채취 스냅샷(채취시각·현장 담당자·기록지)을 통째로 교체한 새 스냅샷을 반환한다. */
 	public ScheduleSnapshot withSampling(SamplingSnapshot newSampling) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, newSampling, items);
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, newSampling, items, customFields);
 	}
 
 	/**
@@ -63,7 +73,7 @@ public record ScheduleSnapshot(
 		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, newTeam,
 			samplingData == null ? SamplingSnapshot.create(null, null).withSheets(newSheets)
 				: samplingData.withSheets(newSheets),
-			items);
+			items, customFields);
 	}
 
 	/**
@@ -75,7 +85,7 @@ public record ScheduleSnapshot(
 			tenant, team,
 			samplingData == null ? SamplingSnapshot.create(null, null).withSheets(newSheets)
 				: samplingData.withSheets(newSheets),
-			items);
+			items, customFields);
 	}
 
 	/**
@@ -88,7 +98,7 @@ public record ScheduleSnapshot(
 	public ScheduleSnapshot applyTenantChange(TenantSnapshot patch) {
 		if (tenant == null) return this;
 		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client,
-			tenant.merge(patch), team, samplingData, items);
+			tenant.merge(patch), team, samplingData, items, customFields);
 	}
 
 	/**
@@ -100,7 +110,7 @@ public record ScheduleSnapshot(
 	public ScheduleSnapshot applyTeamChange(TeamSnapshot patch) {
 		if (team == null) return this;
 		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client,
-			tenant, team.merge(patch), samplingData, items);
+			tenant, team.merge(patch), samplingData, items, customFields);
 	}
 
 	/**
@@ -110,7 +120,28 @@ public record ScheduleSnapshot(
 	 * {@code ScheduleDocumentMapper} 에서 매핑 대상 제외를 함께 선언해야 한다.
 	 */
 	public ScheduleSnapshot withItems(List<SamplingItemSnapshot> newItems) {
-		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, samplingData, newItems);
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, samplingData, newItems, customFields);
+	}
+
+	/**
+	 * 회차 커스텀 필드 값을 <b>통째로 교체</b>한 새 스냅샷을 반환한다. 커스텀 필드 폼이 단독 소유하는 일괄 저장이라
+	 * 전체 채택이다 — 요청에 없는 키는 지워지고, 값이 비어 있는 항목도 지운다("빈 칸 = 지웠다").
+	 * 키가 정의된 것인지는 저장 전에 검증한다({@code CustomFieldDefinitionValidator#requireDefinedKeys}).
+	 * <p>
+	 * 인자가 하나인 fluent 메서드는 MapStruct가 property setter로 읽으므로,
+	 * {@code ScheduleDocumentMapper} 에서 매핑 대상 제외를 함께 선언해야 한다.
+	 */
+	public ScheduleSnapshot withCustomFields(Map<String, String> values) {
+		Map<String, String> replaced = new LinkedHashMap<>();
+		if (values != null) {
+			values.forEach((key, value) -> {
+				if (key != null && value != null && !value.isBlank()) {
+					replaced.put(key, value);
+				}
+			});
+		}
+		return new ScheduleSnapshot(id, scheduleId, tenantId, version, client, tenant, team, samplingData, items,
+			Collections.unmodifiableMap(replaced));
 	}
 
 	/**

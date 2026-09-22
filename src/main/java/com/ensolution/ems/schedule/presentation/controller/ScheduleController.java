@@ -15,6 +15,7 @@ import com.ensolution.ems.schedule.presentation.request.ChangeClientSnapshotRequ
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleEquipmentsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeScheduleItemsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeTeamSnapshotRequest;
+import com.ensolution.ems.schedule.presentation.request.SaveScheduleCustomFieldsRequest;
 import com.ensolution.ems.schedule.presentation.request.ChangeTenantSnapshotRequest;
 import com.ensolution.ems.schedule.presentation.request.CreateScheduleRequest;
 import com.ensolution.ems.schedule.presentation.request.ReorderScheduleItemsRequest;
@@ -206,6 +207,23 @@ public class ScheduleController {
 	) {
 		ScheduleDetail detail = snapshotService.changeTeam(
 			scheduleId, principal.getTenantId(), mapper.toChangeTeamCommand(request)
+		);
+		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
+	}
+
+	@Operation(summary = "측정계획 커스텀 필드 값 저장",
+		description = "이 회차의 커스텀 필드 값을 통째로 저장합니다(전체 채택) — 정의된 필드 전부를 보내야 하며, "
+			+ "빠진 키와 빈 값은 지워집니다. 키는 GET /api/schedules/custom-fields 의 정의에 있어야 하고, "
+			+ "성적서 템플릿은 ${custom.<key>} 로 이 값을 읽습니다. "
+			+ "측정 시트는 재계산하지 않으며 분석값 입력 단계 이후에도 고칠 수 있습니다. 완료·취소 상태는 변경할 수 없습니다.")
+	@PutMapping("/{scheduleId}/custom-fields")
+	public ResponseEntity<ApiResponse<ScheduleResponse>> saveCustomFields(
+		@PathVariable Long scheduleId,
+		@Valid @RequestBody SaveScheduleCustomFieldsRequest request,
+		@AuthenticationPrincipal CustomUserDetails principal
+	) {
+		ScheduleDetail detail = snapshotService.saveCustomFields(
+			scheduleId, principal.getTenantId(), mapper.toSaveCustomFieldsCommand(request)
 		);
 		return ResponseEntity.ok().body(ApiResponse.success(mapper.toResponse(detail)));
 	}
